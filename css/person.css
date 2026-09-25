@@ -160,14 +160,23 @@
 }
 
 .person-stats {
-  margin-bottom: 0.85rem;
+  margin: 0 0 1rem;
+  text-align: center;
 }
 
-.person-bio {
-  color: var(--ink-soft);
-  font-size: 0.9rem;
-  line-height: 1.5;
-  margin: 0 0 0.85rem;
+.person-subhead {
+  font-size: 0.82rem;
+  font-weight: 650;
+  margin: 0 0 0.65rem;
+}
+
+.person-page .panel + .person-grid {
+  margin-top: 0.85rem;
+}
+
+.person-grid + .panel,
+.person-page .person-grid + .cpp-safety {
+  margin-top: 0.85rem;
 }
 
 .person-posts .c-activity-item + .c-activity-item {

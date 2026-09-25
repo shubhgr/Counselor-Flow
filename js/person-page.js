@@ -525,6 +525,7 @@
     var heroMeta = [];
     if (comm && comm.roleLine) heroMeta.push(escapeHtml(comm.roleLine));
     else if (person.forWho) heroMeta.push('For ' + escapeHtml(person.forWho));
+    if (comm && comm.bio) heroMeta.push(escapeHtml(comm.bio));
     if (person.email) heroMeta.push(escapeHtml(person.email));
     if (person.source || person.lastSource) {
       heroMeta.push('Source · ' + escapeHtml(person.source || person.lastSource));
@@ -661,8 +662,7 @@
           comm.following +
           '</strong><span>Following</span></div>' +
           '</div>' +
-          (comm.bio ? '<p class="person-bio">' + escapeHtml(comm.bio) + '</p>' : '') +
-          '<div class="person-posts">' +
+          '<div class="person-posts"><h3 class="person-subhead">Posts</h3>' +
           postsHtml(comm.posts) +
           '</div>'
       );
@@ -692,15 +692,16 @@
           escapeHtml(aiSummary(person, plan, comm)) +
           '</p></div>'
       ) +
-      '<div class="person-grid">' +
-      '<div class="person-col">' +
-      prefsHtml +
-      '</div><div class="person-col">' +
-      nextMeetHtml +
+      (prefsHtml && nextMeetHtml
+        ? '<div class="person-grid"><div class="person-col">' +
+          prefsHtml +
+          '</div><div class="person-col">' +
+          nextMeetHtml +
+          '</div></div>'
+        : prefsHtml + nextMeetHtml) +
       bookingsBlock +
       paymentHtml +
       lastHtml +
-      '</div></div>' +
       communityHtml +
       ((window.GradRightSafety && GradRightSafety.actionsHtml(person)) || '');
 
