@@ -236,7 +236,7 @@
       if (t.hasAttribute('data-live-profile')) {
         goMain(
           absolute(
-            'student-profile.html?id=' + encodeURIComponent(live.studentId) + '&from=call'
+            'person.html?id=' + encodeURIComponent(live.studentId) + '&from=call'
           )
         );
         return;

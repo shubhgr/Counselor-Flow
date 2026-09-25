@@ -879,20 +879,22 @@
     }
 
     function openMyProfile() {
-      const me = currentMe();
-      profileStack.length = 0;
-      pushView({ type: 'profile', name: me });
+      openProfile(currentMe());
     }
 
     function openProfile(name) {
       if (!name) return;
-      openMenus.clear();
-      if (!panelOpen()) {
-        profileStack.length = 0;
-        pushView({ type: 'profile', name: name });
-      } else {
-        pushView({ type: 'profile', name: name });
+      var paid = connectedPerson(name);
+      if (paid) {
+        location.href = 'person.html?id=' + encodeURIComponent(paid.id) + '&from=community';
+        return;
       }
+      var meta = authorMeta(name);
+      location.href =
+        'person.html?name=' +
+        encodeURIComponent(name) +
+        '&from=community&role=' +
+        encodeURIComponent(meta.type || 'student');
     }
 
     function renderProfilePanel() {

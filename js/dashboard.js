@@ -1425,15 +1425,18 @@
   }
 
   function openCallPanel(id) {
-    selectedConnectId = '';
-    selectedCallId = id;
-    renderCallPanel();
+    var call = callById(id);
+    if (!call) return;
+    location.href =
+      'person.html?id=' +
+      encodeURIComponent(call.personId || '') +
+      '&call=' +
+      encodeURIComponent(id) +
+      '&from=dashboard';
   }
 
   function openConnectPanel(id) {
-    selectedCallId = '';
-    selectedConnectId = id;
-    renderConnectPanel();
+    location.href = 'person.html?id=' + encodeURIComponent(id) + '&from=dashboard';
   }
 
   if (callPanel) {

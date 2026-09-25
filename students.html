@@ -589,10 +589,7 @@
         PEOPLE.filter(function (x) { return x.id === id; })[0];
       if (!p || !p.connected) return;
       if (window.GradRightSafety && GradRightSafety.isBlocked(p)) return;
-      selectedId = id;
-      personPanel.hidden = false;
-      workspace.classList.add('is-profile-open');
-      renderPersonPanel(p);
+      location.href = 'person.html?id=' + encodeURIComponent(id) + '&from=people';
       document.querySelectorAll('.people-table tr').forEach(function (tr) {
         tr.classList.toggle('is-selected', tr.getAttribute('data-id') === id);
       });

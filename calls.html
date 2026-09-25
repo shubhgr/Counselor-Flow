@@ -592,8 +592,14 @@
       var callPanelTitle = document.getElementById('call-panel-title');
 
       function openSheet(id) {
-        selected = id;
-        renderSheet();
+        var call = byId(id);
+        if (!call) return;
+        location.href =
+          'person.html?id=' +
+          encodeURIComponent(call.personId || '') +
+          '&call=' +
+          encodeURIComponent(id) +
+          '&from=calls';
       }
 
       function closeSheet() {

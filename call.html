@@ -24,7 +24,7 @@
             <span class="material-symbols-rounded" aria-hidden="true">chat</span>
             Chat
           </a>
-          <a class="btn btn-secondary btn-sm" id="profile-btn" href="student-profile.html">Student profile</a>
+          <a class="btn btn-secondary btn-sm" id="profile-btn" href="person.html">Profile</a>
         </div>
       </header>
 
@@ -77,13 +77,13 @@
     document.getElementById('call-avatar').textContent = live.initials;
     document.getElementById('call-title').textContent = 'Meet · ' + live.name;
     document.getElementById('profile-btn').href =
-      'student-profile.html?id=' + encodeURIComponent(id) + '&from=call';
+      'person.html?id=' + encodeURIComponent(id) + '&from=call';
     document.getElementById('chat-btn').href = 'chats.html?id=' + encodeURIComponent(id);
     document.getElementById('btn-chat').href = 'chats.html?id=' + encodeURIComponent(id);
 
     /* Back always leaves the full-screen call view without ending the live session */
     var backHref = 'calls.html';
-    if (from === 'profile') backHref = 'student-profile.html?id=' + encodeURIComponent(id) + '&from=call';
+    if (from === 'profile') backHref = 'person.html?id=' + encodeURIComponent(id) + '&from=call';
     else if (from === 'chats') backHref = 'chats.html?id=' + encodeURIComponent(id);
     else if (from === 'calls') backHref = 'calls.html';
     document.getElementById('back-btn').href = backHref;

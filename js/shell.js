@@ -24,7 +24,15 @@
   }
 
   function normalizeNavId(page) {
-    if (page === 'student-profile') return 'students';
+    if (page === 'student-profile' || page === 'person') {
+      var from = new URLSearchParams(location.search).get('from');
+      if (from === 'chats') return 'chats';
+      if (from === 'calls' || from === 'call') return 'calls';
+      if (from === 'dashboard') return 'dashboard';
+      if (from === 'community') return 'community';
+      if (from === 'transactions') return 'transactions';
+      return 'students';
+    }
     if (page === 'call') return 'calls';
     if (page === 'calendar' || page === 'services') return 'profile';
     if (page === 'dashboard-pending') return 'dashboard';

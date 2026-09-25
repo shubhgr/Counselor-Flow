@@ -820,14 +820,7 @@
 
     function openPerson(id) {
       if (!STUDENTS[id]) return;
-      profileOpen = true;
-      personPanel.hidden = false;
-      chatWorkspace.classList.add('is-profile-open');
-      renderPersonPanel(id);
-      const url = new URL(location.href);
-      url.searchParams.set('id', id);
-      url.searchParams.set('profile', '1');
-      history.replaceState(null, '', url.pathname.split('/').pop() + url.search);
+      location.href = 'person.html?id=' + encodeURIComponent(id) + '&from=chats';
     }
 
     function selectStudent(id) {
@@ -856,8 +849,7 @@
 
     document.getElementById('open-student').addEventListener('click', function () {
       if (isPending()) return;
-      if (profileOpen) closePerson();
-      else openPerson(activeId);
+      openPerson(activeId);
     });
 
     document.getElementById('person-panel-close').addEventListener('click', closePerson);
