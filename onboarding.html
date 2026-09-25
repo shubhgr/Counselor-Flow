@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Onboarding — GradRight Counselor</title>
+  <link rel="stylesheet" href="css/styles.css?v=verif1" />
+  <link rel="stylesheet" href="css/mobile.css?v=mobile1" />
+</head>
+<body>
+  <div class="onboard-page">
+    <button class="onboard-skip" type="button" id="skip-btn" hidden>Skip</button>
+
+    <div class="onboard-wrap">
+      <div class="onboard-card">
+      <div class="onboard-progress" id="progress">
+        <div class="bar done" data-step="1"></div>
+        <div class="bar" data-step="2"></div>
+        <div class="bar" data-step="3"></div>
+        <div class="bar" data-step="4"></div>
+      </div>
+
+      <!-- Step 1: Who you are -->
+      <section class="step" id="step-1">
+        <h1>Tell us who you are</h1>
+        <p class="lead">Mobile is locked after OTP. Email can be verified later from your profile.</p>
+
+        <div class="field">
+          <label for="name">Full name</label>
+          <input id="name" type="text" value="Priya Sharma" />
+        </div>
+
+        <div class="field">
+          <label for="phone">Mobile number</label>
+          <div class="input-with-action">
+            <input id="phone" class="input-locked" type="tel" value="+91 12345 67890" readonly />
+            <span class="verified-inline">Verified</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="email">Email</label>
+          <div class="input-with-action">
+            <input id="email" type="email" value="priya.sharma@gmail.com" />
+            <button class="btn-verify-inline" type="button" id="verify-email-btn" onclick="verifyEmail()">Verify</button>
+          </div>
+          <p class="hint-text" id="email-hint">Not verified yet · optional for now</p>
+        </div>
+
+        <div class="field">
+          <label for="address">Address</label>
+          <textarea id="address">Bandra West, Mumbai, Maharashtra</textarea>
+        </div>
+
+        <div class="field">
+          <label>Intro video</label>
+          <input type="file" id="video-input" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" hidden />
+          <div class="intro-video-chooser" id="video-zone">
+            <button type="button" class="intro-video-choice" id="video-record-btn">
+              <span class="media-ico" aria-hidden="true"><span class="material-symbols-rounded">videocam</span></span>
+              <span class="intro-video-copy">
+                <strong>Record</strong>
+                <span>Optional · camera and mic · 2 min</span>
+              </span>
+            </button>
+            <button type="button" class="intro-video-choice" id="video-upload-btn">
+              <span class="media-ico" aria-hidden="true"><span class="material-symbols-rounded">upload</span></span>
+              <span class="intro-video-copy">
+                <strong>Upload</strong>
+                <span>Optional · MP4, MOV, or WEBM</span>
+              </span>
+            </button>
+          </div>
+          <div class="video-preview" id="video-preview" hidden>
+            <video id="video-preview-el" controls playsinline preload="metadata"></video>
+            <div class="video-preview-meta">
+              <strong id="video-preview-name">intro.mp4</strong>
+              <span id="video-preview-meta">Ready · you can change this later from profile</span>
+              <div class="video-preview-actions">
+                <button type="button" class="btn btn-ghost btn-sm" id="video-record-again">Record</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="video-change">Upload</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="video-remove">Remove</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="onboard-actions">
+          <span></span>
+          <button class="btn btn-primary" type="button" style="width:auto;" onclick="goStep(2)">Continue</button>
+        </div>
+      </section>
+
+      <!-- Step 2: Background (skippable) -->
+      <section class="step" id="step-2" hidden>
+        <h1>Counseling background</h1>
+        <p class="lead">Optional. Skip if you prefer. Helps students and admins understand your track record.</p>
+
+        <div class="field">
+          <label>Countries you give guidance for</label>
+          <div class="chip-select" id="countries">
+            <button type="button" class="chip selected" onclick="this.classList.toggle('selected')">USA</button>
+            <button type="button" class="chip selected" onclick="this.classList.toggle('selected')">UK</button>
+            <button type="button" class="chip selected" onclick="this.classList.toggle('selected')">Canada</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Germany</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Australia</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Ireland</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Netherlands</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">France</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Singapore</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">New Zealand</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">UAE</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Sweden</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Italy</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Japan</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">India</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">China</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Hong Kong</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Switzerland</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Spain</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Denmark</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">South Korea</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Malaysia</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Qatar</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Poland</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Austria</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Belgium</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Finland</button>
+            <button type="button" class="chip" onclick="this.classList.toggle('selected')">Norway</button>
+          </div>
+          <div class="custom-country">
+            <input id="custom-country" type="text" placeholder="Add a custom country…" />
+            <button class="btn btn-secondary btn-sm" type="button" onclick="addCountry()">Add</button>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="students-served">Students served till now</label>
+            <input id="students-served" type="number" placeholder="e.g. 120" />
+          </div>
+          <div class="field">
+            <label for="admits">Admits across these countries</label>
+            <input id="admits" type="number" placeholder="e.g. 85" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="bio">Short bio (optional)</label>
+          <textarea id="bio" placeholder="How you help students get into colleges and countries…"></textarea>
+        </div>
+
+        <div class="onboard-actions">
+          <button class="btn btn-ghost" type="button" onclick="goStep(1)">Back</button>
+          <button class="btn btn-primary" type="button" style="width:auto;" onclick="goStep(3)">Continue</button>
+        </div>
+      </section>
+
+      <!-- Step 3: Documents (optional) -->
+      <section class="step" id="step-3" hidden>
+        <h1>Verification documents</h1>
+        <p class="lead">Optional but recommended. Makes admin approval faster (ID, certificates, agency letter, etc.).</p>
+
+        <input
+          type="file"
+          id="doc-input"
+          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+          multiple
+          hidden
+        />
+        <div
+          class="upload-zone"
+          id="upload-zone"
+          role="button"
+          tabindex="0"
+          aria-label="Upload documents"
+        >
+          <strong>Upload documents</strong>
+          <span>PDF, JPG, PNG · up to 10 MB each · click or drop files here</span>
+        </div>
+        <div id="doc-list"></div>
+
+        <div class="onboard-actions">
+          <button class="btn btn-ghost" type="button" onclick="goStep(2)">Back</button>
+          <button class="btn btn-primary" type="button" style="width:auto;" onclick="goStep(4)">Continue</button>
+        </div>
+      </section>
+
+      <!-- Step 4: Review -->
+      <section class="step" id="step-4" hidden>
+        <h1>Submit for admin approval</h1>
+        <p class="lead">
+          You’ll land in your dashboard next. Earnings and transactions stay at zero until you’re verified. You can still see leads, setup, and calendar.
+        </p>
+        <div class="panel" style="margin-bottom:1rem;">
+          <div class="list-item">
+            <div class="avatar" id="review-avatar">PS</div>
+            <div class="meta">
+              <strong id="review-name">Priya Sharma</strong>
+              <span id="review-meta">+91 12345 67890 · email pending verify</span>
+            </div>
+          </div>
+          <div class="list-item">
+            <div class="meta">
+              <strong>Background</strong>
+              <span id="review-background">Countries, students served, and admits (if filled)</span>
+            </div>
+          </div>
+          <div class="list-item">
+            <div class="meta">
+              <strong>Intro video</strong>
+              <span id="review-video">Optional. Add a short clip so students know you.</span>
+            </div>
+          </div>
+          <div class="list-item">
+            <div class="meta">
+              <strong>Documents</strong>
+              <span id="review-docs">Upload if you have them. It speeds up verification.</span>
+            </div>
+          </div>
+        </div>
+        <div class="onboard-actions">
+          <button class="btn btn-ghost" type="button" onclick="goStep(3)">Back</button>
+          <a class="btn btn-primary" href="dashboard-pending.html" id="submit-dashboard" style="width:auto;">Submit &amp; open dashboard</a>
+        </div>
+      </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/session.js?v=auth-path1"></script>
+  <script src="js/intro-recorder.js?v=videorec1"></script>
+  <script>
+    (function () {
+      const s = GradRightSession.get();
+      if (s) {
+        const phoneEl = document.getElementById('phone');
+        if (phoneEl) phoneEl.value = s.phoneDisplay;
+        const nameEl = document.getElementById('name');
+        if (nameEl && s.name) nameEl.value = s.name;
+        const emailEl = document.getElementById('email');
+        if (emailEl && s.email) emailEl.value = s.email;
+        document.getElementById('review-name').textContent = s.name;
+        document.getElementById('review-avatar').textContent = s.initials;
+        document.getElementById('review-meta').textContent =
+          s.phoneDisplay +
+          (s.verified ? ' (admin verified)' : ' (pending admin)') +
+          ' · email pending verify';
+        document.getElementById('submit-dashboard').href = 'dashboard.html';
+      }
+    })();
+
+    var skipBtn = document.getElementById('skip-btn');
+
+    function selectedCountries() {
+      return [...document.querySelectorAll('#countries .chip.selected')].map(function (el) {
+        return el.textContent.trim();
+      });
+    }
+
+    function updateReview() {
+      var countries = selectedCountries();
+      var served = (document.getElementById('students-served') || {}).value;
+      var admits = (document.getElementById('admits') || {}).value;
+      var parts = [];
+      if (countries.length) parts.push(countries.slice(0, 6).join(', ') + (countries.length > 6 ? ' +' + (countries.length - 6) : ''));
+      if (served) parts.push(served + ' students served');
+      if (admits) parts.push(admits + ' admits');
+      document.getElementById('review-background').textContent = parts.length
+        ? parts.join(' · ')
+        : 'No background added yet';
+      var count = (window.uploadedDocs && uploadedDocs.length) || 0;
+      document.getElementById('review-docs').textContent = count
+        ? count + ' file' + (count === 1 ? '' : 's') + ' ready to submit'
+        : 'No documents uploaded yet';
+      document.getElementById('review-video').textContent = window.introVideoName
+        ? window.introVideoName + ' ready to show on your profile'
+        : 'No intro video yet · you can add one later from profile';
+    }
+
+    function goStep(n) {
+      document.querySelectorAll('.step').forEach((el) => (el.hidden = true));
+      document.getElementById('step-' + n).hidden = false;
+      document.querySelectorAll('#progress .bar').forEach((bar) => {
+        bar.classList.toggle('done', Number(bar.dataset.step) <= n);
+      });
+      if (skipBtn) {
+        skipBtn.hidden = !(n === 2 || n === 3);
+        skipBtn.onclick = function () {
+          goStep(n === 2 ? 3 : 4);
+        };
+      }
+      if (n === 4) updateReview();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function verifyEmail() {
+      const btn = document.getElementById('verify-email-btn');
+      const hint = document.getElementById('email-hint');
+      btn.textContent = 'Sent';
+      btn.disabled = true;
+      hint.innerHTML = '<span class="verified-tag">Verification link sent</span> · check inbox (demo)';
+      setTimeout(() => {
+        hint.innerHTML = '<span class="verified-tag">Email verified</span>';
+        btn.textContent = 'Verified';
+      }, 1200);
+    }
+
+    function addCountry() {
+      const input = document.getElementById('custom-country');
+      const name = input.value.trim();
+      if (!name) return;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'chip selected';
+      btn.textContent = name;
+      btn.onclick = function () { this.classList.toggle('selected'); };
+      document.getElementById('countries').appendChild(btn);
+      input.value = '';
+    }
+
+    const docInput = document.getElementById('doc-input');
+    const docList = document.getElementById('doc-list');
+    const uploadZone = document.getElementById('upload-zone');
+    const uploadedDocs = [];
+    window.uploadedDocs = uploadedDocs;
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function renderDocs() {
+      docList.innerHTML = '';
+      uploadedDocs.forEach((file, index) => {
+        const row = document.createElement('div');
+        row.className = 'doc-file';
+
+        const icon = document.createElement('span');
+        icon.textContent = '📄';
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.style.flex = '1';
+
+        const nameEl = document.createElement('strong');
+        nameEl.style.fontSize = '0.85rem';
+        nameEl.textContent = file.name;
+
+        const sizeEl = document.createElement('span');
+        sizeEl.style.fontSize = '0.75rem';
+        sizeEl.style.color = 'var(--muted)';
+        sizeEl.textContent = formatSize(file.size) + ' · Ready to submit';
+
+        meta.appendChild(nameEl);
+        meta.appendChild(document.createElement('br'));
+        meta.appendChild(sizeEl);
+
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'btn btn-ghost btn-sm';
+        remove.textContent = 'Remove';
+        remove.addEventListener('click', () => {
+          uploadedDocs.splice(index, 1);
+          renderDocs();
+        });
+
+        row.appendChild(icon);
+        row.appendChild(meta);
+        row.appendChild(remove);
+        docList.appendChild(row);
+      });
+    }
+
+    function addFiles(fileList) {
+      [...fileList].forEach((file) => {
+        const okType = /\.(pdf|jpe?g|png)$/i.test(file.name);
+        const okSize = file.size <= 10 * 1024 * 1024;
+        if (!okType) {
+          alert('Only PDF, JPG, or PNG files are allowed.');
+          return;
+        }
+        if (!okSize) {
+          alert('"' + file.name + '" is over 10 MB.');
+          return;
+        }
+        if (uploadedDocs.some((f) => f.name === file.name && f.size === file.size)) return;
+        uploadedDocs.push(file);
+      });
+      renderDocs();
+    }
+
+    uploadZone.addEventListener('click', () => docInput.click());
+    uploadZone.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        docInput.click();
+      }
+    });
+    docInput.addEventListener('change', () => {
+      if (docInput.files && docInput.files.length) addFiles(docInput.files);
+      docInput.value = '';
+    });
+
+    ;['dragenter', 'dragover'].forEach((evt) => {
+      uploadZone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        uploadZone.style.borderColor = 'var(--brand)';
+        uploadZone.style.background = 'var(--brand-soft)';
+      });
+    });
+    ;['dragleave', 'drop'].forEach((evt) => {
+      uploadZone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        uploadZone.style.borderColor = '';
+        uploadZone.style.background = '';
+      });
+    });
+    uploadZone.addEventListener('drop', (e) => {
+      if (e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+    });
+
+    const videoInput = document.getElementById('video-input');
+    const videoZone = document.getElementById('video-zone');
+    const videoPreview = document.getElementById('video-preview');
+    const videoEl = document.getElementById('video-preview-el');
+    const videoName = document.getElementById('video-preview-name');
+    const videoMeta = document.getElementById('video-preview-meta');
+    let introVideoUrl = null;
+    window.introVideoName = '';
+
+    function renderIntroVideo(file) {
+      if (introVideoUrl) {
+        videoZone.hidden = true;
+        videoPreview.hidden = false;
+        if (videoEl.src !== introVideoUrl) videoEl.src = introVideoUrl;
+        videoName.textContent = file ? file.name : window.introVideoName || 'intro.mp4';
+        videoMeta.textContent = file
+          ? formatSize(file.size) + ' · Ready · you can change this later from profile'
+          : 'Ready · you can change this later from profile';
+      } else {
+        videoZone.hidden = false;
+        videoPreview.hidden = true;
+        videoEl.removeAttribute('src');
+        videoEl.load();
+      }
+    }
+
+    function acceptIntroVideo(file) {
+      const type = String(file.type || '').split(';')[0];
+      const okType =
+        /^video\/(mp4|webm|quicktime|x-m4v)$/i.test(type) ||
+        /\.(mp4|webm|mov|m4v)$/i.test(file.name);
+      if (!okType) {
+        alert('Please choose an MP4, MOV, or WEBM video.');
+        return;
+      }
+      if (file.size > 50 * 1024 * 1024) {
+        alert('Intro video must be under 50 MB.');
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      const probe = document.createElement('video');
+      probe.preload = 'metadata';
+      let settled = false;
+      function finish(ok) {
+        if (settled) return;
+        settled = true;
+        if (!ok) {
+          URL.revokeObjectURL(url);
+          alert('Intro video should be 2 minutes or shorter.');
+          return;
+        }
+        if (introVideoUrl && introVideoUrl.startsWith('blob:')) URL.revokeObjectURL(introVideoUrl);
+        introVideoUrl = url;
+        window.introVideoName = file.name;
+        renderIntroVideo(file);
+      }
+      probe.onloadedmetadata = function () {
+        const seconds = probe.duration;
+        finish(!(Number.isFinite(seconds) && seconds > 120));
+      };
+      probe.onerror = function () {
+        finish(true);
+      };
+      probe.src = url;
+    }
+
+    function openVideoPicker() {
+      videoInput.click();
+    }
+
+    function openIntroRecorder() {
+      if (!window.GradRightIntroRecorder) {
+        openVideoPicker();
+        return;
+      }
+      GradRightIntroRecorder.open({
+        onSave: acceptIntroVideo,
+        onUpload: openVideoPicker,
+      });
+    }
+
+    document.getElementById('video-upload-btn').addEventListener('click', openVideoPicker);
+    document.getElementById('video-record-btn').addEventListener('click', openIntroRecorder);
+    document.getElementById('video-record-again').addEventListener('click', openIntroRecorder);
+    document.getElementById('video-change').addEventListener('click', openVideoPicker);
+    document.getElementById('video-remove').addEventListener('click', () => {
+      if (introVideoUrl && introVideoUrl.startsWith('blob:')) URL.revokeObjectURL(introVideoUrl);
+      introVideoUrl = null;
+      window.introVideoName = '';
+      videoInput.value = '';
+      renderIntroVideo(null);
+    });
+    videoInput.addEventListener('change', () => {
+      const file = videoInput.files && videoInput.files[0];
+      videoInput.value = '';
+      if (file) acceptIntroVideo(file);
+    });
+    ;['dragenter', 'dragover'].forEach((evt) => {
+      videoZone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        videoZone.classList.add('is-drag');
+      });
+    });
+    ;['dragleave', 'drop'].forEach((evt) => {
+      videoZone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        videoZone.classList.remove('is-drag');
+      });
+    });
+    videoZone.addEventListener('drop', (e) => {
+      if (e.dataTransfer && e.dataTransfer.files[0]) acceptIntroVideo(e.dataTransfer.files[0]);
+    });
+  </script>
+</body>
+</html>

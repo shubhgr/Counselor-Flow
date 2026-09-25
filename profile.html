@@ -1,0 +1,2125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Profile — GradRight Counselor</title>
+  <link rel="stylesheet" href="css/styles.css?v=testi5" />
+  <link rel="stylesheet" href="css/mobile.css?v=mobile1" />
+</head>
+<body data-page="profile" data-verified="false">
+  <div class="app">
+    <aside id="app-sidebar" class="sidebar" aria-label="Main navigation"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <h1>Profile</h1>
+        <div class="actions">
+          <div class="auth-tabs profile-view-tabs" role="tablist" aria-label="Profile sections">
+            <button type="button" class="auth-tab active" id="tab-edit" data-profile-tab="edit">Edit profile</button>
+            <button type="button" class="auth-tab" id="tab-services" data-profile-tab="services">Services &amp; fee</button>
+            <button type="button" class="auth-tab" id="tab-testimonials" data-profile-tab="testimonials">Testimonials</button>
+            <a class="auth-tab" id="tab-calendar" href="calendar.html">Calendar</a>
+            <button type="button" class="auth-tab" id="tab-preview" data-profile-tab="preview">Student preview</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="content gr-scroll">
+        <!-- EDIT -->
+        <div id="panel-edit">
+          <div class="profile-hero">
+            <div class="profile-hero-left">
+              <div class="profile-hero-photo">
+                <input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" hidden />
+                <button
+                  type="button"
+                  class="photo-circle"
+                  id="photo-zone"
+                  aria-label="Upload profile photo"
+                >
+                  <span class="photo-circle-empty" id="photo-empty">
+                    <span class="material-symbols-rounded" aria-hidden="true">add_a_photo</span>
+                    <span>Add photo</span>
+                  </span>
+                  <img id="photo-preview-img" class="photo-circle-img" alt="Profile photo preview" hidden />
+                </button>
+                <div class="photo-circle-actions" id="photo-preview" hidden>
+                  <button type="button" class="btn btn-ghost btn-sm" id="photo-change">Change</button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="photo-remove">Remove</button>
+                </div>
+                <span id="photo-preview-name" hidden>photo.jpg</span>
+              </div>
+              <div class="profile-hero-copy">
+                <h2 id="hero-name">Priya Sharma</h2>
+                <p>Higher-education counselor · Mumbai</p>
+                <div class="missing-list" id="missing-list">
+                  <span class="pill warn" data-miss="photo">Missing: photo</span>
+                  <span class="pill warn" data-miss="email">Missing: email verify</span>
+                  <span class="pill" data-miss="docs">2 documents uploaded</span>
+                  <span class="pill" data-miss="video" hidden>Intro video added</span>
+                  <span class="pill">Mobile verified</span>
+                </div>
+              </div>
+            </div>
+            <div class="profile-hero-right">
+              <div class="progress-ring" id="progress-ring" title="Profile completion"><span id="progress-pct">65%</span></div>
+            </div>
+          </div>
+
+          <form id="profile-form" autocomplete="off">
+            <div class="profile-edit-grid">
+              <div class="profile-edit-col">
+                <section class="panel">
+                  <div class="panel-head"><h2>Contact</h2></div>
+                  <p class="panel-lead">How students and GradRight reach you. Mobile stays locked after OTP.</p>
+                  <div class="field-row">
+                    <div class="field">
+                      <label for="field-name">Full name</label>
+                      <input id="field-name" name="name" type="text" value="Priya Sharma" />
+                    </div>
+                    <div class="field">
+                      <label for="field-phone">Mobile number</label>
+                      <div class="input-with-action">
+                        <input id="field-phone" class="input-locked" type="tel" data-session-phone value="+91 12345 67890" readonly />
+                        <span class="verified-inline">Verified</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="field-email">Email</label>
+                    <div class="input-with-action">
+                      <input id="field-email" name="email" type="email" value="priya.sharma@gmail.com" />
+                      <button class="btn-verify-inline" type="button" id="verify-email-btn">Verify</button>
+                    </div>
+                    <p class="hint-text" id="email-hint">Not verified · verify from profile anytime</p>
+                  </div>
+                  <div class="field">
+                    <label for="field-address">Address</label>
+                    <textarea id="field-address" name="address">Bandra West, Mumbai, Maharashtra</textarea>
+                  </div>
+                </section>
+
+                <section class="panel">
+                  <div class="panel-head"><h2>Intro video</h2></div>
+                  <p class="panel-lead">A short clip students see on your profile. Record here or upload a file.</p>
+                  <input type="file" id="video-input" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" hidden />
+                  <div class="intro-video-chooser" id="video-zone">
+                    <button type="button" class="intro-video-choice" id="video-record-btn">
+                      <span class="media-ico" aria-hidden="true"><span class="material-symbols-rounded">videocam</span></span>
+                      <span class="intro-video-copy">
+                        <strong>Record</strong>
+                        <span>Camera and mic · up to 2 min</span>
+                      </span>
+                    </button>
+                    <button type="button" class="intro-video-choice" id="video-upload-btn">
+                      <span class="media-ico" aria-hidden="true"><span class="material-symbols-rounded">upload</span></span>
+                      <span class="intro-video-copy">
+                        <strong>Upload</strong>
+                        <span>MP4, MOV, or WEBM · 50 MB</span>
+                      </span>
+                    </button>
+                  </div>
+                  <div class="video-preview" id="video-preview" hidden>
+                    <video id="video-preview-el" controls playsinline preload="metadata"></video>
+                    <div class="video-preview-meta">
+                      <strong id="video-preview-name">intro.mp4</strong>
+                      <span id="video-preview-meta">Ready · shown on your student profile</span>
+                      <div class="video-preview-actions">
+                        <button type="button" class="btn btn-ghost btn-sm" id="video-record-again">Record</button>
+                        <button type="button" class="btn btn-ghost btn-sm" id="video-change">Upload</button>
+                        <button type="button" class="btn btn-ghost btn-sm" id="video-remove">Remove</button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <div class="profile-edit-col">
+                <section class="panel">
+                  <div class="panel-head"><h2>Background</h2></div>
+                  <p class="panel-lead">Shown on your student-facing card after you’re live.</p>
+                  <div class="field">
+                    <label>Countries</label>
+                    <div class="chip-select" id="countries">
+                      <button type="button" class="chip selected">USA</button>
+                      <button type="button" class="chip selected">UK</button>
+                      <button type="button" class="chip selected">Canada</button>
+                      <button type="button" class="chip">Germany</button>
+                      <button type="button" class="chip">Australia</button>
+                      <button type="button" class="chip">Ireland</button>
+                      <button type="button" class="chip">Netherlands</button>
+                      <button type="button" class="chip">Singapore</button>
+                    </div>
+                  </div>
+                  <div class="field-row">
+                    <div class="field">
+                      <label for="field-students">Students served</label>
+                      <input id="field-students" name="students" type="number" value="120" />
+                    </div>
+                    <div class="field">
+                      <label for="field-admits">Admits secured</label>
+                      <input id="field-admits" name="admits" type="number" value="85" />
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="field-bio">Bio</label>
+                    <textarea id="field-bio" name="bio">Helping students map pathways into top universities.</textarea>
+                  </div>
+                </section>
+
+                <section class="panel">
+                  <div class="panel-head"><h2>Documents</h2></div>
+                  <p class="panel-lead">ID, certificate, or agency letter — speeds up admin approval.</p>
+                  <input
+                    type="file"
+                    id="doc-input"
+                    accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                    multiple
+                    hidden
+                  />
+                  <div
+                    class="media-drop"
+                    id="doc-zone"
+                    role="button"
+                    tabindex="0"
+                    aria-label="Upload documents"
+                  >
+                    <span class="media-ico" aria-hidden="true"><span class="material-symbols-rounded">upload_file</span></span>
+                    <span class="intro-video-copy">
+                      <strong>Add verification docs</strong>
+                      <span>PDF, JPG, or PNG · click or drop</span>
+                    </span>
+                  </div>
+                  <div id="doc-list"></div>
+                </section>
+              </div>
+            </div>
+          </form>
+        </div>
+
+
+        <!-- SERVICES & FEE -->
+        <div id="panel-services" hidden>
+          <div class="services-fee">
+            <div>
+              <div class="label" style="font-size:0.75rem;color:var(--muted);font-weight:500;margin-bottom:0.25rem;">
+                Total amount students pay
+              </div>
+              <div class="amount" id="fee-display">₹1,999</div>
+              <p style="font-size:0.8rem;color:var(--muted);margin-top:0.35rem;max-width:28rem;">
+                One fee covers access to your services — chat and meets unlock after payment.
+              </p>
+            </div>
+            <div class="field" style="margin:0;min-width:160px;">
+              <label for="fee">Edit fee (₹)</label>
+              <input id="fee" type="number" value="1999" />
+            </div>
+          </div>
+
+          <section class="panel" style="margin-bottom:1rem;">
+            <div class="panel-head">
+              <h2>Services you offer</h2>
+              <button class="btn btn-secondary btn-sm" type="button" id="toggle-new-service">+ Add service</button>
+            </div>
+            <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">
+              Students see these on your profile. Each one is an event type. They pick only one when they book a call.
+            </p>
+
+            <div class="modal-form" id="new-service">
+              <div class="field">
+                <label for="service-name">Service name</label>
+                <input id="service-name" type="text" placeholder="e.g. Essay workshop" />
+              </div>
+              <div class="field">
+                <label for="service-desc">Description</label>
+                <textarea id="service-desc" placeholder="What students get from this service"></textarea>
+              </div>
+            </div>
+
+            <div class="service-list" id="service-list"></div>
+          </section>
+        </div>
+
+        <!-- TESTIMONIALS -->
+        <div id="panel-testimonials" hidden>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Testimonials</h2>
+              <button class="btn btn-secondary btn-sm" type="button" id="toggle-new-testimonial">+ Add testimonial</button>
+            </div>
+            <p class="panel-lead">
+              Add a quote or video on behalf of a student, parent, or university contact. Their name, photo, and college or designation show on your public profile.
+            </p>
+            <div class="testi-list" id="testi-list"></div>
+          </section>
+        </div>
+
+        <!-- STUDENT PREVIEW -->
+        <div id="panel-preview" hidden>
+          <div class="pending-banner" data-unverified-only>
+            <div class="icon">👁</div>
+            <div>
+              <h3>Preview · not live yet</h3>
+              <p>
+                Students won’t see you in browse until admin verifies your account.
+                This tab shows how you’ll look once live.
+              </p>
+            </div>
+            <a class="btn btn-secondary btn-sm" href="counselor-public.html?preview=1">Open full page</a>
+          </div>
+
+          <!-- 1. Browse cards -->
+          <section class="preview-section">
+            <div class="preview-section-head">
+              <div>
+                <div class="preview-title-row">
+                  <h2>Browse cards</h2>
+                  <span class="preview-info" tabindex="0" aria-label="Same card on desktop and mobile — tap the person to open their profile, Connect to pay and unlock chat.">
+                    <span class="material-symbols-rounded" aria-hidden="true">info</span>
+                    <span class="preview-info-tip">Same card on desktop and mobile — tap the person to open their profile, Connect to pay &amp; unlock chat.</span>
+                  </span>
+                </div>
+              </div>
+              <div class="preview-live-chip" data-verified-only>
+                Live for students · visible in browse &amp; community
+              </div>
+              <div class="preview-live-chip is-pending" data-unverified-only>
+                Not live yet · hidden from student browse
+              </div>
+            </div>
+
+            <div class="preview-card-compare">
+              <div class="preview-device">
+                <div class="preview-device-label">Desktop</div>
+                <div class="preview-device-frame">
+                  <article class="counselor-card">
+                    <a class="card-profile-link" href="counselor-public.html">
+                      <div class="avatar lg preview-avatar" style="width:48px;height:48px;font-size:0.9rem;">PS</div>
+                      <div>
+                        <h3 class="preview-name">Priya Sharma</h3>
+                        <div class="meta-line preview-meta-line">Mumbai · USA · UK · Canada</div>
+                        <div class="rating">
+                          <span data-verified-only>★ 4.8 · 126 sessions</span>
+                          <span data-unverified-only>★ — · 0 sessions</span>
+                        </div>
+                      </div>
+                    </a>
+                    <p class="bio preview-bio">Helping students map pathways into top universities.</p>
+                    <div class="preview-card-stats">
+                      <span><strong class="preview-students">120+</strong> students</span>
+                      <span><strong class="preview-admits">85+</strong> admits</span>
+                    </div>
+                    <div class="preview-card-services" data-preview-services>
+                      <span class="pill">College shortlisting</span>
+                      <span class="pill">SOP &amp; essay review</span>
+                      <span class="pill">Visa readiness</span>
+                    </div>
+                    <div class="card-foot">
+                      <span class="fee">₹1,999 connect</span>
+                      <a class="btn btn-primary btn-sm" href="counselor-public.html" data-verified-only>Connect</a>
+                      <span class="btn btn-secondary btn-sm" data-unverified-only style="opacity:0.65;pointer-events:none;">Connect</span>
+                    </div>
+                  </article>
+                </div>
+              </div>
+
+              <div class="preview-device">
+                <div class="preview-device-label">Mobile</div>
+                <div class="preview-device-frame phone">
+                  <div class="preview-fullpage-chrome compact">
+                    <span class="chrome-url">Browse</span>
+                  </div>
+                  <article class="counselor-card counselor-card-mobile">
+                    <a class="card-profile-link" href="counselor-public.html">
+                      <div class="avatar preview-avatar">PS</div>
+                      <div>
+                        <h3 class="preview-name">Priya Sharma</h3>
+                        <div class="meta-line preview-meta-line">Mumbai · USA · UK · Canada</div>
+                        <div class="rating">
+                          <span data-verified-only>★ 4.8 · 126 sessions</span>
+                          <span data-unverified-only>★ — · 0 sessions</span>
+                        </div>
+                      </div>
+                    </a>
+                    <p class="bio preview-bio">Helping students map pathways into top universities.</p>
+                    <div class="preview-card-stats">
+                      <span><strong class="preview-students">120+</strong> students</span>
+                      <span><strong class="preview-admits">85+</strong> admits</span>
+                    </div>
+                    <div class="preview-card-services" data-preview-services>
+                      <span class="pill">College shortlisting</span>
+                      <span class="pill">SOP &amp; essay review</span>
+                      <span class="pill">Visa readiness</span>
+                    </div>
+                    <div class="card-foot">
+                      <span class="fee">₹1,999 connect</span>
+                      <a class="btn btn-primary btn-sm" href="counselor-public.html" data-verified-only>Connect</a>
+                      <span class="btn btn-secondary btn-sm" data-unverified-only style="opacity:0.65;pointer-events:none;">Connect</span>
+                    </div>
+                  </article>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 2. Full profile page -->
+          <section class="preview-section">
+            <div class="preview-section-head">
+              <div>
+                <div class="preview-title-row">
+                  <h2>Full profile page</h2>
+                  <span class="preview-info" tabindex="0" aria-label="Opened when a student taps your name or Connect — experience, countries, services, and fee.">
+                    <span class="material-symbols-rounded" aria-hidden="true">info</span>
+                    <span class="preview-info-tip">Opened when a student taps your name or Connect — experience, countries, services, and fee.</span>
+                  </span>
+                </div>
+              </div>
+              <a class="btn btn-ghost btn-sm" href="counselor-public.html">Open full view →</a>
+            </div>
+
+            <div class="preview-fullpage-compare">
+              <div class="preview-device">
+                <div class="preview-device-label">Desktop</div>
+                <div class="preview-fullpage-frame">
+                  <div class="preview-fullpage-chrome">
+                    <span class="chrome-dot"></span><span class="chrome-dot"></span><span class="chrome-dot"></span>
+                    <span class="chrome-url">gradright.com/counselors/priya-sharma</span>
+                  </div>
+                  <div class="public-layout preview-fullpage-body">
+                    <div>
+                      <div class="public-hero">
+                        <a class="avatar lg preview-avatar" href="counselor-public.html" id="preview-hero-avatar" style="display:grid;">PS</a>
+                        <div>
+                          <h1 style="font-size:1.25rem;">
+                            <a class="preview-name preview-name-link" href="counselor-public.html" id="preview-hero-name">Priya Sharma</a>
+                          </h1>
+                          <p style="color:var(--muted);font-size:0.88rem;">Mumbai · Higher-education counselor</p>
+                          <div class="preview-stat-row">
+                            <div><strong data-verified-only>4.8</strong><strong data-unverified-only>—</strong><span>Rating</span></div>
+                            <div><strong data-verified-only>126</strong><strong data-unverified-only>0</strong><span>Sessions</span></div>
+                            <div><strong class="preview-students">120+</strong><span>Students</span></div>
+                            <div><strong class="preview-admits">85+</strong><span>Admits</span></div>
+                          </div>
+                          <div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin:0.75rem 0 0;">
+                            <span class="pill">USA</span>
+                            <span class="pill">UK</span>
+                            <span class="pill">Canada</span>
+                          </div>
+                          <p style="font-size:0.88rem;max-width:34rem;line-height:1.5;color:var(--muted);margin-top:0.75rem;" class="preview-hero-bio" id="preview-hero-bio">
+                            Helping students map pathways into top universities.
+                          </p>
+                          <div class="intro-video-embed preview-intro-video" hidden>
+                            <p class="intro-video-label">Intro video</p>
+                            <video class="preview-intro-video-el" controls playsinline preload="metadata"></video>
+                          </div>
+                        </div>
+                      </div>
+
+                      <section class="panel" style="margin-top:1rem;">
+                        <div class="panel-head"><h2>What students connect for</h2></div>
+                        <div class="list-item">
+                          <div class="meta">
+                            <strong>College shortlisting</strong>
+                            <span>Reach / match / safety lists</span>
+                          </div>
+                        </div>
+                        <div class="list-item">
+                          <div class="meta">
+                            <strong>SOP &amp; essay review</strong>
+                            <span>Structure, voice, program fit</span>
+                          </div>
+                        </div>
+                        <div class="list-item">
+                          <div class="meta">
+                            <strong>Visa readiness</strong>
+                            <span>Docs &amp; interview practice</span>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section class="panel" style="margin-top:1rem;">
+                        <div class="panel-head"><h2>Testimonials</h2></div>
+                        <div class="public-testi-list is-in-frame" id="preview-full-testi"></div>
+                      </section>
+
+                      <section class="panel" style="margin-top:1rem;">
+                        <div class="panel-head"><h2>Reviews from GradRight students</h2></div>
+                        <div class="preview-reviews">
+                          <div class="review">
+                            <div class="stars">★★★★★</div>
+                            <strong>Aarav Reddy</strong>
+                            <p>Clear shortlist logic for USA CS. Explained reach vs match so my parents got it too.</p>
+                          </div>
+                          <div class="review">
+                            <div class="stars">★★★★★</div>
+                            <strong>Sana Iqbal</strong>
+                            <p>SOP feedback was precise — finally sounded specific without sounding generic.</p>
+                          </div>
+                          <div class="review">
+                            <div class="stars">★★★★☆</div>
+                            <strong>Meera Kapoor</strong>
+                            <p>Fee and intake timing were explained without the jargon.</p>
+                          </div>
+                        </div>
+                      </section>
+                    </div>
+
+                    <aside class="sticky-book">
+                      <div style="font-size:0.75rem;color:var(--muted);font-weight:500;">Connect fee</div>
+                      <div class="price" data-connect-fee>₹1,999</div>
+                      <p style="font-size:0.82rem;color:var(--muted);margin-bottom:1rem;">
+                        Pay once to unlock chat &amp; booking.
+                      </p>
+                      <a class="btn btn-primary" href="counselor-public.html" data-verified-only>Connect</a>
+                      <button class="btn btn-primary" type="button" data-unverified-only disabled style="opacity:0.65;cursor:not-allowed;width:100%;">Connect</button>
+                      <p class="hint-text" style="margin-top:0.75rem;text-align:center;" data-verified-only>
+                        Next open · Tue 10:00 AM IST
+                      </p>
+                      <p class="hint-text" style="margin-top:0.75rem;text-align:center;" data-unverified-only>
+                        Available after verification
+                      </p>
+                    </aside>
+                  </div>
+                </div>
+              </div>
+
+              <div class="preview-device">
+                <div class="preview-device-label">Mobile</div>
+                <div class="preview-fullpage-frame phone-page">
+                  <div class="preview-fullpage-chrome compact">
+                    <span class="chrome-url">gradright.com/…/priya</span>
+                  </div>
+                  <div class="preview-mobile-profile">
+                    <a class="avatar lg preview-avatar" href="counselor-public.html" style="display:grid;">PS</a>
+                    <h2 class="preview-name" style="font-size:1.1rem;margin:0.65rem 0 0.15rem;">Priya Sharma</h2>
+                    <p style="color:var(--muted);font-size:0.8rem;margin:0;">Mumbai · Higher-ed counselor</p>
+                    <div class="preview-stat-row compact">
+                      <div><strong data-verified-only>4.8</strong><strong data-unverified-only>—</strong><span>Rating</span></div>
+                      <div><strong data-verified-only>126</strong><strong data-unverified-only>0</strong><span>Sessions</span></div>
+                      <div><strong class="preview-students">120+</strong><span>Students</span></div>
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:0.3rem;justify-content:center;margin:0.65rem 0;">
+                      <span class="pill">USA</span>
+                      <span class="pill">UK</span>
+                      <span class="pill">Canada</span>
+                    </div>
+                    <p class="preview-bio" style="font-size:0.8rem;color:var(--muted);line-height:1.45;margin:0 0 0.85rem;">Helping students map pathways into top universities.</p>
+                    <div class="intro-video-embed preview-intro-video" hidden>
+                      <p class="intro-video-label">Intro video</p>
+                      <video class="preview-intro-video-el" controls playsinline preload="metadata"></video>
+                    </div>
+                    <div class="preview-mobile-fee">
+                      <div>
+                        <div style="font-size:0.7rem;color:var(--muted);">Connect fee</div>
+                        <strong style="font-size:1.05rem;" data-connect-fee>₹1,999</strong>
+                      </div>
+                      <a class="btn btn-primary btn-sm" href="counselor-public.html" data-verified-only>Connect</a>
+                      <span class="btn btn-secondary btn-sm" data-unverified-only style="opacity:0.65;">Connect</span>
+                    </div>
+                    <div class="preview-mobile-services">
+                      <p>College shortlisting</p>
+                      <p>SOP &amp; essay review</p>
+                      <p>Visa readiness</p>
+                    </div>
+                    <div class="preview-mobile-block">
+                      <h3>Testimonials</h3>
+                      <div class="public-testi-list is-in-frame" id="preview-mobile-testi"></div>
+                    </div>
+                    <div class="preview-mobile-block">
+                      <h3>Reviews</h3>
+                      <div class="preview-reviews is-compact">
+                        <div class="review">
+                          <div class="stars">★★★★★</div>
+                          <strong>Aarav Reddy</strong>
+                          <p>Clear shortlist logic for USA CS.</p>
+                        </div>
+                        <div class="review">
+                          <div class="stars">★★★★☆</div>
+                          <strong>Sana Iqbal</strong>
+                          <p>SOP feedback was precise and specific.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 3. Testimonials -->
+          <section class="preview-section">
+            <div class="preview-section-head">
+              <div>
+                <div class="preview-title-row">
+                  <h2>Testimonials</h2>
+                  <span class="preview-info" tabindex="0" aria-label="Quotes and videos you add for students, parents, or college contacts.">
+                    <span class="material-symbols-rounded" aria-hidden="true">info</span>
+                    <span class="preview-info-tip">Quotes and videos you add for students, parents, or college contacts.</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="preview-testi-grid" id="preview-testi-list"></div>
+            <div class="preview-reviews-panel">
+              <h3>Reviews from GradRight students</h3>
+              <div class="preview-reviews">
+                <div class="review">
+                  <div class="stars">★★★★★</div>
+                  <strong>Aarav Reddy</strong>
+                  <p>Clear shortlist logic for USA CS. Explained reach vs match so my parents got it too.</p>
+                </div>
+                <div class="review">
+                  <div class="stars">★★★★★</div>
+                  <strong>Sana Iqbal</strong>
+                  <p>SOP feedback was precise — finally sounded specific without sounding generic.</p>
+                </div>
+                <div class="review">
+                  <div class="stars">★★★★☆</div>
+                  <strong>Meera Kapoor</strong>
+                  <p>Fee and intake timing were explained without the jargon.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 4. Community -->
+          <section class="preview-section">
+            <div class="preview-section-head">
+              <div>
+                <div class="preview-title-row">
+                  <h2>Community</h2>
+                  <span class="preview-info" tabindex="0">
+                    <span class="material-symbols-rounded" aria-hidden="true">info</span>
+                    <span class="preview-info-tip">Same post and profile panel students and counselors see in Community.</span>
+                  </span>
+                </div>
+              </div>
+              <a class="btn btn-ghost btn-sm" href="community.html">Open community →</a>
+            </div>
+
+            <div class="preview-community-grid">
+              <div>
+                <div class="preview-device-label">Post in feed</div>
+                <article class="c-post">
+                  <div class="c-post-meta">
+                    <a class="avatar preview-avatar" href="community.html" style="display:grid;">PS</a>
+                    <div class="c-post-who">
+                      <div class="c-name-row">
+                        <a class="c-name-btn preview-name" href="community.html">Priya Sharma</a>
+                        <span class="role-badge counselor">Counselor</span>
+                      </div>
+                      <span>2h ago · General</span>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm c-follow" disabled>Follow</button>
+                    <button type="button" class="icon-btn" disabled title="Save" aria-hidden="true">
+                      <span class="material-symbols-rounded">bookmark_border</span>
+                    </button>
+                  </div>
+                  <p class="c-post-body">
+                    Sharing a short checklist I use for USA CS shortlists this season — reach vs match before parents join the meet.
+                  </p>
+                  <div class="c-post-actions" style="pointer-events:none;">
+                    <button type="button" class="react-btn" disabled>
+                      <span class="material-symbols-rounded">thumb_up</span> 12
+                    </button>
+                    <button type="button" class="react-btn" disabled>
+                      <span class="material-symbols-rounded">chat_bubble</span> 3
+                    </button>
+                  </div>
+                </article>
+              </div>
+
+              <div>
+                <div class="preview-device-label">Profile panel</div>
+                <div class="c-profile-sheet preview-community-sheet">
+                  <div class="avatar lg preview-avatar">PS</div>
+                  <h2 class="preview-name">Priya Sharma</h2>
+                  <div class="c-profile-badge-row">
+                    <span class="role-badge counselor">Counselor</span>
+                  </div>
+                  <p class="c-profile-role">You · GradRight counselor</p>
+                  <p class="c-profile-bio preview-bio">Helping students map pathways into top universities.</p>
+                  <div class="c-profile-stats cpp-stats">
+                    <div class="cpp-stat"><strong data-verified-only>4</strong><strong data-unverified-only>0</strong><span>Posts</span></div>
+                    <div class="cpp-stat"><strong data-verified-only>890</strong><strong data-unverified-only>12</strong><span>Followers</span></div>
+                    <div class="cpp-stat"><strong data-verified-only>64</strong><strong data-unverified-only>8</strong><span>Following</span></div>
+                  </div>
+                  <a class="btn btn-secondary" href="counselor-public.html" data-verified-only>View marketplace listing</a>
+                  <span class="btn btn-secondary" data-unverified-only style="opacity:0.65;pointer-events:none;">Listing hidden until verified</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cal-modal testi-modal" id="testi-modal" hidden>
+    <div class="cal-modal-backdrop" data-close-testi></div>
+    <div class="cal-modal-card testi-modal-card" role="dialog" aria-labelledby="testi-modal-title" aria-modal="true">
+      <div class="cal-modal-head">
+        <h2 id="testi-modal-title">Add testimonial</h2>
+        <button type="button" class="icon-btn" data-close-testi aria-label="Close">
+          <span class="material-symbols-rounded" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <form class="testi-form" id="new-testimonial" autocomplete="off">
+        <div class="testi-form-top">
+          <div class="testi-photo-field">
+            <input type="file" id="testi-photo-input" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" hidden />
+            <button type="button" class="photo-circle testi-photo" id="testi-photo-zone" aria-label="Upload their photo">
+              <span class="photo-circle-empty" id="testi-photo-empty">
+                <span class="material-symbols-rounded" aria-hidden="true">add_a_photo</span>
+                <span>Photo</span>
+              </span>
+              <img id="testi-photo-img" class="photo-circle-img" alt="Person photo" hidden />
+            </button>
+          </div>
+          <div class="testi-form-fields">
+            <div class="field">
+              <label for="testi-name">Name</label>
+              <input id="testi-name" type="text" placeholder="e.g. Aarav Reddy" />
+            </div>
+            <div class="field">
+              <label for="testi-role">Designation or college</label>
+              <input id="testi-role" type="text" placeholder="e.g. Student · IIT Bombay" />
+            </div>
+          </div>
+        </div>
+
+        <div class="auth-tabs testi-kind-tabs" role="tablist" aria-label="Testimonial type">
+          <button type="button" class="auth-tab active" data-testi-kind="text">Quote</button>
+          <button type="button" class="auth-tab" data-testi-kind="video">Video</button>
+        </div>
+
+        <div class="field" id="testi-text-wrap">
+          <label for="testi-text">What they said</label>
+          <textarea id="testi-text" placeholder="Write the testimonial in their words"></textarea>
+        </div>
+
+        <div id="testi-video-wrap" hidden>
+          <div class="field">
+            <label for="testi-youtube">YouTube link</label>
+            <input id="testi-youtube" type="url" placeholder="https://www.youtube.com/watch?v=..." />
+          </div>
+          <div class="testi-yt" id="testi-yt-preview" hidden>
+            <iframe id="testi-yt-frame" title="YouTube preview" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+          </div>
+          <div class="field">
+            <label for="testi-video-input">Or upload a file</label>
+            <input id="testi-video-input" type="file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov" hidden />
+            <button type="button" class="upload-zone" id="testi-video-zone">
+              <strong id="testi-video-label">Upload video</strong>
+              <span>MP4 or WebM · under 8 MB</span>
+            </button>
+            <p class="hint-text" id="testi-video-hint" hidden></p>
+            <video id="testi-video-preview" class="testi-video-preview" controls playsinline hidden></video>
+          </div>
+        </div>
+
+        <div class="testi-form-actions">
+          <button class="btn btn-secondary" type="button" id="testi-cancel" data-close-testi>Cancel</button>
+          <button class="btn btn-primary" type="submit" id="testi-save">Save testimonial</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Document preview overlay -->
+  <div class="doc-preview-overlay" id="doc-preview" hidden>
+    <div class="doc-preview-sheet" role="dialog" aria-modal="true" aria-labelledby="doc-preview-title">
+      <button type="button" class="btn btn-ghost btn-sm doc-preview-close" id="doc-preview-close" aria-label="Close preview">✕</button>
+      <h3 id="doc-preview-title">Document</h3>
+      <p class="hint-text" id="doc-preview-meta"></p>
+      <div class="doc-preview-body" id="doc-preview-body"></div>
+    </div>
+  </div>
+
+  <!-- Unsaved changes bar -->
+  <div class="unsaved-bar" id="unsaved-bar" hidden>
+    <div class="unsaved-bar-inner">
+      <div class="unsaved-bar-text">
+        <strong>You have unsaved changes</strong>
+        <span>Discard restores your last saved profile and cancels edits still in progress.</span>
+      </div>
+      <div class="unsaved-bar-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="discard-btn">Discard changes</button>
+        <button type="button" class="btn btn-primary btn-sm" id="save-btn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/session.js?v=events1"></script>
+  <script src="js/testimonials.js?v=testi4"></script>
+  <script src="js/intro-recorder.js?v=videorec1"></script>
+  <script>
+    window.GradRightProfileDirty = window.GradRightProfileDirty || {};
+    window.GradRightProfileDirty.refresh = function (mode) {
+      const fn = window.GradRightProfileDirty[mode];
+      if (typeof fn === 'function') {
+        fn();
+        return;
+      }
+      const bar = document.getElementById('unsaved-bar');
+      if (bar) bar.hidden = true;
+      document.body.classList.remove('has-unsaved');
+    };
+
+    function showProfileTab(mode) {
+      const panels = {
+        edit: document.getElementById('panel-edit'),
+        services: document.getElementById('panel-services'),
+        testimonials: document.getElementById('panel-testimonials'),
+        preview: document.getElementById('panel-preview'),
+      };
+      Object.keys(panels).forEach(function (key) {
+        if (panels[key]) panels[key].hidden = key !== mode;
+      });
+      document.querySelectorAll('[data-profile-tab]').forEach(function (tab) {
+        tab.classList.toggle('active', tab.getAttribute('data-profile-tab') === mode);
+      });
+      const cal = document.getElementById('tab-calendar');
+      if (cal) cal.classList.remove('active');
+      const bar = document.getElementById('unsaved-bar');
+      if (bar && mode === 'preview') {
+        bar.hidden = true;
+        document.body.classList.remove('has-unsaved');
+        return;
+      }
+      const dirty = window.GradRightProfileDirty;
+      if (dirty && typeof dirty.refresh === 'function') dirty.refresh(mode);
+    }
+
+    document.querySelectorAll('[data-profile-tab]').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        showProfileTab(tab.getAttribute('data-profile-tab'));
+      });
+    });
+
+    (function bootProfileTabs() {
+      const tab = new URLSearchParams(location.search).get('tab') || 'edit';
+      if (tab === 'calendar') {
+        location.replace('calendar.html');
+        return;
+      }
+      if (tab === 'services' || tab === 'testimonials' || tab === 'preview' || tab === 'edit') showProfileTab(tab);
+      else showProfileTab('edit');
+    })();
+
+    (function bindServices() {
+      const fee = document.getElementById('fee');
+      const feeDisplay = document.getElementById('fee-display');
+      if (fee && feeDisplay) {
+        function persistFee(value) {
+          if (window.GradRightFee) return GradRightFee.set(value);
+          if (value === '' || value == null) return 1999;
+          const n = Math.round(Number(value));
+          if (!Number.isFinite(n) || n < 0) return 1999;
+          try {
+            localStorage.setItem('gradright_connect_fee', String(n));
+          } catch (e) {}
+          return n;
+        }
+        const current = window.GradRightFee
+          ? GradRightFee.get()
+          : (function () {
+              try {
+                const n = Number(localStorage.getItem('gradright_connect_fee'));
+                if (Number.isFinite(n) && n >= 0) return n;
+              } catch (e) {}
+              return Number(fee.value || 1999);
+            })();
+        fee.value = current;
+        function paintFee(n) {
+          const label = window.GradRightFee ? GradRightFee.format(n) : '₹' + Number(n || 0).toLocaleString('en-IN');
+          feeDisplay.textContent = label;
+          document.querySelectorAll('.fee').forEach(function (el) {
+            el.textContent = label + ' connect';
+          });
+          document.querySelectorAll('[data-connect-fee]').forEach(function (el) {
+            el.textContent = label;
+          });
+        }
+        paintFee(current);
+        let savedFee = current;
+        fee.addEventListener('input', function () {
+          const n = Math.round(Number(fee.value));
+          paintFee(Number.isFinite(n) && n >= 0 ? n : savedFee);
+          markServicesDirty();
+        });
+        fee._savedFee = function () {
+          return savedFee;
+        };
+        fee._commitFee = function () {
+          savedFee = persistFee(fee.value);
+          fee.value = savedFee;
+          paintFee(savedFee);
+          return savedFee;
+        };
+        fee._restoreFee = function () {
+          fee.value = savedFee;
+          paintFee(savedFee);
+        };
+      }
+      const toggle = document.getElementById('toggle-new-service');
+      const form = document.getElementById('new-service');
+      const nameInput = document.getElementById('service-name');
+      const descInput = document.getElementById('service-desc');
+      const list = document.getElementById('service-list');
+      const unsavedBar = document.getElementById('unsaved-bar');
+      const saveBtn = document.getElementById('save-btn');
+      const discardBtn = document.getElementById('discard-btn');
+      let editing = null;
+      let services = window.GradRightServices ? GradRightServices.get() : [];
+      let savedServices = JSON.stringify(services);
+
+      function serviceCard(s) {
+        return (
+          '<article class="service" data-service-id="' +
+          s.id +
+          '"><div class="service-row"><div><h3></h3><p class="service-teaser"></p></div>' +
+          '<div class="service-actions">' +
+          '<button class="btn btn-secondary btn-sm" type="button" data-service-edit>Edit</button>' +
+          '<button class="btn btn-danger btn-sm" type="button" data-service-delete>Delete</button>' +
+          '</div></div></article>'
+        );
+      }
+
+      function paintPreviewServices() {
+        const names = (services || []).map(function (s) {
+          return (s && s.title) || '';
+        }).filter(Boolean);
+        const items = names.length
+          ? names
+          : ['College shortlisting', 'SOP & essay review', 'Visa readiness'];
+        document.querySelectorAll('[data-preview-services]').forEach(function (el) {
+          el.textContent = '';
+          items.forEach(function (title) {
+            const pill = document.createElement('span');
+            pill.className = 'pill';
+            pill.textContent = title;
+            el.appendChild(pill);
+          });
+        });
+      }
+
+      function paintServices() {
+        if (!list) return;
+        list.innerHTML = services.map(serviceCard).join('');
+        Array.prototype.forEach.call(list.querySelectorAll('.service'), function (card, i) {
+          const s = services[i];
+          if (!s) return;
+          card.querySelector('h3').textContent = s.title;
+          card.querySelector('.service-teaser').textContent = s.description;
+        });
+        paintPreviewServices();
+      }
+
+      paintServices();
+
+      function serviceFormDirty() {
+        if (!form || !form.classList.contains('open')) return false;
+        const name = (nameInput && nameInput.value.trim()) || '';
+        const desc = (descInput && descInput.value.trim()) || '';
+        if (!editing) return !!(name || desc);
+        const origName = (((editing.querySelector('h3') || {}).textContent) || '').trim();
+        const origDesc = (((editing.querySelector('.service-teaser') || {}).textContent) || '').trim();
+        return name !== origName || desc !== origDesc;
+      }
+
+      function markServicesDirty() {
+        const panel = document.getElementById('panel-services');
+        if (panel && panel.hidden) return false;
+        const feeEl = document.getElementById('fee');
+        const feeChanged = feeEl && feeEl._savedFee ? Number(feeEl.value) !== Number(feeEl._savedFee()) : false;
+        const listChanged = JSON.stringify(services) !== savedServices;
+        const dirty = feeChanged || listChanged || serviceFormDirty();
+        if (unsavedBar) unsavedBar.hidden = !dirty;
+        document.body.classList.toggle('has-unsaved', dirty);
+        return dirty;
+      }
+      window.GradRightProfileDirty.services = markServicesDirty;
+
+      function closeServiceForm() {
+        editing = null;
+        if (form) form.classList.remove('open');
+        if (nameInput) nameInput.value = '';
+        if (descInput) descInput.value = '';
+        markServicesDirty();
+      }
+
+      function openServiceForm(card) {
+        editing = card || null;
+        if (nameInput) nameInput.value = card ? (card.querySelector('h3') || {}).textContent || '' : '';
+        if (descInput) descInput.value = card ? (card.querySelector('.service-teaser') || {}).textContent || '' : '';
+        if (form) form.classList.add('open');
+        if (nameInput) nameInput.focus();
+        markServicesDirty();
+      }
+
+      function commitServiceForm() {
+        if (!form || !form.classList.contains('open') || !list) return true;
+        const name = (nameInput && nameInput.value.trim()) || '';
+        const desc = (descInput && descInput.value.trim()) || '';
+        if (!name && !desc) {
+          closeServiceForm();
+          return true;
+        }
+        if (!name) {
+          if (nameInput) nameInput.focus();
+          return false;
+        }
+        if (editing) {
+          const id = editing.getAttribute('data-service-id');
+          services = services.map(function (s) {
+            if (s.id !== id) return s;
+            return { id: s.id, title: name, description: desc };
+          });
+        } else {
+          const slug = window.GradRightServices ? GradRightServices.slugify(name) : name.toLowerCase().replace(/\s+/g, '-');
+          let id = slug;
+          if (services.some(function (s) { return s.id === id; })) id = slug + '-' + Date.now().toString(36);
+          services.push({ id: id, title: name, description: desc });
+        }
+        paintServices();
+        editing = null;
+        form.classList.remove('open');
+        if (nameInput) nameInput.value = '';
+        if (descInput) descInput.value = '';
+        return true;
+      }
+
+      if (toggle && form) {
+        toggle.addEventListener('click', function () {
+          if (form.classList.contains('open') && !editing) closeServiceForm();
+          else openServiceForm(null);
+        });
+      }
+      if (nameInput) nameInput.addEventListener('input', markServicesDirty);
+      if (descInput) descInput.addEventListener('input', markServicesDirty);
+      if (list) {
+        list.addEventListener('click', function (e) {
+          const edit = e.target.closest('[data-service-edit]');
+          if (edit) {
+            e.preventDefault();
+            openServiceForm(edit.closest('.service'));
+            return;
+          }
+          const del = e.target.closest('[data-service-delete]');
+          if (del) {
+            e.preventDefault();
+            const card = del.closest('.service');
+            if (card) {
+              const id = card.getAttribute('data-service-id');
+              services = services.filter(function (s) { return s.id !== id; });
+              paintServices();
+            }
+            markServicesDirty();
+          }
+        });
+      }
+      if (saveBtn) {
+        saveBtn.addEventListener('click', function () {
+          const servicesOpen = document.getElementById('panel-services') && !document.getElementById('panel-services').hidden;
+          if (!servicesOpen) return;
+          if (!commitServiceForm()) return;
+          const feeEl = document.getElementById('fee');
+          if (feeEl && feeEl._commitFee) feeEl._commitFee();
+          if (window.GradRightServices) services = GradRightServices.set(services);
+          savedServices = JSON.stringify(services);
+          paintServices();
+          markServicesDirty();
+        });
+      }
+      if (discardBtn) {
+        discardBtn.addEventListener('click', function () {
+          const servicesOpen = document.getElementById('panel-services') && !document.getElementById('panel-services').hidden;
+          if (!servicesOpen) return;
+          const feeEl = document.getElementById('fee');
+          if (feeEl && feeEl._restoreFee) feeEl._restoreFee();
+          services = JSON.parse(savedServices);
+          paintServices();
+          editing = null;
+          if (form) form.classList.remove('open');
+          if (nameInput) nameInput.value = '';
+          if (descInput) descInput.value = '';
+          markServicesDirty();
+        });
+      }
+    })();
+
+    (function bindTestimonials() {
+      const store = window.GradRightTestimonials;
+      if (!store) return;
+
+      const modal = document.getElementById('testi-modal');
+      const form = document.getElementById('new-testimonial');
+      const toggle = document.getElementById('toggle-new-testimonial');
+      const list = document.getElementById('testi-list');
+      const previewList = document.getElementById('preview-testi-list');
+      const fullList = document.getElementById('preview-full-testi');
+      const mobileList = document.getElementById('preview-mobile-testi');
+      const titleEl = document.getElementById('testi-modal-title');
+      const nameInput = document.getElementById('testi-name');
+      const roleInput = document.getElementById('testi-role');
+      const textInput = document.getElementById('testi-text');
+      const textWrap = document.getElementById('testi-text-wrap');
+      const videoWrap = document.getElementById('testi-video-wrap');
+      const youtubeInput = document.getElementById('testi-youtube');
+      const ytPreview = document.getElementById('testi-yt-preview');
+      const ytFrame = document.getElementById('testi-yt-frame');
+      const videoInput = document.getElementById('testi-video-input');
+      const videoZone = document.getElementById('testi-video-zone');
+      const videoLabel = document.getElementById('testi-video-label');
+      const videoPreview = document.getElementById('testi-video-preview');
+      const videoHint = document.getElementById('testi-video-hint');
+      const photoInput = document.getElementById('testi-photo-input');
+      const photoZone = document.getElementById('testi-photo-zone');
+      const photoEmpty = document.getElementById('testi-photo-empty');
+      const photoImg = document.getElementById('testi-photo-img');
+      const saveBtn = document.getElementById('testi-save');
+
+      const unsavedBar = document.getElementById('unsaved-bar');
+      const saveBarBtn = document.getElementById('save-btn');
+      const discardBarBtn = document.getElementById('discard-btn');
+      let items = store.get();
+      let savedItems = JSON.stringify(items);
+      let editingId = null;
+      const draft = { photo: '', video: '', youtube: '', kind: 'text' };
+
+      function testiFormDirty() {
+        if (!modal || modal.hidden) return false;
+        const name = (nameInput && nameInput.value.trim()) || '';
+        const role = (roleInput && roleInput.value.trim()) || '';
+        const text = (textInput && textInput.value.trim()) || '';
+        if (!editingId) return !!(name || role || text || draft.photo || draft.video || draft.youtube);
+        const orig = items.find(function (t) { return t.id === editingId; }) || {};
+        return (
+          name !== (orig.name || '') ||
+          role !== (orig.role || '') ||
+          text !== (orig.text || '') ||
+          (draft.photo || '') !== (orig.photo || '') ||
+          (draft.video || '') !== (orig.video || '') ||
+          (draft.youtube || '') !== (orig.youtube || '') ||
+          draft.kind !== (orig.kind || 'text')
+        );
+      }
+
+      function markTestimonialsDirty() {
+        const panel = document.getElementById('panel-testimonials');
+        if (panel && panel.hidden) return false;
+        const dirty = JSON.stringify(items) !== savedItems || testiFormDirty();
+        if (unsavedBar) unsavedBar.hidden = !dirty;
+        document.body.classList.toggle('has-unsaved', dirty);
+        return dirty;
+      }
+      window.GradRightProfileDirty.testimonials = markTestimonialsDirty;
+
+      function setKind(kind) {
+        draft.kind = kind === 'video' ? 'video' : 'text';
+        document.querySelectorAll('[data-testi-kind]').forEach(function (btn) {
+          btn.classList.toggle('active', btn.getAttribute('data-testi-kind') === draft.kind);
+        });
+        if (textWrap) textWrap.hidden = draft.kind !== 'text';
+        if (videoWrap) videoWrap.hidden = draft.kind !== 'video';
+        markTestimonialsDirty();
+      }
+
+      function paintPhoto(src) {
+        draft.photo = src || '';
+        if (!photoImg) return;
+        if (draft.photo) {
+          photoImg.src = draft.photo;
+          photoImg.hidden = false;
+          if (photoZone) photoZone.classList.add('has-photo');
+          if (photoEmpty) photoEmpty.hidden = true;
+        } else {
+          photoImg.removeAttribute('src');
+          photoImg.hidden = true;
+          if (photoZone) photoZone.classList.remove('has-photo');
+          if (photoEmpty) photoEmpty.hidden = false;
+        }
+        markTestimonialsDirty();
+      }
+
+      function paintYoutube(value) {
+        draft.youtube = store.parseYoutubeId(value);
+        if (ytPreview && ytFrame) {
+          if (draft.youtube) {
+            ytFrame.src = 'https://www.youtube.com/embed/' + draft.youtube;
+            ytPreview.hidden = false;
+          } else {
+            ytFrame.removeAttribute('src');
+            ytPreview.hidden = true;
+          }
+        }
+        markTestimonialsDirty();
+      }
+
+      function paintVideo(src, fileName) {
+        draft.video = src || '';
+        if (videoLabel) videoLabel.textContent = draft.video ? (fileName || 'Video selected') : 'Upload video';
+        if (!videoPreview) return;
+        if (draft.video) {
+          videoPreview.src = draft.video;
+          videoPreview.hidden = false;
+        } else {
+          videoPreview.removeAttribute('src');
+          videoPreview.hidden = true;
+        }
+        markTestimonialsDirty();
+      }
+
+      function closeModal() {
+        if (modal) modal.hidden = true;
+        document.body.classList.remove('cal-modal-open');
+      }
+
+      function resetForm() {
+        editingId = null;
+        if (nameInput) nameInput.value = '';
+        if (roleInput) roleInput.value = '';
+        if (textInput) textInput.value = '';
+        if (youtubeInput) youtubeInput.value = '';
+        if (videoInput) videoInput.value = '';
+        if (photoInput) photoInput.value = '';
+        paintPhoto('');
+        paintVideo('');
+        paintYoutube('');
+        setKind('text');
+        if (saveBtn) saveBtn.textContent = 'Save testimonial';
+        if (titleEl) titleEl.textContent = 'Add testimonial';
+        closeModal();
+        markTestimonialsDirty();
+      }
+
+      function openForm(item) {
+        if (item) {
+          editingId = item.id;
+          if (nameInput) nameInput.value = item.name || '';
+          if (roleInput) roleInput.value = item.role || '';
+          if (textInput) textInput.value = item.text || '';
+          if (youtubeInput) youtubeInput.value = item.youtube ? 'https://www.youtube.com/watch?v=' + item.youtube : '';
+          paintPhoto(item.photo || '');
+          paintVideo(item.video || '');
+          paintYoutube(item.youtube || '');
+          setKind(item.kind || 'text');
+          if (saveBtn) saveBtn.textContent = 'Update testimonial';
+          if (titleEl) titleEl.textContent = 'Edit testimonial';
+        } else {
+          editingId = null;
+          if (nameInput) nameInput.value = '';
+          if (roleInput) roleInput.value = '';
+          if (textInput) textInput.value = '';
+          if (youtubeInput) youtubeInput.value = '';
+          if (videoInput) videoInput.value = '';
+          if (photoInput) photoInput.value = '';
+          paintPhoto('');
+          paintVideo('');
+          paintYoutube('');
+          setKind('text');
+          if (saveBtn) saveBtn.textContent = 'Save testimonial';
+          if (titleEl) titleEl.textContent = 'Add testimonial';
+        }
+        if (modal) modal.hidden = false;
+        document.body.classList.add('cal-modal-open');
+        if (nameInput) nameInput.focus();
+        markTestimonialsDirty();
+      }
+
+      function paint() {
+        store.renderList(list, {
+          items: items,
+          actions: true,
+          empty: 'No testimonials yet. Add a quote or video from a student, parent, or university contact.',
+        });
+        const previewOpts = {
+          items: items,
+          preview: true,
+          empty: 'No testimonials yet. Add them on the Testimonials tab.',
+        };
+        store.renderList(previewList, previewOpts);
+        store.renderList(fullList, previewOpts);
+        store.renderList(mobileList, Object.assign({ compact: true }, previewOpts));
+        markTestimonialsDirty();
+      }
+
+      function readFile(file, maxBytes, done) {
+        if (!file) return;
+        if (file.size > maxBytes) {
+          const mb = Math.round(maxBytes / 1024 / 1024);
+          if (videoHint && file.type.indexOf('video') === 0) {
+            videoHint.hidden = false;
+            videoHint.textContent = 'That file is over ' + mb + ' MB. Pick a shorter clip for this demo.';
+          }
+          return;
+        }
+        if (videoHint) videoHint.hidden = true;
+        const reader = new FileReader();
+        reader.onload = function () {
+          done(String(reader.result || ''), file.name);
+        };
+        reader.readAsDataURL(file);
+      }
+
+      paint();
+
+      document.querySelectorAll('[data-testi-kind]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          setKind(btn.getAttribute('data-testi-kind'));
+        });
+      });
+
+      if (toggle) toggle.addEventListener('click', function () { openForm(null); });
+      document.querySelectorAll('[data-close-testi]').forEach(function (el) {
+        el.addEventListener('click', resetForm);
+      });
+
+      if (photoZone && photoInput) {
+        photoZone.addEventListener('click', function () { photoInput.click(); });
+        photoInput.addEventListener('change', function () {
+          readFile(photoInput.files && photoInput.files[0], 2 * 1024 * 1024, paintPhoto);
+        });
+      }
+
+      if (youtubeInput) {
+        youtubeInput.addEventListener('input', function () {
+          paintYoutube(youtubeInput.value);
+        });
+      }
+
+      if (videoZone && videoInput) {
+        videoZone.addEventListener('click', function () { videoInput.click(); });
+      }
+      if (videoInput) {
+        videoInput.addEventListener('change', function () {
+          readFile(videoInput.files && videoInput.files[0], 8 * 1024 * 1024, paintVideo);
+        });
+      }
+
+      if (list) {
+        list.addEventListener('click', function (e) {
+          const edit = e.target.closest('[data-testi-edit]');
+          if (edit) {
+            const id = edit.closest('.testi-card').getAttribute('data-testi-id');
+            const item = items.find(function (t) { return t.id === id; });
+            if (item) openForm(item);
+            return;
+          }
+          const del = e.target.closest('[data-testi-delete]');
+          if (del) {
+            const id = del.closest('.testi-card').getAttribute('data-testi-id');
+            items = items.filter(function (t) { return t.id !== id; });
+            if (editingId === id) resetForm();
+            paint();
+          }
+        });
+      }
+
+      if (form) {
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          const name = (nameInput && nameInput.value.trim()) || '';
+          const role = (roleInput && roleInput.value.trim()) || '';
+          const text = (textInput && textInput.value.trim()) || '';
+          if (!name) {
+            if (nameInput) nameInput.focus();
+            return;
+          }
+          if (draft.kind === 'text' && !text) {
+            if (textInput) textInput.focus();
+            return;
+          }
+          if (draft.kind === 'video' && !draft.youtube && !draft.video) {
+            if (youtubeInput) youtubeInput.focus();
+            return;
+          }
+          const next = {
+            id: editingId || 't-' + Date.now().toString(36),
+            name: name,
+            role: role,
+            photo: draft.photo,
+            initials: store.initialsFrom(name),
+            amber: false,
+            kind: draft.kind,
+            text: draft.kind === 'text' ? text : text,
+            video: draft.kind === 'video' ? draft.video : '',
+            youtube: draft.kind === 'video' ? draft.youtube : '',
+          };
+          if (editingId) {
+            items = items.map(function (t) {
+              return t.id === editingId ? next : t;
+            });
+          } else {
+            items = [next].concat(items);
+          }
+          resetForm();
+          paint();
+        });
+      }
+
+      [nameInput, roleInput, textInput].forEach(function (el) {
+        if (el) el.addEventListener('input', markTestimonialsDirty);
+      });
+
+      if (saveBarBtn) {
+        saveBarBtn.addEventListener('click', function () {
+          const open = document.getElementById('panel-testimonials') && !document.getElementById('panel-testimonials').hidden;
+          if (!open) return;
+          if (modal && !modal.hidden) {
+            if (form && typeof form.requestSubmit === 'function') form.requestSubmit();
+            else if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+          }
+          const saved = store.set(items);
+          if (!saved.ok) {
+            if (videoHint) {
+              videoHint.hidden = false;
+              videoHint.textContent = 'Could not save. The video is too large for local storage. Try a YouTube link instead.';
+            }
+            return;
+          }
+          items = saved.items;
+          savedItems = JSON.stringify(items);
+          paint();
+        });
+      }
+      if (discardBarBtn) {
+        discardBarBtn.addEventListener('click', function () {
+          const open = document.getElementById('panel-testimonials') && !document.getElementById('panel-testimonials').hidden;
+          if (!open) return;
+          items = JSON.parse(savedItems);
+          resetForm();
+          paint();
+        });
+      }
+    })();
+
+    (function () {
+      const form = document.getElementById('profile-form');
+      const unsavedBar = document.getElementById('unsaved-bar');
+      const countriesEl = document.getElementById('countries');
+      const emailBtn = document.getElementById('verify-email-btn');
+      const emailHint = document.getElementById('email-hint');
+
+      const photoInput = document.getElementById('photo-input');
+      const photoZone = document.getElementById('photo-zone');
+      const photoPreview = document.getElementById('photo-preview');
+      const photoImg = document.getElementById('photo-preview-img');
+      const photoName = document.getElementById('photo-preview-name');
+
+      const videoInput = document.getElementById('video-input');
+      const videoZone = document.getElementById('video-zone');
+      const videoPreview = document.getElementById('video-preview');
+      const videoEl = document.getElementById('video-preview-el');
+      const videoName = document.getElementById('video-preview-name');
+      const videoMeta = document.getElementById('video-preview-meta');
+
+      const docInput = document.getElementById('doc-input');
+      const docZone = document.getElementById('doc-zone');
+      const docList = document.getElementById('doc-list');
+      const docPreview = document.getElementById('doc-preview');
+      const docPreviewTitle = document.getElementById('doc-preview-title');
+      const docPreviewMeta = document.getElementById('doc-preview-meta');
+      const docPreviewBody = document.getElementById('doc-preview-body');
+
+      // Sample preview assets (inline SVG data URLs)
+      const sampleIdSvg =
+        'data:image/svg+xml,' +
+        encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">' +
+            '<rect width="640" height="400" fill="#f3f2f5"/>' +
+            '<rect x="32" y="32" width="576" height="336" rx="16" fill="#fff" stroke="#bbbacc"/>' +
+            '<circle cx="140" cy="160" r="52" fill="#dad2ff"/>' +
+            '<rect x="220" y="120" width="280" height="18" rx="4" fill="#3c3a53"/>' +
+            '<rect x="220" y="156" width="200" height="12" rx="3" fill="#85849a"/>' +
+            '<rect x="220" y="186" width="240" height="12" rx="3" fill="#bbbacc"/>' +
+            '<text x="48" y="340" font-family="system-ui,sans-serif" font-size="18" fill="#6b6a83">Aadhaar / Government ID · demo</text>' +
+          '</svg>'
+        );
+
+      const sampleCertSvg =
+        'data:image/svg+xml,' +
+        encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">' +
+            '<rect width="640" height="400" fill="#f4f2ff"/>' +
+            '<rect x="48" y="40" width="544" height="320" rx="12" fill="#fff" stroke="#beaeff"/>' +
+            '<text x="320" y="120" text-anchor="middle" font-family="Georgia,serif" font-size="28" fill="#4911a1">Certificate of Counseling</text>' +
+            '<text x="320" y="170" text-anchor="middle" font-family="system-ui,sans-serif" font-size="16" fill="#53516b">Awarded to Priya Sharma</text>' +
+            '<text x="320" y="220" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" fill="#85849a">Higher-education guidance · 2024</text>' +
+            '<circle cx="320" cy="290" r="28" fill="#782bff" opacity="0.85"/>' +
+          '</svg>'
+        );
+
+      let emailVerified = false;
+      let photoUrl = null;
+      let photoFileName = null;
+      let videoUrl = null;
+      let videoFileName = null;
+      let videoFileSize = 0;
+      const seedDocs = [
+        {
+          id: 'doc-1',
+          name: 'Aadhaar_card.jpg',
+          size: 842000,
+          type: 'image/jpeg',
+          url: sampleIdSvg,
+          seeded: true,
+        },
+        {
+          id: 'doc-2',
+          name: 'Counseling_certificate.pdf',
+          size: 1240000,
+          type: 'application/pdf',
+          url: sampleCertSvg,
+          seeded: true,
+          pdfPreview: true,
+        },
+      ];
+      let docs = seedDocs.map((d) => Object.assign({}, d));
+
+      let baseline = null;
+      let savedState = null;
+      let dirty = false;
+
+      function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      }
+
+      function selectedCountries() {
+        return [...countriesEl.querySelectorAll('.chip.selected')].map((c) => c.textContent.trim());
+      }
+
+      function snapshot() {
+        return JSON.stringify({
+          name: document.getElementById('field-name').value,
+          email: document.getElementById('field-email').value,
+          address: document.getElementById('field-address').value,
+          students: document.getElementById('field-students').value,
+          admits: document.getElementById('field-admits').value,
+          bio: document.getElementById('field-bio').value,
+          countries: selectedCountries(),
+          emailVerified: emailVerified,
+          photo: photoFileName || '',
+          video: videoFileName || '',
+          docs: docs.map((d) => d.name + ':' + d.size).join('|'),
+        });
+      }
+
+      function setDirty(next) {
+        dirty = next;
+        const panel = document.getElementById('panel-edit');
+        if (panel && panel.hidden) return dirty;
+        unsavedBar.hidden = !dirty;
+        document.body.classList.toggle('has-unsaved', dirty);
+        return dirty;
+      }
+
+      function checkDirty() {
+        if (!baseline) return false;
+        return setDirty(snapshot() !== baseline);
+      }
+      window.GradRightProfileDirty.edit = checkDirty;
+
+      function updateMissing() {
+        const list = document.getElementById('missing-list');
+        const photoPill = list.querySelector('[data-miss="photo"]');
+        const emailPill = list.querySelector('[data-miss="email"]');
+        const docsPill = list.querySelector('[data-miss="docs"]');
+        const videoPill = list.querySelector('[data-miss="video"]');
+
+        if (photoUrl) {
+          photoPill.classList.remove('warn');
+          photoPill.textContent = 'Photo added';
+        } else {
+          photoPill.classList.add('warn');
+          photoPill.textContent = 'Missing: photo';
+        }
+
+        if (emailVerified) {
+          emailPill.classList.remove('warn');
+          emailPill.textContent = 'Email verified';
+        } else {
+          emailPill.classList.add('warn');
+          emailPill.textContent = 'Missing: email verify';
+        }
+
+        if (docs.length) {
+          docsPill.classList.remove('warn');
+          docsPill.textContent = docs.length + ' document' + (docs.length === 1 ? '' : 's') + ' uploaded';
+        } else {
+          docsPill.classList.add('warn');
+          docsPill.textContent = 'Missing: documents';
+        }
+
+        if (videoPill) {
+          if (videoUrl) {
+            videoPill.hidden = false;
+            videoPill.classList.remove('warn');
+            videoPill.textContent = 'Intro video added';
+          } else {
+            videoPill.hidden = true;
+          }
+        }
+
+        let pct = 40;
+        if (photoUrl) pct += 20;
+        if (emailVerified) pct += 20;
+        if (docs.length) pct += 20;
+        document.getElementById('progress-pct').textContent = pct + '%';
+        document.getElementById('progress-ring').style.background =
+          'conic-gradient(var(--brand) 0 ' + pct + '%, var(--line) 0)';
+      }
+
+      function setAvatarPhoto(el, url, initials) {
+        if (!el) return;
+        if (url) {
+          el.style.backgroundImage = 'url(' + url + ')';
+          el.classList.add('has-photo');
+          el.textContent = '';
+        } else {
+          el.style.backgroundImage = '';
+          el.classList.remove('has-photo');
+          el.textContent = initials || 'PS';
+        }
+      }
+
+      function syncPreviewCopy(name, bio) {
+        const safeName = name || 'Priya Sharma';
+        const safeBio = bio || '';
+        const students = document.getElementById('field-students').value || '120';
+        const admits = document.getElementById('field-admits').value || '85';
+        document.getElementById('hero-name').textContent = safeName;
+        document.querySelectorAll('.preview-name').forEach((el) => {
+          el.textContent = safeName;
+        });
+        document.querySelectorAll('.preview-bio').forEach((el) => {
+          el.textContent = safeBio;
+        });
+        document.querySelectorAll('.preview-students').forEach((el) => {
+          el.textContent = students + '+';
+        });
+        document.querySelectorAll('.preview-admits').forEach((el) => {
+          el.textContent = admits + '+';
+        });
+        const heroBio = document.getElementById('preview-hero-bio');
+        if (heroBio) {
+          heroBio.textContent = safeBio;
+        }
+      }
+
+      function syncAvatars(url) {
+        const initials = 'PS';
+        document.querySelectorAll('.preview-avatar').forEach((el) => {
+          setAvatarPhoto(el, url, initials);
+        });
+      }
+
+      function renderPhoto() {
+        const empty = document.getElementById('photo-empty');
+        if (photoUrl) {
+          photoZone.classList.add('has-photo');
+          photoPreview.hidden = false;
+          photoImg.hidden = false;
+          photoImg.src = photoUrl;
+          if (empty) empty.hidden = true;
+          if (photoName) photoName.textContent = photoFileName || 'photo.jpg';
+        } else {
+          photoZone.classList.remove('has-photo');
+          photoPreview.hidden = true;
+          photoImg.hidden = true;
+          photoImg.removeAttribute('src');
+          if (empty) empty.hidden = false;
+        }
+        syncAvatars(photoUrl);
+        updateMissing();
+      }
+
+      function syncIntroVideo(url) {
+        document.querySelectorAll('.preview-intro-video').forEach((wrap) => {
+          wrap.hidden = !url;
+        });
+        document.querySelectorAll('.preview-intro-video-el').forEach((el) => {
+          if (url) {
+            if (el.src !== url) el.src = url;
+          } else {
+            el.removeAttribute('src');
+            el.load();
+          }
+        });
+      }
+
+      function renderVideo() {
+        if (videoUrl) {
+          videoZone.hidden = true;
+          videoPreview.hidden = false;
+          if (videoEl.src !== videoUrl) videoEl.src = videoUrl;
+          videoName.textContent = videoFileName || 'intro.mp4';
+          videoMeta.textContent =
+            (videoFileSize ? formatSize(videoFileSize) + ' · ' : '') +
+            'Ready · shown on your student profile';
+        } else {
+          videoZone.hidden = false;
+          videoPreview.hidden = true;
+          videoEl.removeAttribute('src');
+          videoEl.load();
+        }
+        syncIntroVideo(videoUrl);
+        updateMissing();
+      }
+
+      function acceptIntroVideo(file, done) {
+        const type = String(file.type || '').split(';')[0];
+        const okType =
+          /^video\/(mp4|webm|quicktime|x-m4v)$/i.test(type) ||
+          /\.(mp4|webm|mov|m4v)$/i.test(file.name);
+        if (!okType) {
+          alert('Please choose an MP4, MOV, or WEBM video.');
+          return;
+        }
+        if (file.size > 50 * 1024 * 1024) {
+          alert('Intro video must be under 50 MB.');
+          return;
+        }
+        const url = URL.createObjectURL(file);
+        const probe = document.createElement('video');
+        probe.preload = 'metadata';
+        let settled = false;
+        function finish(ok) {
+          if (settled) return;
+          settled = true;
+          if (!ok) {
+            URL.revokeObjectURL(url);
+            alert('Intro video should be 2 minutes or shorter.');
+            return;
+          }
+          done({ url: url, name: file.name, size: file.size });
+        }
+        probe.onloadedmetadata = function () {
+          const seconds = probe.duration;
+          finish(!(Number.isFinite(seconds) && seconds > 120));
+        };
+        probe.onerror = function () {
+          finish(true);
+        };
+        probe.src = url;
+      }
+
+      function renderDocs() {
+        docList.innerHTML = '';
+        docs.forEach((doc, index) => {
+          const row = document.createElement('div');
+          row.className = 'doc-file';
+
+          const thumb = document.createElement('button');
+          thumb.type = 'button';
+          thumb.className = 'doc-thumb';
+          thumb.setAttribute('aria-label', 'Preview ' + doc.name);
+          if (doc.type.startsWith('image/') || doc.pdfPreview) {
+            const img = document.createElement('img');
+            img.src = doc.url;
+            img.alt = '';
+            thumb.appendChild(img);
+          } else {
+            thumb.innerHTML = '<span class="doc-thumb-icon">📄</span>';
+          }
+          thumb.addEventListener('click', () => openDocPreview(doc));
+
+          const meta = document.createElement('div');
+          meta.className = 'meta';
+          meta.style.flex = '1';
+
+          const nameEl = document.createElement('strong');
+          nameEl.style.fontSize = '0.85rem';
+          nameEl.textContent = doc.name;
+
+          const sizeEl = document.createElement('span');
+          sizeEl.style.fontSize = '0.75rem';
+          sizeEl.style.color = 'var(--muted)';
+          sizeEl.textContent = formatSize(doc.size) + (doc.seeded ? ' · On file' : ' · Ready to submit');
+
+          meta.appendChild(nameEl);
+          meta.appendChild(document.createElement('br'));
+          meta.appendChild(sizeEl);
+
+          const actions = document.createElement('div');
+          actions.className = 'doc-file-actions';
+
+          const previewBtn = document.createElement('button');
+          previewBtn.type = 'button';
+          previewBtn.className = 'btn btn-ghost btn-sm';
+          previewBtn.textContent = 'Preview';
+          previewBtn.addEventListener('click', () => openDocPreview(doc));
+
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'btn btn-ghost btn-sm';
+          remove.textContent = 'Remove';
+          remove.addEventListener('click', () => {
+            if (doc.url && doc.url.startsWith('blob:')) URL.revokeObjectURL(doc.url);
+            docs.splice(index, 1);
+            renderDocs();
+            checkDirty();
+          });
+
+          actions.appendChild(previewBtn);
+          actions.appendChild(remove);
+          row.appendChild(thumb);
+          row.appendChild(meta);
+          row.appendChild(actions);
+          docList.appendChild(row);
+        });
+        updateMissing();
+      }
+
+      function openDocPreview(doc) {
+        docPreviewTitle.textContent = doc.name;
+        docPreviewMeta.textContent = formatSize(doc.size) + ' · ' + (doc.type || 'file');
+        docPreviewBody.innerHTML = '';
+
+        if (doc.type.startsWith('image/') || doc.pdfPreview) {
+          const img = document.createElement('img');
+          img.src = doc.url;
+          img.alt = doc.name;
+          docPreviewBody.appendChild(img);
+          if (doc.pdfPreview) {
+            const note = document.createElement('p');
+            note.className = 'hint-text';
+            note.style.marginTop = '0.75rem';
+            note.textContent = 'PDF preview (demo page). Download disabled in this prototype.';
+            docPreviewBody.appendChild(note);
+          }
+        } else {
+          const box = document.createElement('div');
+          box.className = 'doc-preview-fallback';
+          box.innerHTML = '<div class="doc-thumb-icon" style="font-size:2rem;">📄</div><p>Preview not available for this file type.</p>';
+          docPreviewBody.appendChild(box);
+        }
+
+        docPreview.hidden = false;
+      }
+
+      function closeDocPreview() {
+        docPreview.hidden = true;
+        docPreviewBody.innerHTML = '';
+      }
+
+      function captureState() {
+        return {
+          name: document.getElementById('field-name').value,
+          email: document.getElementById('field-email').value,
+          address: document.getElementById('field-address').value,
+          students: document.getElementById('field-students').value,
+          admits: document.getElementById('field-admits').value,
+          bio: document.getElementById('field-bio').value,
+          countries: selectedCountries(),
+          emailVerified: emailVerified,
+          photoUrl: photoUrl,
+          photoFileName: photoFileName,
+          videoUrl: videoUrl,
+          videoFileName: videoFileName,
+          videoFileSize: videoFileSize,
+          docs: docs.map((d) => Object.assign({}, d)),
+          emailBtnText: emailBtn.textContent,
+          emailBtnDisabled: emailBtn.disabled,
+          emailHint: emailHint.innerHTML,
+        };
+      }
+
+      function restoreState(state) {
+        document.getElementById('field-name').value = state.name;
+        document.getElementById('field-email').value = state.email;
+        document.getElementById('field-address').value = state.address;
+        document.getElementById('field-students').value = state.students;
+        document.getElementById('field-admits').value = state.admits;
+        document.getElementById('field-bio').value = state.bio;
+
+        countriesEl.querySelectorAll('.chip').forEach((chip) => {
+          chip.classList.toggle('selected', state.countries.includes(chip.textContent.trim()));
+        });
+
+        emailVerified = state.emailVerified;
+        emailBtn.textContent = state.emailBtnText;
+        emailBtn.disabled = state.emailBtnDisabled;
+        emailHint.innerHTML = state.emailHint;
+
+        docs.forEach((d) => {
+          if (d.url && d.url.startsWith('blob:') && !state.docs.some((s) => s.url === d.url)) {
+            URL.revokeObjectURL(d.url);
+          }
+        });
+        if (photoUrl && photoUrl.startsWith('blob:') && photoUrl !== state.photoUrl) {
+          URL.revokeObjectURL(photoUrl);
+        }
+        if (videoUrl && videoUrl.startsWith('blob:') && videoUrl !== state.videoUrl) {
+          URL.revokeObjectURL(videoUrl);
+        }
+
+        photoUrl = state.photoUrl;
+        photoFileName = state.photoFileName;
+        videoUrl = state.videoUrl;
+        videoFileName = state.videoFileName;
+        videoFileSize = state.videoFileSize || 0;
+        docs = state.docs.map((d) => Object.assign({}, d));
+
+        syncPreviewCopy(state.name, state.bio);
+        renderPhoto();
+        renderVideo();
+        renderDocs();
+      }
+
+      // Country chips
+      countriesEl.querySelectorAll('.chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          chip.classList.toggle('selected');
+          checkDirty();
+        });
+      });
+
+      // Form field changes
+      form.addEventListener('input', () => {
+        syncPreviewCopy(
+          document.getElementById('field-name').value.trim(),
+          document.getElementById('field-bio').value
+        );
+        checkDirty();
+      });
+
+      // Email verify
+      emailBtn.addEventListener('click', () => {
+        if (emailVerified) return;
+        emailBtn.textContent = 'Sent…';
+        emailBtn.disabled = true;
+        emailHint.innerHTML = '<span class="verified-tag">Verification link sent</span> · check inbox (demo)';
+        setTimeout(() => {
+          emailVerified = true;
+          emailBtn.textContent = 'Verified';
+          emailHint.innerHTML = '<span class="verified-tag">✓ Email verified</span>';
+          updateMissing();
+          checkDirty();
+        }, 1000);
+      });
+
+      // Photo upload
+      function openPhotoPicker() {
+        photoInput.click();
+      }
+
+      photoZone.addEventListener('click', openPhotoPicker);
+      document.getElementById('photo-change').addEventListener('click', openPhotoPicker);
+      document.getElementById('photo-remove').addEventListener('click', () => {
+        if (photoUrl && photoUrl.startsWith('blob:')) URL.revokeObjectURL(photoUrl);
+        photoUrl = null;
+        photoFileName = null;
+        photoInput.value = '';
+        renderPhoto();
+        checkDirty();
+      });
+
+      photoInput.addEventListener('change', () => {
+        const file = photoInput.files && photoInput.files[0];
+        if (!file) return;
+        if (!/^image\/(jpeg|png|webp)$/i.test(file.type) && !/\.(jpe?g|png|webp)$/i.test(file.name)) {
+          alert('Please choose a JPG, PNG, or WEBP image.');
+          photoInput.value = '';
+          return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          alert('Photo must be under 5 MB.');
+          photoInput.value = '';
+          return;
+        }
+        if (photoUrl && photoUrl.startsWith('blob:')) URL.revokeObjectURL(photoUrl);
+        photoUrl = URL.createObjectURL(file);
+        photoFileName = file.name;
+        renderPhoto();
+        checkDirty();
+        photoInput.value = '';
+      });
+
+      ;['dragenter', 'dragover'].forEach((evt) => {
+        photoZone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          photoZone.classList.add('is-drag');
+        });
+      });
+      ;['dragleave', 'drop'].forEach((evt) => {
+        photoZone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          photoZone.classList.remove('is-drag');
+        });
+      });
+      photoZone.addEventListener('drop', (e) => {
+        if (e.dataTransfer && e.dataTransfer.files[0]) {
+          const dt = new DataTransfer();
+          dt.items.add(e.dataTransfer.files[0]);
+          photoInput.files = dt.files;
+          photoInput.dispatchEvent(new Event('change'));
+        }
+      });
+
+      // Intro video
+      function openVideoPicker() {
+        videoInput.click();
+      }
+
+      function applyIntroVideo(file) {
+        acceptIntroVideo(file, (next) => {
+          if (videoUrl && videoUrl.startsWith('blob:')) URL.revokeObjectURL(videoUrl);
+          videoUrl = next.url;
+          videoFileName = next.name;
+          videoFileSize = next.size;
+          renderVideo();
+          checkDirty();
+        });
+      }
+
+      function openIntroRecorder() {
+        if (!window.GradRightIntroRecorder) {
+          openVideoPicker();
+          return;
+        }
+        GradRightIntroRecorder.open({
+          onSave: applyIntroVideo,
+          onUpload: openVideoPicker,
+        });
+      }
+
+      document.getElementById('video-upload-btn').addEventListener('click', openVideoPicker);
+      document.getElementById('video-record-btn').addEventListener('click', openIntroRecorder);
+      document.getElementById('video-record-again').addEventListener('click', openIntroRecorder);
+      document.getElementById('video-change').addEventListener('click', openVideoPicker);
+      document.getElementById('video-remove').addEventListener('click', () => {
+        if (videoUrl && videoUrl.startsWith('blob:')) URL.revokeObjectURL(videoUrl);
+        videoUrl = null;
+        videoFileName = null;
+        videoFileSize = 0;
+        videoInput.value = '';
+        renderVideo();
+        checkDirty();
+      });
+
+      videoInput.addEventListener('change', () => {
+        const file = videoInput.files && videoInput.files[0];
+        videoInput.value = '';
+        if (file) applyIntroVideo(file);
+      });
+
+      ;['dragenter', 'dragover'].forEach((evt) => {
+        videoZone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          videoZone.classList.add('is-drag');
+        });
+      });
+      ;['dragleave', 'drop'].forEach((evt) => {
+        videoZone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          videoZone.classList.remove('is-drag');
+        });
+      });
+      videoZone.addEventListener('drop', (e) => {
+        if (e.dataTransfer && e.dataTransfer.files[0]) {
+          applyIntroVideo(e.dataTransfer.files[0]);
+        }
+      });
+
+      // Documents
+      function addFiles(fileList) {
+        [...fileList].forEach((file) => {
+          const okType = /\.(pdf|jpe?g|png)$/i.test(file.name);
+          const okSize = file.size <= 10 * 1024 * 1024;
+          if (!okType) {
+            alert('Only PDF, JPG, or PNG files are allowed.');
+            return;
+          }
+          if (!okSize) {
+            alert('"' + file.name + '" is over 10 MB.');
+            return;
+          }
+          if (docs.some((f) => f.name === file.name && f.size === file.size)) return;
+          docs.push({
+            id: 'doc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+            name: file.name,
+            size: file.size,
+            type: file.type || (/\.pdf$/i.test(file.name) ? 'application/pdf' : 'image/jpeg'),
+            url: URL.createObjectURL(file),
+            seeded: false,
+          });
+        });
+        renderDocs();
+        checkDirty();
+      }
+
+      docZone.addEventListener('click', () => docInput.click());
+      docZone.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          docInput.click();
+        }
+      });
+      docInput.addEventListener('change', () => {
+        if (docInput.files && docInput.files.length) addFiles(docInput.files);
+        docInput.value = '';
+      });
+
+      ;['dragenter', 'dragover'].forEach((evt) => {
+        docZone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          docZone.classList.add('is-drag');
+        });
+      });
+      ;['dragleave', 'drop'].forEach((evt) => {
+        docZone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          docZone.classList.remove('is-drag');
+        });
+      });
+      docZone.addEventListener('drop', (e) => {
+        if (e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+      });
+
+      document.getElementById('doc-preview-close').addEventListener('click', closeDocPreview);
+      docPreview.addEventListener('click', (e) => {
+        if (e.target === docPreview) closeDocPreview();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !docPreview.hidden) closeDocPreview();
+      });
+
+      // Save / Discard
+      document.getElementById('save-btn').addEventListener('click', () => {
+        const editOpen = document.getElementById('panel-edit') && !document.getElementById('panel-edit').hidden;
+        if (!editOpen) return;
+        savedState = captureState();
+        baseline = snapshot();
+        setDirty(false);
+        syncPreviewCopy(
+          document.getElementById('field-name').value.trim(),
+          document.getElementById('field-bio').value
+        );
+      });
+
+      document.getElementById('discard-btn').addEventListener('click', () => {
+        const editOpen = document.getElementById('panel-edit') && !document.getElementById('panel-edit').hidden;
+        if (!editOpen || !savedState) return;
+        restoreState(savedState);
+        baseline = snapshot();
+        setDirty(false);
+      });
+
+      // Init
+      renderDocs();
+      renderPhoto();
+      renderVideo();
+      savedState = captureState();
+      baseline = snapshot();
+      setDirty(false);
+    })();
+  </script>
+  <script src="js/shell.js?v=mobile1"></script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reviews — GradRight Counselor</title>
+  <link rel="stylesheet" href="css/styles.css?v=seticon1" />
+  <link rel="stylesheet" href="css/mobile.css?v=mobile1" />
+</head>
+<body data-page="reviews" data-verified="true">
+  <div class="app">
+    <aside id="app-sidebar" class="sidebar" aria-label="Main navigation"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <h1>Reviews</h1>
+        <div class="actions people-top-actions">
+          <input type="search" class="people-search" id="rev-search" placeholder="Search reviews…" />
+
+          <div class="range-pair" id="range-wrap">
+            <div class="range-wrap">
+              <button type="button" class="chip-btn" id="preset-btn" aria-expanded="false">
+                <span id="preset-label">Last 30 days</span>
+                <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+              </button>
+              <div class="range-menu" id="preset-menu" hidden>
+                <button type="button" class="range-preset" data-range="today">Today</button>
+                <button type="button" class="range-preset" data-range="yesterday">Yesterday</button>
+                <button type="button" class="range-preset" data-range="7">Last 7 days</button>
+                <button type="button" class="range-preset active" data-range="30">Last 30 days</button>
+                <button type="button" class="range-preset" data-range="all">All time</button>
+              </div>
+            </div>
+
+            <div class="dates-chip" id="dates-chip">
+              <button type="button" class="chip-btn dates-half" id="start-btn" aria-expanded="false">
+                <span id="start-label">25 Aug</span>
+              </button>
+              <span class="dates-sep">–</span>
+              <button type="button" class="chip-btn dates-half" id="end-btn" aria-expanded="false">
+                <span id="end-label">23 Sep</span>
+              </button>
+              <div class="range-cal-pop" id="cal-start-menu" hidden>
+                <div class="range-cal" data-side="start">
+                  <div class="range-cal-toolbar">
+                    <button type="button" class="icon-btn" data-cal-nav="-1" data-side="start" aria-label="Previous month">
+                      <span class="material-symbols-rounded" aria-hidden="true">chevron_left</span>
+                    </button>
+                    <strong id="cal-label-start">August 2026</strong>
+                    <button type="button" class="icon-btn" data-cal-nav="1" data-side="start" aria-label="Next month">
+                      <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
+                    </button>
+                  </div>
+                  <div class="range-cal-grid" id="cal-grid-start"></div>
+                </div>
+              </div>
+              <div class="range-cal-pop" id="cal-end-menu" hidden>
+                <div class="range-cal" data-side="end">
+                  <div class="range-cal-toolbar">
+                    <button type="button" class="icon-btn" data-cal-nav="-1" data-side="end" aria-label="Previous month">
+                      <span class="material-symbols-rounded" aria-hidden="true">chevron_left</span>
+                    </button>
+                    <strong id="cal-label-end">September 2026</strong>
+                    <button type="button" class="icon-btn" data-cal-nav="1" data-side="end" aria-label="Next month">
+                      <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
+                    </button>
+                  </div>
+                  <div class="range-cal-grid" id="cal-grid-end"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-menu-wrap" id="filter-wrap">
+            <button type="button" class="chip-btn" id="filter-btn" aria-expanded="false">
+              <span id="filter-label">All ratings</span>
+              <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+            </button>
+            <div class="filter-menu people-filter-menu" id="filter-menu" hidden>
+              <button type="button" class="filter-option active" data-filter="all">All ratings</button>
+              <button type="button" class="filter-option" data-filter="5">5 stars</button>
+              <button type="button" class="filter-option" data-filter="4">4 stars</button>
+              <button type="button" class="filter-option" data-filter="3">3 stars</button>
+              <button type="button" class="filter-option" data-filter="2">2 stars</button>
+              <button type="button" class="filter-option" data-filter="1">1 star</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="pending-banner" data-unverified-only>
+          <div class="icon"><span class="material-symbols-rounded" aria-hidden="true">schedule</span></div>
+          <div>
+            <h3>Pending admin approval</h3>
+            <p>Reviews and badges stay empty until GradRight verifies you. Student feedback lands here after that.</p>
+          </div>
+          <a class="btn btn-secondary btn-sm" href="profile.html?tab=preview">Student preview</a>
+        </div>
+
+        <section class="panel analytics-panel">
+          <div class="analytics-stats is-4">
+            <div class="analytics-stat">
+              <span class="label">Average rating</span>
+              <strong class="analytics-rating">
+                <span id="stat-rating">—</span>
+                <span class="material-symbols-rounded analytics-star" aria-hidden="true">star</span>
+              </strong>
+              <span class="hint" id="stat-rating-hint">From 0 reviews</span>
+            </div>
+            <div class="analytics-stat">
+              <span class="label">Reviews</span>
+              <strong id="stat-count">0</strong>
+              <span class="hint" id="stat-count-hint">In this period</span>
+            </div>
+            <div class="analytics-stat">
+              <span class="label">Would recommend</span>
+              <strong id="stat-recommend">—</strong>
+              <span class="hint" id="stat-recommend-hint">Rated 4 stars or higher</span>
+            </div>
+            <div class="analytics-stat">
+              <span class="label">Badges</span>
+              <strong id="stat-badges">4</strong>
+              <span class="hint">Shown on your public card</span>
+            </div>
+          </div>
+          <div class="analytics-chart-wrap">
+            <svg class="analytics-chart" id="analytics-chart" viewBox="0 0 760 180" preserveAspectRatio="none"></svg>
+            <div class="analytics-tip" id="analytics-tip" hidden></div>
+          </div>
+        </section>
+
+        <div class="rev-split">
+          <section class="panel rev-list-panel">
+            <div class="panel-head">
+              <h2 id="rev-list-title">Student reviews</h2>
+            </div>
+            <div class="rev-list gr-scroll" id="rev-list"></div>
+            <p class="people-empty" id="rev-empty" hidden>No reviews match this filter.</p>
+          </section>
+
+          <section class="panel rev-side-panel">
+            <div class="panel-head"><h2>Your badges</h2></div>
+            <div class="rev-badge-grid" id="rev-badges"></div>
+            <p class="rev-side-note">Badges appear on your public counselor card in the GradRight student app.</p>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="js/session.js?v=auth-path1"></script>
+  <script src="js/shell.js?v=mobile1"></script>
+  <script src="js/people-db.js?v=txn1"></script>
+  <script src="js/reviews.js?v=rev4"></script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Transactions — GradRight Counselor</title>
+  <link rel="stylesheet" href="css/styles.css?v=seticon1" />
+  <link rel="stylesheet" href="css/mobile.css?v=mobile1" />
+</head>
+<body data-page="transactions" data-verified="true">
+  <div class="app">
+    <aside id="app-sidebar" class="sidebar" aria-label="Main navigation"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <h1>Transactions</h1>
+        <div class="actions people-top-actions">
+          <input type="search" class="people-search" id="txn-search" placeholder="Search transactions…" />
+
+          <div class="range-pair" id="range-wrap">
+            <div class="range-wrap">
+              <button type="button" class="chip-btn" id="preset-btn" aria-expanded="false">
+                <span id="preset-label">Last 30 days</span>
+                <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+              </button>
+              <div class="range-menu" id="preset-menu" hidden>
+                <button type="button" class="range-preset" data-range="today">Today</button>
+                <button type="button" class="range-preset" data-range="yesterday">Yesterday</button>
+                <button type="button" class="range-preset" data-range="7">Last 7 days</button>
+                <button type="button" class="range-preset active" data-range="30">Last 30 days</button>
+                <button type="button" class="range-preset" data-range="all">All time</button>
+              </div>
+            </div>
+
+            <div class="dates-chip" id="dates-chip">
+              <button type="button" class="chip-btn dates-half" id="start-btn" aria-expanded="false">
+                <span id="start-label">25 Aug</span>
+              </button>
+              <span class="dates-sep">–</span>
+              <button type="button" class="chip-btn dates-half" id="end-btn" aria-expanded="false">
+                <span id="end-label">23 Sep</span>
+              </button>
+              <div class="range-cal-pop" id="cal-start-menu" hidden>
+                <div class="range-cal" data-side="start">
+                  <div class="range-cal-toolbar">
+                    <button type="button" class="icon-btn" data-cal-nav="-1" data-side="start" aria-label="Previous month">
+                      <span class="material-symbols-rounded" aria-hidden="true">chevron_left</span>
+                    </button>
+                    <strong id="cal-label-start">August 2026</strong>
+                    <button type="button" class="icon-btn" data-cal-nav="1" data-side="start" aria-label="Next month">
+                      <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
+                    </button>
+                  </div>
+                  <div class="range-cal-grid" id="cal-grid-start"></div>
+                </div>
+              </div>
+              <div class="range-cal-pop" id="cal-end-menu" hidden>
+                <div class="range-cal" data-side="end">
+                  <div class="range-cal-toolbar">
+                    <button type="button" class="icon-btn" data-cal-nav="-1" data-side="end" aria-label="Previous month">
+                      <span class="material-symbols-rounded" aria-hidden="true">chevron_left</span>
+                    </button>
+                    <strong id="cal-label-end">September 2026</strong>
+                    <button type="button" class="icon-btn" data-cal-nav="1" data-side="end" aria-label="Next month">
+                      <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
+                    </button>
+                  </div>
+                  <div class="range-cal-grid" id="cal-grid-end"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-menu-wrap" id="filter-wrap">
+            <button type="button" class="chip-btn" id="filter-btn" aria-expanded="false">
+              <span id="filter-label">All</span>
+              <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+            </button>
+            <div class="filter-menu people-filter-menu" id="filter-menu" hidden>
+              <button type="button" class="filter-option active" data-filter="all">All</button>
+              <button type="button" class="filter-option" data-filter="success">Success</button>
+              <button type="button" class="filter-option" data-filter="failed">Failed</button>
+              <button type="button" class="filter-option" data-filter="refunded">Refunded</button>
+              <button type="button" class="filter-option" data-filter="withdrawal">Withdrawal</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="pending-banner" data-unverified-only>
+          <div class="icon"><span class="material-symbols-rounded" aria-hidden="true">schedule</span></div>
+          <div>
+            <h3>Pending admin approval</h3>
+            <p>Earnings and payouts stay empty until GradRight verifies you. Connect fees land here after that.</p>
+          </div>
+          <a class="btn btn-secondary btn-sm" href="profile.html?tab=preview">Student preview</a>
+        </div>
+
+        <section class="panel analytics-panel">
+          <div class="analytics-stats is-3">
+            <div class="analytics-stat">
+              <span class="label">Total earnings</span>
+              <strong id="stat-earned">₹0</strong>
+              <span class="hint" id="stat-earned-hint">From 0 successful connects</span>
+            </div>
+            <div class="analytics-stat">
+              <span class="label">Withdrawn</span>
+              <strong id="stat-withdrawn">₹0</strong>
+              <span class="hint" id="stat-withdrawn-hint">0 payouts to bank</span>
+            </div>
+            <div class="analytics-stat">
+              <span class="label">Available</span>
+              <strong id="stat-available">₹0</strong>
+              <span class="hint" id="stat-available-hint">Left to withdraw</span>
+            </div>
+          </div>
+          <div class="analytics-chart-wrap">
+            <svg class="analytics-chart" id="analytics-chart" viewBox="0 0 760 180" preserveAspectRatio="none"></svg>
+            <div class="analytics-tip" id="analytics-tip" hidden></div>
+          </div>
+        </section>
+
+        <section class="panel txn-panel">
+          <div class="panel-head txn-head">
+            <h2>All transactions</h2>
+          </div>
+          <div class="txn-table-track gr-scroll">
+            <table class="table txn-table">
+              <colgroup>
+                <col class="txn-col-date" />
+                <col class="txn-col-type" />
+                <col class="txn-col-detail" />
+                <col class="txn-col-id" />
+                <col class="txn-col-method" />
+                <col class="txn-col-amt" />
+                <col class="txn-col-status" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Detail</th>
+                  <th>Txn ID</th>
+                  <th>Method</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="txn-body"></tbody>
+            </table>
+            <p class="people-empty" id="txn-empty" hidden>No transactions match this filter.</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+  <script src="js/session.js?v=auth-path1"></script>
+  <script src="js/shell.js?v=mobile1"></script>
+  <script src="js/people-db.js?v=txn1"></script>
+  <script src="js/transactions.js?v=txn2"></script>
+</body>
+</html>

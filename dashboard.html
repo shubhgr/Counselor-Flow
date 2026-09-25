@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard — GradRight Counselor</title>
+  <link rel="stylesheet" href="css/styles.css?v=seticon1" />
+  <link rel="stylesheet" href="css/mobile.css?v=mobile1" />
+</head>
+<body data-page="dashboard" data-verified="true">
+  <div class="app">
+    <aside id="app-sidebar" class="sidebar" aria-label="Main navigation"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <h1>Good morning, Priya</h1>
+        <div class="actions people-top-actions">
+          <div class="range-pair" id="range-wrap">
+            <div class="range-wrap">
+              <button type="button" class="chip-btn" id="preset-btn" aria-expanded="false">
+                <span id="preset-label">Last 30 days</span>
+                <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+              </button>
+              <div class="range-menu" id="preset-menu" hidden>
+                <button type="button" class="range-preset" data-range="today">Today</button>
+                <button type="button" class="range-preset" data-range="yesterday">Yesterday</button>
+                <button type="button" class="range-preset" data-range="7">Last 7 days</button>
+                <button type="button" class="range-preset active" data-range="30">Last 30 days</button>
+                <button type="button" class="range-preset" data-range="all">All time</button>
+              </div>
+            </div>
+
+            <div class="dates-chip" id="dates-chip">
+              <button type="button" class="chip-btn dates-half" id="start-btn" aria-expanded="false">
+                <span id="start-label">25 Aug</span>
+              </button>
+              <span class="dates-sep">–</span>
+              <button type="button" class="chip-btn dates-half" id="end-btn" aria-expanded="false">
+                <span id="end-label">23 Sep</span>
+              </button>
+              <div class="range-cal-pop" id="cal-start-menu" hidden>
+                <div class="range-cal" data-side="start">
+                  <div class="range-cal-toolbar">
+                    <button type="button" class="icon-btn" data-cal-nav="-1" data-side="start" aria-label="Previous month">
+                      <span class="material-symbols-rounded" aria-hidden="true">chevron_left</span>
+                    </button>
+                    <strong id="cal-label-start">August 2026</strong>
+                    <button type="button" class="icon-btn" data-cal-nav="1" data-side="start" aria-label="Next month">
+                      <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
+                    </button>
+                  </div>
+                  <div class="range-cal-grid" id="cal-grid-start"></div>
+                </div>
+              </div>
+              <div class="range-cal-pop" id="cal-end-menu" hidden>
+                <div class="range-cal" data-side="end">
+                  <div class="range-cal-toolbar">
+                    <button type="button" class="icon-btn" data-cal-nav="-1" data-side="end" aria-label="Previous month">
+                      <span class="material-symbols-rounded" aria-hidden="true">chevron_left</span>
+                    </button>
+                    <strong id="cal-label-end">September 2026</strong>
+                    <button type="button" class="icon-btn" data-cal-nav="1" data-side="end" aria-label="Next month">
+                      <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
+                    </button>
+                  </div>
+                  <div class="range-cal-grid" id="cal-grid-end"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="calls-workspace" id="dash-workspace">
+      <div class="content">
+        <div class="pending-banner" data-unverified-only>
+          <div class="icon"><span class="material-symbols-rounded" aria-hidden="true">schedule</span></div>
+          <div>
+            <h3>Pending admin approval</h3>
+            <p>
+              Your listing stays hidden until GradRight verifies you. Stats, meets, and connects stay empty until then.
+            </p>
+          </div>
+          <a class="btn btn-secondary btn-sm" href="profile.html?tab=preview">Student preview</a>
+        </div>
+        <div class="dash-top">
+          <section class="panel analytics-panel">
+            <div class="analytics-stats is-4">
+              <div class="analytics-stat">
+                <span class="label">Visitors</span>
+                <strong id="stat-visitors">0</strong>
+                <span class="hint" id="stat-visitors-hint">0 unique</span>
+                <span class="hint trend" id="stat-visitors-trend"></span>
+              </div>
+              <div class="analytics-stat">
+                <span class="label">Connects</span>
+                <strong id="stat-connects">0</strong>
+                <span class="hint" id="stat-connects-hint">All paid connections</span>
+                <span class="hint trend" id="stat-connects-trend"></span>
+              </div>
+              <div class="analytics-stat">
+                <span class="label">Earnings</span>
+                <strong id="stat-earnings">₹0</strong>
+                <span class="hint" id="stat-earnings-hint">Across 0 connections</span>
+                <span class="hint trend" id="stat-earnings-trend"></span>
+              </div>
+              <div class="analytics-stat">
+                <span class="label">Reviews</span>
+                <strong class="analytics-rating">
+                  <span id="stat-reviews">—</span>
+                  <span class="material-symbols-rounded analytics-star" aria-hidden="true">star</span>
+                </strong>
+                <span class="hint" id="stat-reviews-hint">0 reviews received</span>
+                <span class="hint trend" id="stat-reviews-trend"></span>
+              </div>
+            </div>
+            <div class="analytics-chart-wrap">
+              <svg class="analytics-chart" id="analytics-chart" viewBox="0 0 760 180" preserveAspectRatio="none"></svg>
+              <div class="analytics-tip" id="analytics-tip" hidden></div>
+            </div>
+          </section>
+
+          <section class="panel source-panel">
+            <div class="panel-head">
+              <h2>Sources</h2>
+              <span class="source-meta">Visitors</span>
+            </div>
+            <div class="source-list gr-scroll" id="source-list"></div>
+          </section>
+        </div>
+
+        <div class="grid-2 dash-grid">
+          <section class="panel dash-calls-panel">
+            <div class="panel-head">
+              <h2 id="dash-calls-title">Today’s meets</h2>
+              <a href="calls.html">All →</a>
+            </div>
+            <div class="dash-agenda-track gr-scroll" id="today-calls"></div>
+          </section>
+
+          <section class="panel dash-connects-panel">
+            <div class="panel-head">
+              <h2 id="dash-connects-title">Today’s connects</h2>
+              <a href="students.html?view=connected">All →</a>
+            </div>
+            <div class="dash-connect-list gr-scroll" id="recent-connects"></div>
+          </section>
+        </div>
+      </div>
+      <aside class="community-profile-panel" id="call-panel" hidden aria-label="Meet profile">
+        <div class="cpp-toolbar">
+          <strong class="cpp-title" id="call-panel-title">Meet</strong>
+          <button type="button" class="icon-btn" id="call-panel-close" title="Close" aria-label="Close">
+            <span class="material-symbols-rounded" aria-hidden="true">close</span>
+          </button>
+        </div>
+        <div class="cpp-body" id="call-panel-body"></div>
+      </aside>
+      </div>
+    </div>
+  </div>
+  <div class="cal-modal" id="cancel-call-modal" hidden>
+    <div class="cal-modal-backdrop" data-close-cancel></div>
+    <div class="cal-modal-card" role="dialog" aria-labelledby="cancel-call-title" aria-modal="true">
+      <div class="cal-modal-head">
+        <h2 id="cancel-call-title">Cancel meet</h2>
+        <button type="button" class="icon-btn" data-close-cancel aria-label="Close">
+          <span class="material-symbols-rounded" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <p class="cal-modal-label">
+        Cancel this meet with <strong id="cancel-call-name">this person</strong>? They’ll be notified. This can’t be undone.
+      </p>
+      <div class="dash-cancel-actions">
+        <button type="button" class="btn btn-secondary" data-close-cancel>Keep meet</button>
+        <button type="button" class="btn btn-primary dash-cancel-confirm" id="confirm-cancel-call">Cancel meet</button>
+      </div>
+    </div>
+  </div>
+  <script src="js/session.js?v=auth-path1"></script>
+  <script src="js/shell.js?v=mobile1"></script>
+  <script src="js/people-db.js"></script>
+  <script src="js/calls-db.js"></script>
+  <script src="js/calendar-db.js"></script>
+  <script src="js/safety.js"></script>
+  <script src="js/call-panel.js?v=panel5"></script>
+  <script src="js/dashboard.js?v=meet1"></script>
+</body>
+</html>

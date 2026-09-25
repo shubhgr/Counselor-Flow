@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GradRight Counselor</title>
+  <link rel="stylesheet" href="css/styles.css?v=noshadow1" />
+  <link rel="stylesheet" href="css/mobile.css?v=mobile1" />
+</head>
+<body>
+  <div class="auth-shell">
+    <aside class="auth-visual">
+      <div class="brand-mark">
+        <img class="brand-logo" src="assets/gradright-logo.png" alt="GradRight" />
+      </div>
+      <div class="auth-copy">
+        <h1>Join the GradRight counselor marketplace.</h1>
+        <p>
+          Get listed, recommended to students on the GradRight app, and earn when they
+          pay to connect — shortlisting, SOP, visas, country pathways.
+        </p>
+      </div>
+      <ul class="auth-flow-hint">
+        <li><span class="dot"></span> Mobile OTP verification</li>
+        <li><span class="dot"></span> Build your marketplace profile</li>
+        <li><span class="dot"></span> Admin verifies → you get listed</li>
+        <li><span class="dot"></span> Students discover, connect &amp; book</li>
+      </ul>
+    </aside>
+
+    <main class="auth-panel">
+      <div class="auth-card">
+        <div class="auth-tabs" role="tablist">
+          <button type="button" class="auth-tab active" id="tab-signup" onclick="showAuth('signup')">Sign up</button>
+          <button type="button" class="auth-tab" id="tab-login" onclick="showAuth('login')">Log in</button>
+        </div>
+
+        <div id="panel-signup">
+          <h2>Create counselor account</h2>
+          <p class="sub">We’ll send an OTP to your mobile. Email can be verified later from profile.</p>
+          <form action="otp.html" method="get">
+            <div class="field">
+              <label for="su-name">Full name</label>
+              <input id="su-name" name="name" type="text" value="Priya Sharma" required />
+            </div>
+            <div class="field">
+              <label for="su-phone">Mobile number</label>
+              <input id="su-phone" name="phone" type="tel" value="1234567890" required />
+              <p class="hint-text">Any number · sign up stays pending until admin approval</p>
+            </div>
+            <div class="field">
+              <label for="su-email">Email</label>
+              <input id="su-email" name="email" type="email" value="priya.sharma@gmail.com" required />
+              <p class="hint-text">Saved now · not verified yet · verify anytime from profile</p>
+            </div>
+            <button class="btn btn-primary" type="submit">Send OTP</button>
+          </form>
+        </div>
+
+        <div id="panel-login" hidden>
+          <h2>Welcome back</h2>
+          <p class="sub">Log in with your mobile number.</p>
+          <form action="otp.html" method="get">
+            <input type="hidden" name="mode" value="login" />
+            <div class="field">
+              <label for="li-phone">Mobile number</label>
+              <input id="li-phone" name="phone" type="tel" value="0987654321" />
+              <p class="hint-text">Any number · log in as a verified counselor</p>
+            </div>
+            <button class="btn btn-primary" type="submit">Send OTP</button>
+          </form>
+          <p class="auth-footer">
+            Still waiting for approval?
+            <a href="dashboard-pending.html">Open pending dashboard</a>
+          </p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function showAuth(mode) {
+      const signup = mode === 'signup';
+      document.getElementById('panel-signup').hidden = !signup;
+      document.getElementById('panel-login').hidden = signup;
+      document.getElementById('tab-signup').classList.toggle('active', signup);
+      document.getElementById('tab-login').classList.toggle('active', !signup);
+    }
+  </script>
+</body>
+</html>

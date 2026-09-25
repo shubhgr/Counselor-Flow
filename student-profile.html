@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Student profile — GradRight Counselor</title>
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var id = params.get('id') || 'aarav';
+      location.replace('chats.html?id=' + encodeURIComponent(id) + '&profile=1');
+    })();
+  </script>
+</head>
+<body></body>
+</html>

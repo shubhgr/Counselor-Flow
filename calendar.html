@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calendar — GradRight Counselor</title>
+  <link rel="stylesheet" href="css/styles.css?v=hoursfill2" />
+  <link rel="stylesheet" href="css/mobile.css?v=mobile1" />
+</head>
+<body data-page="profile" data-verified="true">
+  <div class="app">
+    <aside id="app-sidebar" class="sidebar" aria-label="Main navigation"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <h1>Profile</h1>
+        <div class="actions">
+          <div class="auth-tabs profile-view-tabs" role="tablist" aria-label="Profile sections">
+            <a class="auth-tab" href="profile.html">Edit profile</a>
+            <a class="auth-tab" href="profile.html?tab=services">Services &amp; fee</a>
+            <a class="auth-tab" href="profile.html?tab=testimonials">Testimonials</a>
+            <a class="auth-tab active" href="calendar.html">Calendar</a>
+            <a class="auth-tab" href="profile.html?tab=preview">Student preview</a>
+          </div>
+        </div>
+      </header>
+
+      <div class="content gr-scroll" id="calendar-root">
+        <section class="cal-connect" id="cal-connect">
+          <div class="cal-connect-card">
+            <h2>Connect Cal.com</h2>
+            <p>Students book from your live hours. Hours, event types, and calendars stay in this page.</p>
+            <p class="cal-auth-error" id="cal-auth-error" hidden></p>
+            <button type="button" class="cal-continue-btn" id="cal-continue">Continue with Cal.com</button>
+          </div>
+        </section>
+
+        <div id="cal-workspace" hidden>
+          <div class="cal-workspace-bar">
+            <div class="cal-connected-chip" id="cal-connected-chip">
+              <span class="cal-dot" aria-hidden="true"></span>
+              <a class="cal-connected-link" id="cal-profile-link" href="https://cal.com/shubhanshu-singh-qb543g" target="_blank" rel="noreferrer">cal.com/shubhanshu-singh-qb543g</a>
+              <button type="button" class="cal-chip-disconnect" id="cal-disconnect" aria-label="Disconnect Cal.com">
+                <span class="material-symbols-rounded" aria-hidden="true">link_off</span>
+              </button>
+            </div>
+            <div class="auth-tabs cal-inner-tabs" role="tablist" aria-label="Calendar tools">
+              <button type="button" class="auth-tab active" data-cal-tab="availability">Availability</button>
+              <button type="button" class="auth-tab" data-cal-tab="events">Event types</button>
+              <button type="button" class="auth-tab" data-cal-tab="calendars">Calendars</button>
+            </div>
+          </div>
+
+          <div id="tab-availability" class="cal-page-stack cal-page-stack-hours">
+            <section class="panel sched-card" id="panel-schedule">
+              <div class="sched-card-head atom-head">
+                <div class="atom-title">
+                  <input type="text" id="schedule-name" value="Working Hours" data-track aria-label="Schedule name" />
+                </div>
+              </div>
+              <label class="sched-day-row sched-tz-row" for="timezone">
+                <strong>Timezone</strong>
+                <select id="timezone" data-track>
+                  <option value="Asia/Kolkata" selected>(GMT+5:30) Chennai, Kolkata, Mumbai, New Delhi</option>
+                  <option value="Asia/Dubai">(GMT+4:00) Dubai</option>
+                  <option value="Europe/London">(GMT+0:00) London</option>
+                  <option value="America/New_York">(GMT-5:00) New York</option>
+                  <option value="America/Los_Angeles">(GMT-8:00) Los Angeles</option>
+                </select>
+              </label>
+              <div class="sched-days gr-scroll" id="week-hours"></div>
+            </section>
+
+            <aside class="panel sched-block">
+              <div class="sched-card-head">
+                <h2>Date overrides</h2>
+                <span class="cal-info" title="Pick a date you are available and set hours, or mark the day unavailable. Past overrides are removed automatically." aria-label="Pick a date you are available and set hours, or mark the day unavailable. Past overrides are removed automatically.">i</span>
+              </div>
+              <div class="sched-block-body">
+                <p class="hint-text">Special hours for one day. After that date passes, the override is deleted.</p>
+                <button type="button" class="btn btn-secondary" id="open-block-dates">Add date override</button>
+                <ul class="sched-blocked-list" id="blocked-dates-list"></ul>
+              </div>
+            </aside>
+          </div>
+
+          <div id="tab-events" class="cal-events" hidden>
+            <section class="panel cal-events-list">
+              <div class="sched-card-head">
+                <h2>Event types</h2>
+                <a class="btn btn-secondary btn-sm" href="profile.html?tab=services">Services &amp; fee</a>
+              </div>
+              <p class="hint-text" id="event-type-hint">Students pick one of these when they book a call.</p>
+              <ul class="event-type-list" id="event-type-list"></ul>
+            </section>
+            <section class="panel cal-event-settings" id="event-settings-panel">
+              <div class="sched-card-head">
+                <h2 id="event-settings-title">Meet setup</h2>
+              </div>
+              <div class="cal-event-body" id="event-settings-empty">
+                <p class="hint-text">These are your services. Students pick one when they book a call. Duration, notice, buffer, and booking window live here.</p>
+              </div>
+              <form class="cal-event-body" id="event-settings-form" hidden>
+                <p class="hint-text" id="ev-from-service"></p>
+                <div class="booker-field">
+                  <span>Duration</span>
+                  <div class="duration-pills" id="ev-durations">
+                    <button type="button" data-value="15">15 min</button>
+                    <button type="button" data-value="30">30 min</button>
+                    <button type="button" data-value="45">45 min</button>
+                    <button type="button" data-value="60">60 min</button>
+                  </div>
+                </div>
+                <label class="booker-field">
+                  <span>Location</span>
+                  <select id="ev-location">
+                    <option value="gradright-meet">GradRight Meet</option>
+                    <option value="google-meet">Google Meet</option>
+                    <option value="zoom">Zoom</option>
+                  </select>
+                </label>
+                <label class="booker-field">
+                  <span>Minimum notice</span>
+                  <div class="cal-notice">
+                    <input type="number" id="ev-notice-value" min="0" value="240" />
+                    <select id="ev-notice-unit">
+                      <option selected>Minutes</option>
+                      <option>Hours</option>
+                      <option>Days</option>
+                    </select>
+                  </div>
+                </label>
+                <label class="booker-field">
+                  <span>Buffer after session</span>
+                  <select id="ev-buffer">
+                    <option value="0">0 min</option>
+                    <option value="10" selected>10 min</option>
+                    <option value="15">15 min</option>
+                    <option value="30">30 min</option>
+                  </select>
+                </label>
+                <label class="booker-field">
+                  <span>Booking window</span>
+                  <select id="ev-booking-period">
+                    <option value="7">1 Week</option>
+                    <option value="14">2 Weeks</option>
+                    <option value="21">3 Weeks</option>
+                    <option value="28">4 Weeks</option>
+                    <option value="60" selected>2 Months</option>
+                    <option value="90">3 Months</option>
+                  </select>
+                </label>
+                <div class="booker-field">
+                  <span>Reschedule</span>
+                  <button type="button" class="btn btn-secondary btn-sm" id="open-reschedule">Update policy</button>
+                </div>
+              </form>
+            </section>
+          </div>
+
+          <div id="tab-calendars" class="cal-integrations" hidden>
+            <section class="panel">
+              <div class="sched-card-head">
+                <h2>Connected calendars</h2>
+              </div>
+              <div class="cal-booker-body">
+                <p class="hint-text">Check these for conflicts so a student can’t book over a busy hour. New meets go to the destination calendar.</p>
+                <div class="cal-app-list" id="calendar-apps"></div>
+                <label class="booker-field" id="destination-wrap">
+                  <span>Add booked meets to</span>
+                  <select id="calendar-destination"></select>
+                </label>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="sched-card-head">
+                <h2>Conferencing</h2>
+              </div>
+              <div class="cal-booker-body">
+                <p class="hint-text">Where the meet happens. GradRight Meet is always on; add Zoom or Google Meet if you use them.</p>
+                <div class="cal-app-list" id="conferencing-apps"></div>
+              </div>
+            </section>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cal-oauth-modal" id="cal-oauth-modal" hidden>
+    <div class="cal-oauth-backdrop" data-close-oauth></div>
+    <div class="cal-oauth-card" role="dialog" aria-labelledby="cal-oauth-title" aria-modal="true">
+      <button type="button" class="cal-oauth-x" data-close-oauth aria-label="Close">
+        <span class="material-symbols-rounded" aria-hidden="true">close</span>
+      </button>
+      <div class="cal-oauth-logo" aria-hidden="true">
+        <span class="cal-oauth-mark">+</span>
+        <strong>Cal</strong>
+      </div>
+      <h2 id="cal-oauth-title">GR wants to access your Cal.com account</h2>
+      <p class="cal-oauth-signed">
+        <span class="cal-oauth-avatar" aria-hidden="true">S</span>
+        Signed in as Shubhanshu Singh
+      </p>
+      <p class="cal-oauth-lead">This will allow GR to</p>
+      <ul class="cal-oauth-perms">
+        <li>View personal info and primary email address</li>
+        <li>Create, read, update, and delete booking links</li>
+        <li>Create, read, update, and delete bookings</li>
+        <li>Create, read, update, and delete availability</li>
+        <li>View, connect, and disconnect apps</li>
+      </ul>
+      <div class="cal-oauth-actions">
+        <button type="button" class="cal-oauth-deny" id="cal-oauth-deny" onclick="window.gradRightDenyCal && window.gradRightDenyCal()">Deny</button>
+        <button type="button" class="cal-oauth-allow" id="cal-oauth-allow" onclick="window.gradRightAllowCal && window.gradRightAllowCal(event)">Allow</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="cal-modal" id="cal-disconnect-modal" hidden>
+    <div class="cal-modal-backdrop" data-close-disconnect></div>
+    <div class="cal-modal-card cal-disconnect-card" role="dialog" aria-labelledby="cal-disconnect-title" aria-modal="true">
+      <div class="cal-modal-head">
+        <h2 id="cal-disconnect-title">Disconnect Cal.com?</h2>
+        <button type="button" class="icon-btn" data-close-disconnect aria-label="Close">
+          <span class="material-symbols-rounded" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <p class="cal-disconnect-warn">Students will not be able to book from your live hours until you connect again. Hours saved on this page stay here.</p>
+      <div class="cal-disconnect-actions">
+        <button type="button" class="btn btn-secondary" data-close-disconnect>Cancel</button>
+        <button type="button" class="btn btn-danger" id="cal-disconnect-confirm">Disconnect</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="cal-modal" id="reschedule-modal" hidden>
+    <div class="cal-modal-backdrop" data-close-reschedule></div>
+    <div class="cal-modal-card" role="dialog" aria-labelledby="reschedule-title" aria-modal="true">
+      <div class="cal-modal-head">
+        <h2 id="reschedule-title">Reschedule policy</h2>
+        <button type="button" class="icon-btn" data-close-reschedule aria-label="Close">
+          <span class="material-symbols-rounded" aria-hidden="true">close</span>
+        </button>
+      </div>
+
+      <div class="cal-modal-section">
+        <p class="cal-modal-label">How can students initiate a reschedule</p>
+        <div class="cal-choice-row" id="reschedule-mode">
+          <button type="button" class="cal-choice active" data-value="request">Request reschedule</button>
+          <button type="button" class="cal-choice" data-value="direct">Directly reschedule</button>
+        </div>
+      </div>
+
+      <div class="cal-modal-section">
+        <p class="cal-modal-label">Minimum notice before rescheduling a meet</p>
+        <div class="cal-choice-row" id="reschedule-notice">
+          <button type="button" class="cal-choice" data-value="30m">30 mins</button>
+          <button type="button" class="cal-choice" data-value="8h">8 hrs</button>
+          <button type="button" class="cal-choice active" data-value="24h">24 hrs</button>
+          <button type="button" class="cal-choice" data-value="anytime">Anytime</button>
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-primary" id="update-policy">Update Policy</button>
+    </div>
+  </div>
+
+  <div class="cal-modal" id="block-modal" hidden>
+    <div class="cal-modal-backdrop" data-close-block></div>
+    <div class="cal-modal-card cal-modal-card-wide" role="dialog" aria-labelledby="block-title" aria-modal="true">
+      <div class="cal-modal-head">
+        <h2 id="block-title">Date override</h2>
+        <button type="button" class="icon-btn" data-close-block aria-label="Close">
+          <span class="material-symbols-rounded" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <div class="block-cal-toolbar">
+        <button type="button" class="icon-btn" id="block-prev" aria-label="Previous month">
+          <span class="material-symbols-rounded" aria-hidden="true">chevron_left</span>
+        </button>
+        <strong id="block-month-label">September 2026</strong>
+        <button type="button" class="icon-btn" id="block-next" aria-label="Next month">
+          <span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>
+        </button>
+      </div>
+      <div class="block-cal" id="block-cal"></div>
+      <div class="cal-modal-section">
+        <p class="cal-modal-label">On selected dates</p>
+        <div class="cal-choice-row" id="override-mode">
+          <button type="button" class="cal-choice active" data-value="unavailable">Unavailable</button>
+          <button type="button" class="cal-choice" data-value="hours">Set hours</button>
+        </div>
+        <div class="sched-slot override-hours" id="override-hours" hidden></div>
+      </div>
+      <div class="block-modal-actions">
+        <button type="button" class="btn btn-secondary btn-sm" data-close-block>Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="confirm-block-dates">Add override</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="unsaved-bar" id="unsaved-bar" hidden>
+    <div class="unsaved-bar-inner">
+      <div class="unsaved-bar-text">
+        <strong>You have unsaved changes</strong>
+        <span>Discard restores your last saved profile and cancels edits still in progress.</span>
+      </div>
+      <div class="unsaved-bar-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="discard-btn">Discard changes</button>
+        <button type="button" class="btn btn-primary btn-sm" id="save-btn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/session.js?v=events1"></script>
+  <script src="js/cal-config.js?v=calauth8"></script>
+  <script src="js/people-db.js?v=txn1"></script>
+  <script src="js/calls-db.js?v=calcom1"></script>
+  <script src="js/calendar-db.js?v=calcom3"></script>
+  <script src="js/cal-com.js?v=persist2"></script>
+  <script src="js/shell.js?v=mobile1"></script>
+  <script src="js/calendar-page.js?v=slotadd1"></script>
+</body>
+</html>

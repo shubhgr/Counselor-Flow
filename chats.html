@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chats — GradRight Counselor</title>
+  <link rel="stylesheet" href="css/styles.css?v=seticon1" />
+  <link rel="stylesheet" href="css/mobile.css?v=mobile1" />
+</head>
+<body data-page="chats">
+  <div class="app">
+    <aside id="app-sidebar" class="sidebar" aria-label="Main navigation"></aside>
+
+    <div class="main">
+      <div class="content content-chat">
+        <div class="pending-banner" data-unverified-only>
+          <div class="icon"><span class="material-symbols-rounded" aria-hidden="true">schedule</span></div>
+          <div>
+            <h3>Pending admin approval</h3>
+            <p>Chats stay empty until GradRight verifies you. Threads appear after students connect.</p>
+          </div>
+          <a class="btn btn-secondary btn-sm" href="dashboard.html">Check status</a>
+        </div>
+
+        <div class="chat-layout" id="chat-workspace">
+          <aside class="chat-list">
+            <div class="chat-list-head">
+              <input type="search" class="people-search" id="chat-search" placeholder="Search conversations…" />
+              <div class="filter-menu-wrap" id="chat-filter-wrap">
+                <button type="button" class="chip-btn chip-btn-icon" id="chat-filter-btn" title="Filter" aria-expanded="false">
+                  <span class="material-symbols-rounded" aria-hidden="true">tune</span>
+                </button>
+                <div class="filter-menu people-filter-menu" id="chat-filter-menu" hidden>
+                  <button type="button" class="filter-option active" data-role="all">All</button>
+                  <button type="button" class="filter-option" data-role="student">Students</button>
+                  <button type="button" class="filter-option" data-role="parent">Parents</button>
+                </div>
+              </div>
+            </div>
+            <div class="chat-threads gr-scroll" id="chat-threads"></div>
+          </aside>
+
+          <section class="chat-pane">
+            <div class="chat-pane-head">
+              <button type="button" class="chat-peer" id="open-student" title="View student details">
+                <div class="avatar" id="pane-avatar">AR</div>
+                <div class="meta">
+                  <strong id="pane-name">Aarav Reddy</strong>
+                  <span id="pane-sub">Student</span>
+                </div>
+                <span class="material-symbols-rounded chat-peer-chevron" aria-hidden="true">chevron_right</span>
+              </button>
+              <div class="chat-empty-head" id="chat-empty-head" hidden>
+                <strong>Chats</strong>
+                <span>No conversation yet</span>
+              </div>
+            </div>
+            <div class="chat-booking-bar" id="chat-booking-bar" hidden></div>
+            <div class="messages gr-scroll" id="pane-messages"></div>
+            <form class="chat-compose" id="chat-compose" action="#" onsubmit="return false;">
+              <input
+                type="text"
+                id="compose-input"
+                placeholder="Write a message…"
+                data-connect-action
+                data-locked-placeholder="Messaging unlocks after verification"
+              />
+              <button class="btn btn-primary btn-sm btn-icon" type="submit" data-connect-action>
+                <span class="material-symbols-rounded" aria-hidden="true">send</span>
+                Send
+              </button>
+            </form>
+          </section>
+          <aside class="community-profile-panel" id="person-panel" hidden aria-label="Person profile">
+            <div class="cpp-toolbar">
+              <strong class="cpp-title" id="person-panel-title">Profile</strong>
+              <button type="button" class="icon-btn" id="person-panel-close" title="Close" aria-label="Close">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+              </button>
+            </div>
+            <div class="cpp-body" id="person-panel-body"></div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/session.js?v=pending1"></script>
+  <script src="js/people-db.js"></script>
+  <script src="js/calls-db.js"></script>
+  <script src="js/safety.js"></script>
+  <script src="js/shell.js?v=mobile1"></script>
+  <script>
+    const STUDENTS = {
+      aarav: {
+        id: 'aarav',
+        name: 'Aarav Reddy',
+        initials: 'AR',
+        role: 'student',
+        unread: true,
+        amber: false,
+        time: '12:14 PM',
+        preview: 'Shared my shortlist draft for USA CS…',
+        sub: 'Student',
+        sortAt: '2026-09-23 12:14',
+        lastTouch: { type: 'call', label: 'Last meet · Today 11:30 AM · 32 min' },
+        messages: [
+          { date: 'Mon, 21 Sep', who: 'them', text: 'Hi Priya, starting my USA CS shortlist. Can we align on reach vs safety?', time: '4:05 PM' },
+          { date: 'Mon, 21 Sep', who: 'me', text: 'Absolutely. Share GPA, GRE, and preferred regions first. I’ll sketch a first pass.', time: '4:18 PM' },
+          { date: 'Wed, 23 Sep', who: 'them', text: 'Hi Priya, I uploaded my shortlist draft. Mostly California + northeast schools.', time: '10:12 AM' },
+          { date: 'Wed, 23 Sep', who: 'me', text: 'Got it. Looking at GPA and GRE, I’d add 2 safer matches and pull one reach that needs a stronger SOP angle.', time: '10:18 AM' },
+          { date: 'Wed, 23 Sep', who: 'them', text: 'Shared my shortlist draft for USA CS. Can we walk through it on today’s meet?', time: '10:42 AM' },
+          { date: 'Wed, 23 Sep', who: 'me', text: 'Perfect. Bring your why-this-program notes for each school. See you at 11:30.', time: '10:44 AM' },
+          { date: 'Wed, 23 Sep', who: 'system', text: 'Meet ended · 32 min' },
+          { date: 'Wed, 23 Sep', who: 'them', text: 'That meet helped a lot. I’ll revise the UC Davis and Northeastern rows tonight.', time: '12:08 PM' },
+          { date: 'Wed, 23 Sep', who: 'me', text: 'Great. Ping me when the updated sheet is ready and we’ll lock the final 10.', time: '12:14 PM' },
+        ],
+      },
+      meera: {
+        id: 'meera',
+        name: 'Meera Kapoor',
+        initials: 'MK',
+        role: 'student',
+        amber: true,
+        time: 'Yesterday, 4:35 PM',
+        preview: 'Thanks for the SOP notes!',
+        sub: 'Student',
+        sortAt: '2026-09-22 16:35',
+        lastTouch: { type: 'meeting', label: 'Last meeting · Mon 5:00 PM · 45 min' },
+        messages: [
+          { date: 'Fri, 18 Sep', who: 'them', text: 'Draft 1 of my Warwick SOP is in the folder.', time: '11:20 AM' },
+          { date: 'Fri, 18 Sep', who: 'me', text: 'Received. I’ll mark structure and voice notes by EOD.', time: '11:35 AM' },
+          { date: 'Mon, 21 Sep', who: 'system', text: 'Meet ended · 45 min' },
+          { date: 'Tue, 22 Sep', who: 'them', text: 'I revised the opening paragraph based on your comments.', time: '4:10 PM' },
+          { date: 'Tue, 22 Sep', who: 'me', text: 'Much clearer. Trim the generic “passionate about business” line and add one specific Warwick module.', time: '4:22 PM' },
+          { date: 'Tue, 22 Sep', who: 'them', text: 'Thanks for the SOP notes!', time: '4:35 PM' },
+          { date: 'Tue, 22 Sep', who: 'me', text: 'Send draft 2 by Thursday and we’ll do a final polish before the deadline.', time: '4:41 PM' },
+        ],
+      },
+      tanvi: {
+        id: 'tanvi',
+        name: 'Tanvi Nanda',
+        initials: 'TN',
+        role: 'student',
+        unread: true,
+        amber: false,
+        time: '21 September, 9:22 AM',
+        preview: 'Can we move tomorrow’s meet?',
+        sub: 'Student',
+        sortAt: '2026-09-21 09:22',
+        lastTouch: { type: 'call', label: 'Last meet · Sun 6:15 PM · 28 min' },
+        messages: [
+          { date: 'Sun, 20 Sep', who: 'system', text: 'Meet ended · 28 min' },
+          { date: 'Sun, 20 Sep', who: 'me', text: 'Summary sent. Ontario college → university transfer looks strongest for your portfolio.', time: '6:22 PM' },
+          { date: 'Mon, 21 Sep', who: 'them', text: 'Can we move tomorrow’s meet? I have a studio review overlapping.', time: '9:14 AM' },
+          { date: 'Mon, 21 Sep', who: 'me', text: 'Of course. Thursday 5:30 PM works on my side. I’ll update the booking.', time: '9:20 AM' },
+          { date: 'Mon, 21 Sep', who: 'them', text: 'Perfect, thank you!', time: '9:22 AM' },
+        ],
+      },
+      jia: {
+        id: 'jia',
+        name: 'Jia Das',
+        initials: 'JD',
+        role: 'student',
+        amber: true,
+        time: '20 September, 6:31 PM',
+        preview: 'Sent my IELTS scorecard.',
+        sub: 'Student',
+        sortAt: '2026-09-20 18:31',
+        lastTouch: { type: 'meeting', label: 'Last meeting · Sat 3:00 PM · 40 min' },
+        messages: [
+          { date: 'Sat, 19 Sep', who: 'system', text: 'Meet ended · 40 min' },
+          { date: 'Sat, 19 Sep', who: 'me', text: 'Checklist shared. Focus on financials + CoE next.', time: '3:12 PM' },
+          { date: 'Sun, 20 Sep', who: 'them', text: 'Sent my IELTS scorecard. Overall 7.5.', time: '6:02 PM' },
+          { date: 'Sun, 20 Sep', who: 'me', text: 'Great score, enough for the programs on your list. Next we’ll map CAS timelines.', time: '6:18 PM' },
+          { date: 'Sun, 20 Sep', who: 'them', text: 'Should I book the biometrics slot now or wait for the offer letter?', time: '6:25 PM' },
+          { date: 'Sun, 20 Sep', who: 'me', text: 'Wait for the offer. Biometrics after CoE keeps the window clean.', time: '6:31 PM' },
+        ],
+      },
+      kabir: {
+        id: 'kabir',
+        name: 'Kabir Malhotra',
+        initials: 'KM',
+        role: 'student',
+        unread: true,
+        amber: false,
+        time: '2:15 PM',
+        preview: 'LOR draft from my professor is ready.',
+        sub: 'Student',
+        sortAt: '2026-09-23 14:15',
+        lastTouch: { type: 'call', label: 'Last meet · Today 1:40 PM · 22 min' },
+        messages: [
+          { date: 'Tue, 22 Sep', who: 'them', text: 'Thinking TU Munich + RWTH. Do I need German A2 before apply?', time: '7:40 PM' },
+          { date: 'Tue, 22 Sep', who: 'me', text: 'Not for these English-taught tracks, but A1/A2 helps visa + living. Let’s prioritize apps first.', time: '7:55 PM' },
+          { date: 'Wed, 23 Sep', who: 'system', text: 'Meet ended · 22 min' },
+          { date: 'Wed, 23 Sep', who: 'them', text: 'LOR draft from my professor is ready.', time: '2:15 PM' },
+          { date: 'Wed, 23 Sep', who: 'me', text: 'Upload it. I’ll check specificity on projects and coursework before we send.', time: '2:21 PM' },
+        ],
+      },
+      ananya: {
+        id: 'ananya',
+        name: 'Ananya Iyer',
+        initials: 'AI',
+        role: 'parent',
+        unread: true,
+        amber: true,
+        time: 'Yesterday, 7:12 PM',
+        preview: 'Scholarship essay v2 attached.',
+        sub: 'Parent',
+        sortAt: '2026-09-22 19:12',
+        lastTouch: { type: 'meeting', label: 'Last meeting · Yesterday 4:30 PM · 35 min' },
+        messages: [
+          { date: 'Sun, 20 Sep', who: 'them', text: 'Can we target Fulbright + university aid together?', time: '1:05 PM' },
+          { date: 'Sun, 20 Sep', who: 'me', text: 'Yes. Separate narratives though. Fulbright is impact; uni aid is fit + need.', time: '1:20 PM' },
+          { date: 'Tue, 22 Sep', who: 'system', text: 'Meet ended · 35 min' },
+          { date: 'Tue, 22 Sep', who: 'them', text: 'Scholarship essay v2 attached.', time: '6:48 PM' },
+          { date: 'Tue, 22 Sep', who: 'me', text: 'Stronger. Cut the second anecdote and expand the community-health outcome metrics.', time: '7:05 PM' },
+          { date: 'Tue, 22 Sep', who: 'them', text: 'Will revise tonight and send v3.', time: '7:12 PM' },
+        ],
+      },
+      rohan: {
+        id: 'rohan',
+        name: 'Rohan Desai',
+        initials: 'RD',
+        role: 'student',
+        amber: false,
+        time: '18 September, 11:55 AM',
+        preview: 'Mock visa interview went well?',
+        sub: 'Student',
+        sortAt: '2026-09-18 11:55',
+        lastTouch: { type: 'call', label: 'Last meet · Fri 11:00 AM · 38 min' },
+        messages: [
+          { date: 'Thu, 17 Sep', who: 'me', text: 'Bring study plan + ties to home for the mock. We’ll stress-test weak answers.', time: '5:30 PM' },
+          { date: 'Fri, 18 Sep', who: 'system', text: 'Meet ended · 38 min' },
+          { date: 'Fri, 18 Sep', who: 'them', text: 'Mock visa interview went well?', time: '11:42 AM' },
+          { date: 'Fri, 18 Sep', who: 'me', text: 'Much better on funding. Practice the “why Canada not USA” answer once more. It still drifts.', time: '11:50 AM' },
+          { date: 'Fri, 18 Sep', who: 'them', text: 'Noted. I’ll record myself and send the clip.', time: '11:55 AM' },
+        ],
+      },
+    };
+
+    const UNREAD_SEED = ['aarav', 'kabir', 'ananya', 'tanvi', 'sohan', 'ravi'];
+    const MONTHS = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec',
+    ];
+
+    function ordinal(n) {
+      const v = n % 100;
+      if (v >= 11 && v <= 13) return n + 'th';
+      if (v % 10 === 1) return n + 'st';
+      if (v % 10 === 2) return n + 'nd';
+      if (v % 10 === 3) return n + 'rd';
+      return n + 'th';
+    }
+
+    function parseStamp(stamp) {
+      if (window.GradRightDB && GradRightDB.parseStamp) return GradRightDB.parseStamp(stamp);
+      if (!stamp) return null;
+      const m = String(stamp).match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/);
+      if (!m) return null;
+      return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4] || 0), Number(m[5] || 0));
+    }
+
+    function formatClock(d) {
+      if (window.GradRightDB && GradRightDB.formatTime) return GradRightDB.formatTime(d);
+      const h = d.getHours();
+      const ap = h >= 12 ? 'PM' : 'AM';
+      return (h % 12 || 12) + ':' + String(d.getMinutes()).padStart(2, '0') + ' ' + ap;
+    }
+
+    function formatThreadTime(stamp) {
+      const d = parseStamp(stamp);
+      if (!d) return stamp || '';
+      const today = (window.GradRightDB && GradRightDB.today) || new Date(2026, 8, 23, 18, 0);
+      const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const d0 = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const diff = Math.round((t0 - d0) / 86400000);
+      const time = formatClock(d);
+      if (diff === 0) return time;
+      if (diff === 1) return 'Yesterday, ' + time;
+      return ordinal(d.getDate()) + ' ' + MONTHS[d.getMonth()] + ', ' + time;
+    }
+
+    function sortValue(stamp) {
+      const d = parseStamp(stamp);
+      return d ? d.getTime() : 0;
+    }
+
+    function threadFromPerson(p) {
+      const first = (p.name || 'there').split(' ')[0];
+      const source = p.source || p.lastSource || 'your profile';
+      const stamp = p.lastView || p.connectedOn;
+      const whenLabel = formatThreadTime(stamp);
+      const dateLabel = whenLabel.split(',')[0] || 'Recently';
+      const timeLabel = whenLabel.indexOf(', ') >= 0 ? whenLabel.split(', ').slice(1).join(', ') : '';
+      return {
+        id: p.id,
+        name: p.name,
+        initials: p.initials,
+        role: p.role === 'parent' ? 'parent' : 'student',
+        amber: !!p.amber,
+        time: whenLabel,
+        preview: 'Hi Priya, I found you via ' + source + '.',
+        sub: (p.role === 'parent' ? 'Parent' : 'Student') + (p.source ? ' · Connected via ' + p.source : ''),
+        lastTouch: p.connectedOn
+          ? { type: 'connect', label: 'Connected · ' + formatThreadTime(p.connectedOn) }
+          : null,
+        sortAt: stamp || '',
+        messages: [
+          { date: dateLabel, who: 'system', text: 'Connected via ' + source },
+          { date: dateLabel, who: 'them', text: 'Hi Priya, I found you via ' + source + '. Can we talk through next steps?', time: timeLabel },
+          { date: dateLabel, who: 'me', text: 'Hi ' + first + '. Welcome. Tell me your target country and intake and I’ll take it from there.', time: timeLabel },
+        ],
+      };
+    }
+
+    (function mergePeopleDb() {
+      const db = window.GradRightDB;
+      if (!db) return;
+      (db.connected || []).forEach(function (p) {
+        if (!STUDENTS[p.id]) STUDENTS[p.id] = threadFromPerson(p);
+        else {
+          STUDENTS[p.id].name = p.name;
+          STUDENTS[p.id].initials = p.initials;
+          STUDENTS[p.id].role = p.role === 'parent' ? 'parent' : (STUDENTS[p.id].role || 'student');
+          STUDENTS[p.id].amber = !!p.amber;
+          if (!STUDENTS[p.id].sortAt) {
+            STUDENTS[p.id].sortAt = p.lastView || p.connectedOn || '';
+          }
+        }
+      });
+      UNREAD_SEED.forEach(function (id) {
+        if (STUDENTS[id]) STUDENTS[id].unread = true;
+      });
+      Object.keys(STUDENTS).forEach(function (id) {
+        if (STUDENTS[id].sortAt) STUDENTS[id].time = formatThreadTime(STUDENTS[id].sortAt);
+      });
+      if (STUDENTS.aarav) {
+        var latest = 0;
+        Object.keys(STUDENTS).forEach(function (id) {
+          if (id === 'aarav') return;
+          latest = Math.max(latest, sortValue(STUDENTS[id].sortAt));
+        });
+        var pin = latest ? new Date(latest + 60000) : new Date(2026, 8, 23, 18, 0);
+        STUDENTS.aarav.sortAt =
+          pin.getFullYear() +
+          '-' +
+          String(pin.getMonth() + 1).padStart(2, '0') +
+          '-' +
+          String(pin.getDate()).padStart(2, '0') +
+          ' ' +
+          String(pin.getHours()).padStart(2, '0') +
+          ':' +
+          String(pin.getMinutes()).padStart(2, '0');
+        STUDENTS.aarav.time = formatThreadTime(STUDENTS.aarav.sortAt);
+      }
+    })();
+
+    const order = Object.keys(STUDENTS).sort(function (a, b) {
+      return sortValue(STUDENTS[b].sortAt) - sortValue(STUDENTS[a].sortAt);
+    });
+
+    function isThreadBlocked(id) {
+      const s = STUDENTS[id];
+      return !!(
+        s &&
+        window.GradRightSafety &&
+        GradRightSafety.isBlocked({ id: id, name: s.name })
+      );
+    }
+
+    function firstOpenThread() {
+      for (let i = 0; i < order.length; i++) {
+        if (!isThreadBlocked(order[i])) return order[i];
+      }
+      return '';
+    }
+
+    const params = new URLSearchParams(location.search);
+    let activeId = params.get('id') && STUDENTS[params.get('id')] ? params.get('id') : 'aarav';
+    if (isThreadBlocked(activeId)) activeId = firstOpenThread() || activeId;
+
+    const threadsEl = document.getElementById('chat-threads');
+    const messagesEl = document.getElementById('pane-messages');
+    let roleFilter = 'all';
+
+    function isPending() {
+      if (window.GradRightSession && GradRightSession.get) {
+        const s = GradRightSession.get();
+        if (s) return !s.verified;
+      }
+      return !!(document.body && document.body.classList.contains('is-unverified'));
+    }
+
+    function emptyNote(title, text) {
+      return (
+        '<div class="dash-empty"><strong>' +
+        title +
+        '</strong><span>' +
+        text +
+        '</span></div>'
+      );
+    }
+
+    function renderEmptyChat() {
+      threadsEl.innerHTML = emptyNote(
+        'No chats yet',
+        'Conversations show up here after you are approved.'
+      );
+      const avatar = document.getElementById('pane-avatar');
+      const name = document.getElementById('pane-name');
+      const sub = document.getElementById('pane-sub');
+      if (avatar) {
+        avatar.textContent = '';
+        avatar.className = 'avatar';
+      }
+      if (name) name.textContent = 'No conversation';
+      if (sub) sub.textContent = 'Nothing to show yet';
+      const peer = document.getElementById('open-student');
+      if (peer) {
+        peer.hidden = true;
+        peer.removeAttribute('data-id');
+      }
+      const emptyHead = document.getElementById('chat-empty-head');
+      if (emptyHead) emptyHead.hidden = false;
+      messagesEl.innerHTML = emptyNote(
+        'No messages yet',
+        'Threads open after a student connects.'
+      );
+      const bar = document.getElementById('chat-booking-bar');
+      if (bar) {
+        bar.hidden = true;
+        bar.innerHTML = '';
+        bar.classList.remove('is-live');
+      }
+      const compose = document.getElementById('chat-compose');
+      if (compose) compose.hidden = true;
+      syncNavBadge();
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function roleBadge(role) {
+      return role === 'parent'
+        ? '<span class="role-badge parent">Parent</span>'
+        : '<span class="role-badge student">Student</span>';
+    }
+
+    function unreadCount() {
+      if (isPending()) return 0;
+      return order.filter(function (id) {
+        return STUDENTS[id] && STUDENTS[id].unread && !isThreadBlocked(id);
+      }).length;
+    }
+
+    function syncNavBadge() {
+      const item = document.querySelector('[data-nav="chats"]');
+      if (!item) return;
+      let badge = item.querySelector('.badge-count');
+      const n = unreadCount();
+      if (n > 0) {
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'badge-count';
+          item.appendChild(badge);
+        }
+        badge.textContent = String(n);
+      } else if (badge) {
+        badge.remove();
+      }
+    }
+
+    function renderThreads(filter) {
+      if (isPending()) {
+        renderEmptyChat();
+        return;
+      }
+      const compose = document.getElementById('chat-compose');
+      if (compose) compose.hidden = false;
+      const peer = document.getElementById('open-student');
+      if (peer) peer.hidden = false;
+      const emptyHead = document.getElementById('chat-empty-head');
+      if (emptyHead) emptyHead.hidden = true;
+      const q = (filter || document.getElementById('chat-search').value || '').trim().toLowerCase();
+      const keepScroll = threadsEl.scrollTop;
+      threadsEl.innerHTML = '';
+      order.forEach((id) => {
+        const s = STUDENTS[id];
+        if (window.GradRightSafety && GradRightSafety.isBlocked({ id: id, name: s.name })) return;
+        const role = s.role === 'parent' ? 'parent' : 'student';
+        if (roleFilter !== 'all' && role !== roleFilter) return;
+        if (q && !s.name.toLowerCase().includes(q) && !s.preview.toLowerCase().includes(q) && role.indexOf(q) < 0) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'chat-thread' + (id === activeId ? ' active' : '') + (s.unread ? ' unread' : '');
+        btn.dataset.id = id;
+        btn.innerHTML =
+          '<div class="avatar' +
+          (s.amber ? ' amber' : '') +
+          '">' +
+          escapeHtml(s.initials) +
+          '</div><div class="preview"><div class="preview-top"><div class="preview-name"><span>' +
+          escapeHtml(s.name) +
+          '</span>' +
+          roleBadge(role) +
+          '</div><time>' +
+          escapeHtml(s.time) +
+          '</time></div><p>' +
+          escapeHtml(s.preview) +
+          '</p></div>' +
+          (s.unread ? '<span class="chat-unread-dot" aria-hidden="true"></span>' : '');
+        btn.addEventListener('click', () => selectStudent(id));
+        threadsEl.appendChild(btn);
+      });
+      threadsEl.scrollTop = keepScroll;
+      syncNavBadge();
+    }
+
+    function markThreadActive(id) {
+      let activeBtn = null;
+      threadsEl.querySelectorAll('.chat-thread').forEach(function (btn) {
+        const isActive = btn.dataset.id === id;
+        btn.classList.toggle('active', isActive);
+        if (!isActive) return;
+        activeBtn = btn;
+        btn.classList.remove('unread');
+        const dot = btn.querySelector('.chat-unread-dot');
+        if (dot) dot.remove();
+      });
+      if (activeBtn && typeof activeBtn.scrollIntoView === 'function') {
+        activeBtn.scrollIntoView({ block: 'nearest' });
+      }
+      syncNavBadge();
+    }
+
+    function renderMessages(student) {
+      let lastDate = null;
+      const parts = [];
+      messagesWithBookings(student).forEach((m) => {
+        if (m.date && m.date !== lastDate) {
+          lastDate = m.date;
+          parts.push('<div class="chat-date-sep"><span>' + escapeHtml(m.date) + '</span></div>');
+        }
+        if (m.who === 'system') {
+          parts.push(
+            '<div class="chat-event"><span class="material-symbols-rounded" aria-hidden="true">' +
+              (m.text.toLowerCase().includes('meeting') ? 'event' : 'call') +
+              '</span>' +
+              escapeHtml(m.text) +
+              '</div>'
+          );
+          return;
+        }
+        parts.push(
+          '<div class="bubble ' +
+            m.who +
+            '">' +
+            escapeHtml(m.text) +
+            '<time>' +
+            escapeHtml(m.time || '') +
+            '</time></div>'
+        );
+      });
+      messagesEl.innerHTML = parts.join('');
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    const chatWorkspace = document.getElementById('chat-workspace');
+    const personPanel = document.getElementById('person-panel');
+    const personPanelBody = document.getElementById('person-panel-body');
+    const personPanelTitle = document.getElementById('person-panel-title');
+    let profileOpen = false;
+
+    function formatWhen(stamp) {
+      if (window.GradRightDB && GradRightDB.formatWhen) {
+        return GradRightDB.formatWhen(stamp, (window.GradRightDB && GradRightDB.today) || new Date(2026, 8, 23, 18, 0));
+      }
+      return stamp || '—';
+    }
+
+    function personCalls(id) {
+      return (window.GradRightCalls && GradRightCalls.forPerson && GradRightCalls.forPerson(id)) || [];
+    }
+
+    function bookingPhase(call) {
+      return (window.GradRightCalls && GradRightCalls.phase && GradRightCalls.phase(call)) || 'completed';
+    }
+
+    function callClock(call) {
+      return window.GradRightCalls && GradRightCalls.formatClock
+        ? GradRightCalls.formatClock(call.time)
+        : call.time;
+    }
+
+    function callDay(call) {
+      return window.GradRightCalls && GradRightCalls.dayLabel
+        ? GradRightCalls.dayLabel(call.day)
+        : call.day;
+    }
+
+    function callHint(call) {
+      if (bookingPhase(call) === 'ongoing' && window.GradRightCalls && GradRightCalls.liveLeftText) {
+        return GradRightCalls.liveLeftText(call);
+      }
+      return window.GradRightCalls && GradRightCalls.hint ? GradRightCalls.hint(call) : '';
+    }
+
+    function paneSubtitle(s) {
+      const person = (window.GradRightDB && GradRightDB.byId && GradRightDB.byId[s.id]) || {};
+      const role = s.role === 'parent' ? 'Parent' : 'Student';
+      const calls = personCalls(s.id);
+      const live = calls.filter(function (c) { return bookingPhase(c) === 'ongoing'; })[0];
+      const next = calls.filter(function (c) { return bookingPhase(c) === 'upcoming'; })[0];
+      if (live) return role + ' · Meet in progress';
+      if (next) return role + ' · Next · ' + callDay(next) + ' · ' + callClock(next);
+      if (person.source) return role + ' · Connected via ' + person.source;
+      return role;
+    }
+
+    function cleanSystemText(text) {
+      const raw = String(text || '');
+      if (!/call|meet|meeting|missed|connected/i.test(raw)) return raw;
+      const parts = raw.split(' · ');
+      if (parts.length > 2 && /min|progress|join|via/i.test(parts[1] || '')) {
+        return parts.slice(0, 2).join(' · ');
+      }
+      return raw;
+    }
+
+    function bookingEvent(call) {
+      const phase = bookingPhase(call);
+      const mins = Number(call.mins) || 30;
+      const date = callDay(call);
+      let text = 'Meet ended · ' + mins + ' min';
+      if (phase === 'ongoing') text = 'Meet in progress · ' + mins + ' min';
+      else if (phase === 'upcoming') text = 'Upcoming meet · ' + date + ' · ' + callClock(call);
+      else if (phase === 'missed') text = 'Missed meet · ' + mins + ' min';
+      return { date: date, who: 'system', text: text, bookingId: call.id };
+    }
+
+    function messagesWithBookings(student) {
+      const msgs = (student.messages || []).map(function (m) {
+        if (m.who !== 'system') return m;
+        return Object.assign({}, m, { text: cleanSystemText(m.text) });
+      });
+      personCalls(student.id).forEach(function (call) {
+        const phase = bookingPhase(call);
+        if (phase !== 'ongoing' && phase !== 'upcoming' && phase !== 'missed') return;
+        const ev = bookingEvent(call);
+        const exists = msgs.some(function (m) {
+          return m.who === 'system' && (m.bookingId === call.id || m.text === ev.text);
+        });
+        if (!exists) msgs.push(ev);
+      });
+      return msgs;
+    }
+
+    function renderBookingBar(id) {
+      const bar = document.getElementById('chat-booking-bar');
+      if (!bar) return;
+      const calls = personCalls(id);
+      const live = calls.filter(function (c) { return bookingPhase(c) === 'ongoing'; })[0];
+      const next = calls.filter(function (c) { return bookingPhase(c) === 'upcoming'; })[0];
+      const call = live || next;
+      if (!call) {
+        bar.hidden = true;
+        bar.innerHTML = '';
+        bar.classList.remove('is-live');
+        return;
+      }
+      const phase = bookingPhase(call);
+      bar.hidden = false;
+      bar.classList.toggle('is-live', phase === 'ongoing');
+      bar.innerHTML =
+        '<div class="chat-booking-copy"><strong>' +
+        (phase === 'ongoing' ? 'On a meet' : 'Next meet') +
+        '</strong><span' +
+        (phase === 'ongoing' ? ' data-live-left="' + escapeHtml(call.id) + '"' : '') +
+        '>' +
+        escapeHtml(callDay(call) + ' · ' + callClock(call) + ' · ' + callHint(call)) +
+        '</span></div><a class="dash-join" href="call.html?id=' +
+        encodeURIComponent(call.personId || id) +
+        '&from=chats">' +
+        (phase === 'ongoing' ? 'Join now' : 'Join') +
+        '</a>';
+    }
+
+    function renderBookings(id) {
+      const calls = personCalls(id);
+      if (!calls.length) return '<p class="hint-text">No bookings yet.</p>';
+      const clock = window.GradRightCalls && GradRightCalls.formatClock;
+      const dayLabel = window.GradRightCalls && GradRightCalls.dayLabel;
+      const hint = window.GradRightCalls && GradRightCalls.hint;
+      return (
+        '<div class="dash-agenda-group">' +
+        calls
+          .map(function (call) {
+            const phase = bookingPhase(call);
+            const cardPhase = phase === 'ongoing' ? 'live' : phase === 'completed' ? 'done' : phase;
+            const action =
+              phase === 'ongoing' || phase === 'upcoming'
+                ? '<a class="dash-join" href="call.html?id=' +
+                  encodeURIComponent(call.personId || id) +
+                  '&from=chats">' +
+                  (phase === 'ongoing' ? 'Join now' : 'Join') +
+                  '</a>'
+                : '<span class="dash-call-status' +
+                  (phase === 'missed' ? ' is-missed' : '') +
+                  '">' +
+                  (phase === 'missed' ? 'Missed' : 'Done') +
+                  '</span>';
+            return (
+              '<div class="dash-slot"><span class="dash-slot-time">' +
+              escapeHtml(clock ? clock(call.time) : call.time) +
+              '</span><div class="dash-slot-card' +
+              (cardPhase === 'done' ? ' is-done' : '') +
+              (cardPhase === 'missed' ? ' is-missed' : '') +
+              (cardPhase === 'live' ? ' is-live' : '') +
+              '"><div class="dash-call-main"><div class="dash-call-title"><strong>' +
+              escapeHtml(dayLabel ? dayLabel(call.day) : call.day) +
+              '</strong></div><span' +
+              (phase === 'ongoing' ? ' data-live-left="' + escapeHtml(call.id) + '"' : '') +
+              '>' +
+              escapeHtml(phase === 'ongoing' && window.GradRightCalls && GradRightCalls.liveLeftText
+                ? GradRightCalls.liveLeftText(call)
+                : hint
+                  ? hint(call)
+                  : '') +
+              '</span></div>' +
+              action +
+              '</div></div>'
+            );
+          })
+          .join('') +
+        '</div>'
+      );
+    }
+
+    function lastThemMessage(student) {
+      let last = null;
+      (student.messages || []).forEach(function (m) {
+        if (m.who === 'them') last = m;
+      });
+      return last;
+    }
+
+    function closePerson() {
+      profileOpen = false;
+      personPanel.hidden = true;
+      chatWorkspace.classList.remove('is-profile-open');
+      personPanelBody.innerHTML = '';
+      const url = new URL(location.href);
+      url.searchParams.delete('profile');
+      history.replaceState(null, '', url.pathname.split('/').pop() + url.search);
+    }
+
+    function renderPersonPanel(id) {
+      const s = STUDENTS[id];
+      if (!s) return;
+      const person = (window.GradRightDB && GradRightDB.byId && GradRightDB.byId[id]) || {};
+      const lastMsg = lastThemMessage(s);
+      const source = person.source || s.source || '';
+      const connectedOn = person.connectedOn || '';
+      const callsHtml = renderBookings(id);
+      const lastHtml = lastMsg
+        ? '<div class="c-activity-item compact"><p>' +
+          escapeHtml(lastMsg.text) +
+          '</p><div class="c-activity-meta">' +
+          escapeHtml([lastMsg.date, lastMsg.time].filter(Boolean).join(' · ')) +
+          '</div></div>'
+        : '<p class="hint-text">No messages yet.</p>';
+      const metaParts = [];
+      if (source) metaParts.push('Source · ' + escapeHtml(source));
+      if (connectedOn) metaParts.push('Connected · ' + escapeHtml(formatWhen(connectedOn)));
+      const email = person.email || s.email || '';
+
+      personPanelTitle.textContent = s.name;
+      personPanelBody.innerHTML =
+        '<div class="cpp-card">' +
+        '<div class="avatar lg' +
+        (s.amber ? ' amber' : '') +
+        '">' +
+        escapeHtml(s.initials) +
+        '</div>' +
+        '<h2>' +
+        escapeHtml(s.name) +
+        '</h2>' +
+        '<div class="c-profile-badge-row">' +
+        roleBadge(s.role) +
+        '</div>' +
+        (email
+          ? '<p class="c-profile-role">' + escapeHtml(email) + '</p>'
+          : '') +
+        (metaParts.length ? '<p class="people-panel-meta">' + metaParts.join('<br>') + '</p>' : '') +
+        '<div class="cpp-section"><h3>Bookings</h3>' +
+        callsHtml +
+        '</div>' +
+        '<div class="cpp-section"><h3>Last message</h3>' +
+        lastHtml +
+        '</div>' +
+        ((window.GradRightSafety &&
+          GradRightSafety.actionsHtml({
+            id: id,
+            name: s.name,
+            initials: s.initials,
+            role: s.role,
+            email: email,
+            amber: s.amber,
+          })) ||
+          '') +
+        '</div>';
+    }
+
+    function openPerson(id) {
+      if (!STUDENTS[id]) return;
+      profileOpen = true;
+      personPanel.hidden = false;
+      chatWorkspace.classList.add('is-profile-open');
+      renderPersonPanel(id);
+      const url = new URL(location.href);
+      url.searchParams.set('id', id);
+      url.searchParams.set('profile', '1');
+      history.replaceState(null, '', url.pathname.split('/').pop() + url.search);
+    }
+
+    function selectStudent(id) {
+      if (isPending()) {
+        renderEmptyChat();
+        return;
+      }
+      if (!STUDENTS[id] || isThreadBlocked(id)) return;
+      activeId = id;
+      const s = STUDENTS[id];
+      if (s.unread) s.unread = false;
+      document.getElementById('pane-avatar').textContent = s.initials;
+      document.getElementById('pane-avatar').className = 'avatar' + (s.amber ? ' amber' : '');
+      document.getElementById('pane-name').textContent = s.name;
+      document.getElementById('pane-sub').textContent = paneSubtitle(s);
+      document.getElementById('open-student').dataset.id = id;
+      renderMessages(s);
+      renderBookingBar(id);
+      markThreadActive(id);
+      if (profileOpen) {
+        openPerson(id);
+      } else {
+        history.replaceState(null, '', 'chats.html?id=' + encodeURIComponent(id));
+      }
+    }
+
+    document.getElementById('open-student').addEventListener('click', function () {
+      if (isPending()) return;
+      if (profileOpen) closePerson();
+      else openPerson(activeId);
+    });
+
+    document.getElementById('person-panel-close').addEventListener('click', closePerson);
+
+    document.getElementById('chat-search').addEventListener('input', () => {
+      renderThreads();
+    });
+
+    const chatFilterBtn = document.getElementById('chat-filter-btn');
+    const chatFilterMenu = document.getElementById('chat-filter-menu');
+    const chatFilterWrap = document.getElementById('chat-filter-wrap');
+
+    function syncChatFilter() {
+      chatFilterBtn.classList.toggle('on', roleFilter !== 'all');
+      chatFilterBtn.setAttribute('aria-expanded', chatFilterMenu.hidden ? 'false' : 'true');
+      chatFilterMenu.querySelectorAll('[data-role]').forEach(function (opt) {
+        opt.classList.toggle('active', opt.getAttribute('data-role') === roleFilter);
+      });
+    }
+
+    chatFilterBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      chatFilterMenu.hidden = !chatFilterMenu.hidden;
+      syncChatFilter();
+    });
+
+    chatFilterMenu.addEventListener('click', function (e) {
+      const opt = e.target.closest('[data-role]');
+      if (!opt) return;
+      roleFilter = opt.getAttribute('data-role') || 'all';
+      chatFilterMenu.hidden = true;
+      syncChatFilter();
+      renderThreads();
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!chatFilterWrap.contains(e.target)) {
+        chatFilterMenu.hidden = true;
+        syncChatFilter();
+      }
+    });
+
+    document.getElementById('chat-compose').addEventListener('submit', () => {
+      if (isPending()) return;
+      const input = document.getElementById('compose-input');
+      if (input.disabled) return;
+      const text = input.value.trim();
+      if (!text) return;
+      const todayLabel = 'Today';
+      STUDENTS[activeId].messages.push({
+        date: todayLabel,
+        who: 'me',
+        text: text,
+        time: 'Just now',
+      });
+      STUDENTS[activeId].preview = text;
+      STUDENTS[activeId].time = 'Just now';
+      input.value = '';
+      renderMessages(STUDENTS[activeId]);
+      renderThreads(document.getElementById('chat-search').value);
+    });
+
+    function tickChatLive() {
+      const nodes = document.querySelectorAll('[data-live-left]');
+      if (!nodes.length) return;
+      nodes.forEach(function (el) {
+        const id = el.getAttribute('data-live-left');
+        const call = personCalls(activeId).filter(function (c) { return c.id === id; })[0]
+          || personCalls('aarav').filter(function (c) { return c.id === id; })[0];
+        if (!call) return;
+        if (bookingPhase(call) !== 'ongoing') return;
+        const left = callHint(call);
+        el.textContent = el.closest('.chat-booking-bar')
+          ? callDay(call) + ' · ' + callClock(call) + ' · ' + left
+          : left;
+      });
+    }
+
+    setInterval(tickChatLive, 1000);
+
+    document.addEventListener('gradright:safety', function (e) {
+      var detail = (e && e.detail) || {};
+      if (detail.action === 'block') {
+        if (profileOpen) closePerson();
+        if (isThreadBlocked(activeId)) {
+          const next = firstOpenThread();
+          if (next) selectStudent(next);
+        }
+      }
+      renderThreads(document.getElementById('chat-search').value);
+    });
+
+    if (isPending()) {
+      renderEmptyChat();
+    } else {
+      renderThreads();
+      selectStudent(activeId);
+      if (params.get('profile') === '1') openPerson(activeId);
+    }
+  </script>
+</body>
+</html>

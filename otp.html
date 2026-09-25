@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Verify OTP — GradRight Counselor</title>
+  <link rel="stylesheet" href="css/styles.css?v=noshadow1" />
+  <link rel="stylesheet" href="css/mobile.css?v=mobile1" />
+</head>
+<body>
+  <div class="onboard-page otp-page">
+    <div class="otp-center">
+      <div class="panel otp-card">
+        <h1>Verify your mobile</h1>
+        <p class="otp-lead">
+          Enter the 6-digit OTP sent to
+        </p>
+        <p class="otp-phone" id="phone-label">+91 12345 67890</p>
+        <p class="hint-text" id="account-hint">Email is saved but not verified yet.</p>
+
+        <div class="otp-row">
+          <input type="text" maxlength="1" inputmode="numeric" aria-label="Digit 1" />
+          <input type="text" maxlength="1" inputmode="numeric" aria-label="Digit 2" />
+          <input type="text" maxlength="1" inputmode="numeric" aria-label="Digit 3" />
+          <input type="text" maxlength="1" inputmode="numeric" aria-label="Digit 4" />
+          <input type="text" maxlength="1" inputmode="numeric" aria-label="Digit 5" />
+          <input type="text" maxlength="1" inputmode="numeric" aria-label="Digit 6" />
+        </div>
+
+        <a class="btn btn-primary" href="#" id="verify-btn">Verify &amp; continue</a>
+        <p class="auth-footer">
+          Didn’t get it? <a href="#">Resend OTP</a>
+          · <a href="index.html">Change number</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/session.js?v=auth-path1"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const rawPhone = params.get('phone') || '1234567890';
+    const name = params.get('name') || '';
+    const email = params.get('email') || '';
+    const isLogin = params.get('mode') === 'login';
+    const account = GradRightSession.resolveAccount(rawPhone, { verified: isLogin, name: name, email: email });
+
+    document.getElementById('phone-label').textContent = account.phoneDisplay;
+    document.getElementById('account-hint').textContent = isLogin
+      ? 'Log in opens the live counselor dashboard.'
+      : 'New accounts stay pending until admin approval.';
+
+    document.getElementById('verify-btn').addEventListener('click', (e) => {
+      e.preventDefault();
+      GradRightSession.set(account.phone, {
+        name: name || account.name,
+        email: email || account.email,
+        verified: isLogin,
+      });
+
+      location.href = isLogin ? 'dashboard.html' : 'onboarding.html';
+    });
+
+    const inputs = [...document.querySelectorAll('.otp-row input')];
+    inputs.forEach((input, i) => {
+      input.addEventListener('input', () => {
+        input.value = input.value.replace(/\D/g, '').slice(0, 1);
+        if (input.value && i < inputs.length - 1) inputs[i + 1].focus();
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !input.value && i > 0) inputs[i - 1].focus();
+      });
+    });
+    inputs[0].focus();
+  </script>
+</body>
+</html>

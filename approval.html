@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Awaiting approval — GradRight Counselor</title>
+  <link rel="stylesheet" href="css/styles.css?v=noshadow1" />
+  <link rel="stylesheet" href="css/mobile.css?v=mobile1" />
+</head>
+<body>
+  <div class="onboard-wrap" style="padding-top:3rem;">
+    <div class="panel" style="text-align:center;padding:2rem 1.5rem;">
+      <div class="avatar lg" style="margin:0 auto 1rem;">PS</div>
+      <h1 style="font-size:1.5rem;font-weight:650;letter-spacing:-0.03em;margin-bottom:0.4rem;">
+        Ready for the marketplace — waiting on admin
+      </h1>
+      <p style="color:var(--muted);max-width:28rem;margin:0 auto 1.5rem;font-size:0.92rem;">
+        After verification your listing goes live: students browse, get recommended you,
+        and pay your connect fee. Until then the marketplace card stays hidden.
+      </p>
+      <p class="hint-text" style="margin-bottom:1.25rem;">
+        Demo · log in to see the live dashboard, or sign up to stay pending
+      </p>
+      <div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;">
+        <a class="btn btn-secondary btn-sm" href="profile.html?tab=preview">Student preview</a>
+        <a class="btn btn-secondary btn-sm" href="marketplace.html">Student browse</a>
+        <a class="btn btn-primary btn-sm" href="#" id="simulate-approval">Simulate approval → Listed</a>
+      </div>
+    </div>
+  </div>
+  <script src="js/session.js?v=auth-path1"></script>
+  <script>
+    document.getElementById('simulate-approval').addEventListener('click', (e) => {
+      e.preventDefault();
+      const s = GradRightSession.get() || {};
+      GradRightSession.set(s.phone || '0987654321', Object.assign({}, s, { verified: true }));
+      location.href = 'dashboard.html';
+    });
+  </script>
+</body>
+</html>

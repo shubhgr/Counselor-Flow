@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Settings — GradRight Counselor</title>
+  <meta http-equiv="Cache-Control" content="no-cache" />
+  <link rel="stylesheet" href="css/styles.css?v=setnav7" />
+  <link rel="stylesheet" href="css/mobile.css?v=mobile1" />
+</head>
+<body data-page="settings" data-verified="true">
+  <div class="app">
+    <aside class="sidebar settings-rail" id="app-settings-nav" aria-label="Settings">
+      <a class="settings-back" id="settings-back" href="dashboard.html">
+        <span class="ico material-symbols-rounded" data-icon="arrow_back" aria-hidden="true">arrow_back</span>
+        <span class="nav-label-text">Back</span>
+      </a>
+      <nav class="settings-nav" id="settings-nav">
+        <a class="nav-item active" href="#notifications" data-settings-nav="notifications">
+          <span class="ico material-symbols-rounded" data-icon="notifications" aria-hidden="true">notifications</span>
+          <span class="nav-label-text">Notifications</span>
+        </a>
+        <a class="nav-item" href="#block" data-settings-nav="block">
+          <span class="ico material-symbols-rounded" data-icon="block" aria-hidden="true">block</span>
+          <span class="nav-label-text">Block</span>
+        </a>
+        <a class="nav-item" href="#report" data-settings-nav="report">
+          <span class="ico material-symbols-rounded" data-icon="flag" aria-hidden="true">flag</span>
+          <span class="nav-label-text">Report</span>
+        </a>
+        <a class="nav-item" href="#help" data-settings-nav="help">
+          <span class="ico material-symbols-rounded" data-icon="help" aria-hidden="true">help</span>
+          <span class="nav-label-text">Help</span>
+        </a>
+        <a class="nav-item" href="#account" data-settings-nav="account">
+          <span class="ico material-symbols-rounded" data-icon="manage_accounts" aria-hidden="true">manage_accounts</span>
+          <span class="nav-label-text">Account</span>
+        </a>
+      </nav>
+      <div class="sidebar-foot">
+        <a class="counselor-chip" href="profile.html">
+          <div class="avatar" data-session-initials>PS</div>
+          <div class="meta">
+            <strong data-session-name>Priya Sharma</strong>
+            <small id="settings-chip-status"><span class="status-dot verified"></span>Verified</small>
+          </div>
+        </a>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <h1>Settings</h1>
+      </header>
+
+      <div class="content">
+        <div class="settings-stack">
+            <section class="panel settings-section" id="notifications">
+              <h3>Notifications</h3>
+              <p>Choose what reaches you on desktop and email.</p>
+              <div class="setting-row">
+                <div>
+                  <strong>New booking requests</strong>
+                  <span>When a student books a service</span>
+                </div>
+                <button class="toggle on" type="button" aria-label="Toggle"></button>
+              </div>
+              <div class="setting-row">
+                <div>
+                  <strong>Chat messages</strong>
+                  <span>Desktop alerts for unread chats</span>
+                </div>
+                <button class="toggle on" type="button" aria-label="Toggle"></button>
+              </div>
+              <div class="setting-row">
+                <div>
+                  <strong>Incoming meets</strong>
+                  <span>Ring when a student starts a meet</span>
+                </div>
+                <button class="toggle on" type="button" aria-label="Toggle"></button>
+              </div>
+              <div class="setting-row">
+                <div>
+                  <strong>Community updates</strong>
+                  <span>Only after you’re verified</span>
+                </div>
+                <button class="toggle" type="button" aria-label="Toggle"></button>
+              </div>
+              <div class="setting-row">
+                <div>
+                  <strong>Admin approval status</strong>
+                  <span>Email when verification completes</span>
+                </div>
+                <button class="toggle on" type="button" aria-label="Toggle"></button>
+              </div>
+            </section>
+
+            <section class="panel settings-section" id="block">
+              <h3>Block</h3>
+              <p>Blocked people can’t book, chat, or meet you. Unblock them anytime.</p>
+              <div class="blocked-user-list" id="blocked-users"></div>
+            </section>
+
+            <section class="panel settings-section" id="report">
+              <h3>Report</h3>
+              <p>Flag inappropriate behavior to GradRight support.</p>
+              <div class="field">
+                <label for="report-name">Who are you reporting?</label>
+                <input type="text" id="report-name" placeholder="Name" />
+              </div>
+              <div class="field">
+                <label for="report-details">What happened?</label>
+                <textarea id="report-details" placeholder="Short description"></textarea>
+              </div>
+              <button class="btn btn-primary btn-sm" type="button" id="report-submit">Submit report</button>
+              <div class="blocked-user-list" id="report-history" style="margin-top:1.15rem;"></div>
+            </section>
+
+            <section class="panel settings-section" id="help">
+              <h3>Help</h3>
+              <p>Guides for counselors on GradRight desktop.</p>
+              <div class="list-item">
+                <div class="meta">
+                  <strong>How verification works</strong>
+                  <span>Admin review · what unlocks after approval</span>
+                </div>
+                <span class="pill muted">Guide</span>
+              </div>
+              <div class="list-item">
+                <div class="meta">
+                  <strong>Setting availability &amp; bookings</strong>
+                  <span>Per-day hours · reschedule · confirm</span>
+                </div>
+                <span class="pill muted">Guide</span>
+              </div>
+              <div class="list-item">
+                <div class="meta">
+                  <strong>Contact support</strong>
+                  <span>counselor-support@gradright.com</span>
+                </div>
+                <a class="btn btn-secondary btn-sm" href="mailto:counselor-support@gradright.com">Email</a>
+              </div>
+            </section>
+
+            <section class="panel settings-section" id="account">
+              <h3>Account</h3>
+              <p id="account-signed-in">Signed in as Priya Sharma</p>
+              <div class="setting-row">
+                <div>
+                  <strong>Log out of GradRight Counselor</strong>
+                  <span>Ends this desktop session</span>
+                </div>
+                <a class="btn btn-secondary btn-sm" href="index.html" id="logout-btn">Log out</a>
+              </div>
+            </section>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    document.querySelectorAll('.toggle').forEach((t) => {
+      t.addEventListener('click', () => t.classList.toggle('on'));
+    });
+  </script>
+  <script src="js/session.js"></script>
+  <script src="js/safety.js"></script>
+  <script src="js/shell.js?v=mobile1"></script>
+  <script>
+    (function () {
+      const s = GradRightSession.get();
+      const el = document.getElementById('account-signed-in');
+      if (s && el) {
+        const status = (window.GradRightShell && GradRightShell.isVerified())
+          ? 'Verified'
+          : (s.verified ? 'Verified' : 'Not verified');
+        el.textContent = `Signed in as ${s.name} · ${s.phoneDisplay} · ${status}`;
+      }
+      document.getElementById('logout-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        GradRightSession.clear();
+        location.href = 'index.html';
+      });
+
+      const blockedEl = document.getElementById('blocked-users');
+      const reportEl = document.getElementById('report-history');
+      const S = window.GradRightSafety;
+
+      function formatWhen(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      }
+
+      function renderBlocked() {
+        if (!blockedEl || !S) return;
+        const list = S.list();
+        if (!list.length) {
+          blockedEl.innerHTML =
+            '<div class="list-item"><div class="avatar">—</div><div class="meta">' +
+            '<strong>No blocked users</strong>' +
+            '<span>Blocked accounts will appear here</span></div></div>';
+          return;
+        }
+        blockedEl.innerHTML = list
+          .map(function (u) {
+            return (
+              '<div class="list-item">' +
+              '<div class="avatar' +
+              (u.amber ? ' amber' : '') +
+              '">' +
+              S.escapeHtml(u.initials) +
+              '</div><div class="meta"><strong>' +
+              S.escapeHtml(u.name) +
+              '</strong><span>' +
+              S.escapeHtml(S.roleLabel(u.role)) +
+              (u.blockedAt ? ' · Blocked ' + formatWhen(u.blockedAt) : '') +
+              '</span></div>' +
+              '<button type="button" class="btn btn-secondary btn-sm" data-safety="unblock" data-id="' +
+              S.escapeHtml(u.id) +
+              '">Unblock</button></div>'
+            );
+          })
+          .join('');
+      }
+
+      function renderReports() {
+        if (!reportEl || !S) return;
+        const list = S.reports();
+        if (!list.length) {
+          reportEl.innerHTML = '';
+          return;
+        }
+        reportEl.innerHTML = list
+          .map(function (r) {
+            return (
+              '<div class="list-item"><div class="avatar' +
+              (r.amber ? ' amber' : '') +
+              '">' +
+              S.escapeHtml(r.initials) +
+              '</div><div class="meta"><strong>' +
+              S.escapeHtml(r.name) +
+              '</strong><span>' +
+              S.escapeHtml(S.reasonLabel(r.reason)) +
+              (r.details ? ' · ' + S.escapeHtml(r.details) : '') +
+              '</span></div></div>'
+            );
+          })
+          .join('');
+      }
+
+      function refreshSafety() {
+        renderBlocked();
+        renderReports();
+      }
+
+      document.getElementById('report-submit').addEventListener('click', function () {
+        if (!S) return;
+        const name = (document.getElementById('report-name').value || '').trim();
+        const details = (document.getElementById('report-details').value || '').trim();
+        if (!name) {
+          document.getElementById('report-name').focus();
+          return;
+        }
+        S.report({ id: 'c:' + name, name: name }, 'other', details);
+        document.getElementById('report-name').value = '';
+        document.getElementById('report-details').value = '';
+        refreshSafety();
+      });
+
+      document.addEventListener('gradright:safety', refreshSafety);
+      refreshSafety();
+
+      const nav = document.getElementById('settings-nav');
+      const links = nav ? Array.prototype.slice.call(nav.querySelectorAll('[data-settings-nav]')) : [];
+
+      function setActive(id) {
+        links.forEach(function (a) {
+          a.classList.toggle('active', a.getAttribute('data-settings-nav') === id);
+        });
+      }
+
+      function currentSection() {
+        const hash = (location.hash || '#notifications').slice(1);
+        if (document.getElementById(hash)) return hash;
+        return 'notifications';
+      }
+
+      setActive(currentSection());
+      window.addEventListener('hashchange', function () {
+        setActive(currentSection());
+      });
+    })();
+  </script>
+</body>
+</html>

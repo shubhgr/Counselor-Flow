@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Priya Sharma — GradRight Marketplace</title>
+  <link rel="stylesheet" href="css/styles.css?v=testi5" />
+  <link rel="stylesheet" href="css/mobile.css?v=mobile1" />
+</head>
+<body>
+  <div class="market-shell">
+    <header class="market-top">
+      <div class="brand-mark">
+        <img class="brand-logo dark" src="assets/gradright-logo-dark.png" alt="GradRight" />
+      </div>
+      <p class="switch">
+        <a href="marketplace.html">← All counselors</a>
+        · <a href="profile.html?tab=preview">Counselor: profile preview</a>
+      </p>
+    </header>
+
+    <div class="market-body">
+      <div class="pending-banner" id="preview-pending-banner" hidden style="margin-bottom:1.25rem;">
+        <div class="icon">👁</div>
+        <div>
+          <h3>Preview only · not live in marketplace</h3>
+          <p>
+            Students won’t see this listing until you’re admin-verified. This page is a counselor preview.
+          </p>
+        </div>
+        <a class="btn btn-secondary btn-sm" href="profile.html?tab=preview">Back to profile</a>
+      </div>
+
+      <div class="public-layout">
+        <div>
+          <div class="public-hero">
+            <div class="avatar lg">PS</div>
+            <div>
+              <h1>Priya Sharma</h1>
+              <p style="color:var(--muted);font-size:0.9rem;">Mumbai · Higher-education counselor</p>
+              <div class="preview-stat-row" style="max-width:28rem;">
+                <div><strong data-verified-only>4.8</strong><strong data-unverified-only>—</strong><span>Rating</span></div>
+                <div><strong data-verified-only>126</strong><strong data-unverified-only>0</strong><span>Sessions</span></div>
+                <div><strong>120+</strong><span>Students</span></div>
+                <div><strong>85+</strong><span>Admits</span></div>
+              </div>
+              <div class="tags" style="display:flex;flex-wrap:wrap;gap:0.35rem;margin:0.75rem 0 0;">
+                <span class="pill warn" data-unverified-only>Pending verify</span>
+                <span class="pill">USA</span>
+                <span class="pill">UK</span>
+                <span class="pill">Canada</span>
+              </div>
+              <p style="font-size:0.92rem;max-width:36rem;line-height:1.55;margin-top:0.75rem;">
+                Helping students map pathways into top US &amp; UK universities — from shortlisting
+                to SOP &amp; visa readiness.
+              </p>
+            </div>
+          </div>
+
+          <section class="panel" style="margin-top:1rem;">
+            <div class="panel-head"><h2>What students connect for</h2></div>
+            <div class="list-item">
+              <div class="meta">
+                <strong>College shortlisting</strong>
+                <span>Reach / match / safety lists for your profile</span>
+              </div>
+            </div>
+            <div class="list-item">
+              <div class="meta">
+                <strong>SOP &amp; essay review</strong>
+                <span>Structure, voice, and program fit</span>
+              </div>
+            </div>
+            <div class="list-item">
+              <div class="meta">
+                <strong>Visa readiness</strong>
+                <span>Docs checklist and interview practice</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" style="margin-top:1rem;">
+            <div class="panel-head"><h2>Testimonials</h2></div>
+            <div class="public-testi-list" id="public-testi-list"></div>
+          </section>
+
+          <section class="panel" style="margin-top:1rem;" data-verified-only>
+            <div class="panel-head"><h2>Reviews from GradRight students</h2></div>
+            <div class="review">
+              <div class="stars">★★★★★</div>
+              <strong>Aarav Reddy</strong>
+              <p style="color:var(--muted);font-size:0.88rem;margin-top:0.3rem;">
+                Clear shortlist logic for USA CS. Explained reach vs match so my parents got it too.
+              </p>
+            </div>
+            <div class="review">
+              <div class="stars">★★★★★</div>
+              <strong>Meera Kapoor</strong>
+              <p style="color:var(--muted);font-size:0.88rem;margin-top:0.3rem;">
+                SOP feedback was precise — finally sounded specific without sounding generic.
+              </p>
+            </div>
+          </section>
+
+          <section class="panel" style="margin-top:1rem;" data-verified-only>
+            <div class="panel-head"><h2>Badges</h2></div>
+            <div class="badge-row">
+              <div class="badge"><span class="emoji">🎯</span>Top mentor</div>
+              <div class="badge"><span class="emoji">🌍</span>USA expert</div>
+              <div class="badge"><span class="emoji">⚡</span>Fast reply</div>
+              <div class="badge"><span class="emoji">💯</span>100+ sessions</div>
+            </div>
+          </section>
+        </div>
+
+        <aside class="sticky-book">
+          <div style="font-size:0.75rem;color:var(--muted);font-weight:500;">Connect fee</div>
+          <div class="price">₹1,999</div>
+          <p style="font-size:0.82rem;color:var(--muted);margin-bottom:1rem;">
+            Pay once to unlock chat &amp; booking with Priya on GradRight.
+          </p>
+          <a
+            class="btn btn-primary"
+            href="#"
+            data-verified-only
+            onclick="alert('Student pays connect fee → chat/book unlocks (demo)');return false;"
+          >Connect</a>
+          <button class="btn btn-primary" type="button" data-unverified-only disabled style="opacity:0.7;cursor:not-allowed;width:100%;">
+            Connect
+          </button>
+          <p class="hint-text" style="margin-top:0.75rem;text-align:center;" data-verified-only>
+            Next open slot · Tue 10:00 AM IST
+          </p>
+          <p class="hint-text" style="margin-top:0.75rem;text-align:center;" data-unverified-only>
+            Live after admin verification
+          </p>
+          <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0;" />
+          <div class="info-dl" data-verified-only>
+            <div>
+              <dt>Sessions on GradRight</dt>
+              <dd>126</dd>
+            </div>
+            <div>
+              <dt>Response</dt>
+              <dd>Usually &lt; 2 hrs</dd>
+            </div>
+            <div>
+              <dt>Availability</dt>
+              <dd>Mon–Fri · set slots</dd>
+            </div>
+          </div>
+          <p style="font-size:0.8rem;color:var(--muted);" data-unverified-only>
+            Stats and booking go live once admin verifies this counselor.
+          </p>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/session.js"></script>
+  <script src="js/testimonials.js?v=testi3"></script>
+  <script>
+    (function () {
+      const verified = window.GradRightSession
+        ? window.GradRightSession.isVerified()
+        : false;
+      const forcePreview = new URLSearchParams(location.search).get('preview') === '1';
+
+      document.body.classList.toggle('is-verified', verified);
+      document.body.classList.toggle('is-unverified', !verified);
+      document.body.dataset.verified = verified ? 'true' : 'false';
+
+      document.querySelectorAll('[data-verified-only]').forEach((el) => {
+        el.hidden = !verified;
+      });
+      document.querySelectorAll('[data-unverified-only]').forEach((el) => {
+        el.hidden = verified;
+      });
+
+      if (window.GradRightTestimonials) {
+        GradRightTestimonials.renderList(document.getElementById('public-testi-list'), {
+          empty: 'No testimonials yet.',
+        });
+      }
+
+      const banner = document.getElementById('preview-pending-banner');
+      if (banner) banner.hidden = verified && !forcePreview;
+      if (forcePreview && verified) {
+        banner.hidden = false;
+        banner.querySelector('h3').textContent = 'Full page preview';
+        banner.querySelector('p').textContent =
+          'You’re verified — this is the live student-facing profile page.';
+      }
+    })();
+  </script>
+</body>
+</html>

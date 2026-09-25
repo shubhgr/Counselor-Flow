@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>In meet — GradRight Counselor</title>
+  <link rel="stylesheet" href="css/styles.css?v=seticon1" />
+  <link rel="stylesheet" href="css/mobile.css?v=mobile1" />
+</head>
+<body data-page="call">
+  <div class="app">
+    <aside id="app-sidebar" class="sidebar" aria-label="Main navigation"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="topbar-lead">
+          <a class="btn btn-ghost btn-sm btn-back btn-back-icon" id="back-btn" href="calls.html" aria-label="Back">
+            <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+          </a>
+          <h1 id="call-title">Meet</h1>
+        </div>
+        <div class="actions">
+          <a class="btn btn-secondary btn-sm btn-icon" id="chat-btn" href="chats.html" title="Chat">
+            <span class="material-symbols-rounded" aria-hidden="true">chat</span>
+            Chat
+          </a>
+          <a class="btn btn-secondary btn-sm" id="profile-btn" href="student-profile.html">Student profile</a>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="call-stage">
+          <div class="call-avatar" id="call-avatar">AR</div>
+          <h2 id="call-name">Aarav Reddy</h2>
+          <p class="status">Connected · <span data-live-elapsed id="call-elapsed">0:00</span></p>
+          <div class="call-controls">
+            <button class="call-btn" type="button" title="Mute" id="btn-mute">
+              <span class="material-symbols-rounded" aria-hidden="true">mic</span>
+            </button>
+            <button class="call-btn" type="button" title="Video" id="btn-video">
+              <span class="material-symbols-rounded" aria-hidden="true">videocam</span>
+            </button>
+            <a class="call-btn" id="btn-chat" href="chats.html" title="Chat">
+              <span class="material-symbols-rounded" aria-hidden="true">chat</span>
+            </a>
+            <button class="call-btn end" type="button" id="end-call" title="End meet">
+              <span class="material-symbols-rounded" aria-hidden="true">call_end</span>
+            </button>
+          </div>
+          <p class="call-note">
+            Session notes stay private · Student booked via GradRight app
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="js/session.js"></script>
+  <script src="js/people-db.js"></script>
+  <script src="js/live-call.js"></script>
+  <script src="js/shell.js?v=mobile1"></script>
+  <script>
+    var CALLS = GradRightLiveCall.CATALOG;
+    var params = new URLSearchParams(location.search);
+    var id = params.get('id') && CALLS[params.get('id')] ? params.get('id') : 'aarav';
+    var from = params.get('from') || 'calls';
+    var base = CALLS[id];
+
+    var live = GradRightLiveCall.start({
+      studentId: id,
+      name: base.name,
+      initials: base.initials,
+      service: base.service,
+      booked: base.booked,
+    });
+
+    document.getElementById('call-name').textContent = live.name;
+    document.getElementById('call-avatar').textContent = live.initials;
+    document.getElementById('call-title').textContent = 'Meet · ' + live.name;
+    document.getElementById('profile-btn').href =
+      'student-profile.html?id=' + encodeURIComponent(id) + '&from=call';
+    document.getElementById('chat-btn').href = 'chats.html?id=' + encodeURIComponent(id);
+    document.getElementById('btn-chat').href = 'chats.html?id=' + encodeURIComponent(id);
+
+    /* Back always leaves the full-screen call view without ending the live session */
+    var backHref = 'calls.html';
+    if (from === 'profile') backHref = 'student-profile.html?id=' + encodeURIComponent(id) + '&from=call';
+    else if (from === 'chats') backHref = 'chats.html?id=' + encodeURIComponent(id);
+    else if (from === 'calls') backHref = 'calls.html';
+    document.getElementById('back-btn').href = backHref;
+
+    function syncControls() {
+      var state = GradRightLiveCall.get() || live;
+      document.getElementById('btn-mute').classList.toggle('on', !!state.muted);
+      document.getElementById('btn-mute').querySelector('.material-symbols-rounded').textContent =
+        state.muted ? 'mic_off' : 'mic';
+      document.getElementById('btn-video').classList.toggle('on', !!state.videoOff);
+      document.getElementById('btn-video').querySelector('.material-symbols-rounded').textContent =
+        state.videoOff ? 'videocam_off' : 'videocam';
+      document.getElementById('call-elapsed').textContent = GradRightLiveCall.elapsedText();
+    }
+
+    document.getElementById('btn-mute').addEventListener('click', function () {
+      var state = GradRightLiveCall.get();
+      GradRightLiveCall.patch({ muted: !(state && state.muted) });
+      syncControls();
+    });
+    document.getElementById('btn-video').addEventListener('click', function () {
+      var state = GradRightLiveCall.get();
+      GradRightLiveCall.patch({ videoOff: !(state && state.videoOff) });
+      syncControls();
+    });
+    document.getElementById('end-call').addEventListener('click', function () {
+      var ending = GradRightLiveCall.get();
+      GradRightLiveCall.end();
+      if (ending) {
+        try {
+          sessionStorage.setItem('gradright_last_ended_call', JSON.stringify(ending));
+        } catch (err) {}
+      }
+      location.href = 'calls.html';
+    });
+
+    /* Back leaves full-screen call; live session stays until red end. Use Pop out on Calls to reopen browser PiP. */
+    document.getElementById('back-btn').addEventListener('click', function (event) {
+      event.preventDefault();
+      location.href = this.getAttribute('href') || 'calls.html';
+    });
+
+    syncControls();
+    setInterval(syncControls, 1000);
+  </script>
+</body>
+</html>
