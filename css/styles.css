@@ -9243,7 +9243,7 @@ body[data-page='transactions'] .txn-top {
 }
 
 body[data-page='transactions'] .bank-panel.source-panel {
-  min-height: 220px;
+  min-height: 100%;
 }
 
 @media (max-width: 980px) {
@@ -9258,26 +9258,65 @@ body[data-page='transactions'] .analytics-panel {
   flex-shrink: 0;
 }
 
+.bank-panel.is-empty .source-list {
+  overflow: hidden;
+  justify-content: center;
+}
+
+.bank-panel.is-empty .panel-head {
+  margin-bottom: 0;
+}
+
 .bank-empty {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  gap: 0.35rem;
-  min-height: 100%;
-  padding: 0.35rem 0.1rem 0.2rem;
+  text-align: center;
+  gap: 0.22rem;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  padding: 0.15rem 0.5rem 0.4rem;
+}
+
+.bank-empty-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--line);
+}
+
+.bank-empty-icon .material-symbols-rounded {
+  font-size: 22px;
 }
 
 .bank-empty strong {
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 650;
+  color: var(--ink);
 }
 
-.bank-empty p {
-  font-size: 0.8rem;
+.bank-empty-copy {
+  font-size: 0.78rem;
   color: var(--muted);
-  line-height: 1.45;
-  margin: 0 0 0.55rem;
+  line-height: 1.4;
+  max-width: 16rem;
+}
+
+.bank-empty .btn {
+  width: auto;
+  min-width: 118px;
+  margin-top: 0.7rem;
+}
+
+#add-bank-btn[hidden] {
+  display: none;
 }
 
 .bank-card {
@@ -9454,21 +9493,21 @@ body[data-page='transactions'] .people-search {
 .txn-table-track {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
+  overflow: auto;
 }
 
 .txn-table {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
-  min-width: 960px;
+  min-width: 820px;
 }
 
-.txn-col-date { width: 16%; }
-.txn-col-type { width: 12%; }
-.txn-col-detail { width: 20%; }
-.txn-col-id { width: 14%; }
+.txn-col-date { width: 12%; }
+.txn-col-type { width: 11%; }
+.txn-col-detail { width: 22%; }
+.txn-col-id { width: 13%; }
 .txn-col-method { width: 16%; }
-.txn-col-amt { width: 11%; }
+.txn-col-amt { width: 10%; }
 .txn-col-status { width: 11%; }
 
 .txn-table thead th {
@@ -9481,8 +9520,6 @@ body[data-page='transactions'] .people-search {
 .txn-table th,
 .txn-table td {
   vertical-align: middle;
-  overflow: hidden;
-  text-overflow: ellipsis;
   padding-left: 0.7rem;
   padding-right: 0.7rem;
 }
@@ -9506,6 +9543,12 @@ body[data-page='transactions'] .people-search {
   white-space: nowrap;
 }
 
+.txn-table td:nth-child(4),
+.txn-table td:nth-child(5) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .txn-table td:first-child,
 .txn-table td:nth-child(6) {
   font-variant-numeric: tabular-nums;
@@ -9513,6 +9556,11 @@ body[data-page='transactions'] .people-search {
 
 .txn-table .people-who {
   min-width: 0;
+}
+
+.txn-table .people-who > div {
+  min-width: 0;
+  flex: 1;
 }
 
 .txn-table .people-who strong,
@@ -9544,6 +9592,10 @@ body[data-page='transactions'] .people-search {
 
 .txn-amt.is-flat {
   color: var(--muted);
+}
+
+.txn-amt.is-pending {
+  color: var(--warn);
 }
 
 @media (max-width: 980px) {

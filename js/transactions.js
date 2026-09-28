@@ -98,10 +98,59 @@
 
   function filterLabel(key) {
     if (key === 'success') return 'Success';
+    if (key === 'processing') return 'Processing';
     if (key === 'failed') return 'Failed';
     if (key === 'refunded') return 'Refunded';
     if (key === 'withdrawal') return 'Withdrawal';
     return 'All';
+  }
+
+  function moneyMove(row) {
+    var type = row.type;
+    var status = row.status;
+    if (type === 'connect') {
+      if (status === 'success') return 'in';
+      if (status === 'processing') return 'pending-in';
+      return 'none';
+    }
+    if (type === 'refund') {
+      if (status === 'refunded') return 'out';
+      if (status === 'processing') return 'pending-out';
+      return 'none';
+    }
+    if (type === 'withdrawal') {
+      if (status === 'success') return 'out';
+      if (status === 'processing') return 'pending-out';
+      return 'none';
+    }
+    return 'none';
+  }
+
+  function amountView(row) {
+    var move = moneyMove(row);
+    if (move === 'in') return { cls: 'is-in', sign: '' };
+    if (move === 'out') return { cls: 'is-out', sign: '−' };
+    if (move === 'pending-in') return { cls: 'is-pending', sign: '' };
+    if (move === 'pending-out') return { cls: 'is-pending', sign: '−' };
+    return { cls: 'is-flat', sign: '' };
+  }
+
+  function todayAt(hour, minute) {
+    return isoStamp(new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), hour, minute || 0));
+  }
+
+  function personRow(p, extra) {
+    return Object.assign(
+      {
+        name: p.name,
+        initials: p.initials,
+        amber: !!p.amber,
+        detail: p.name,
+        method: txnMethodFor(p),
+        amount: connectAmount(p),
+      },
+      extra
+    );
   }
 
   function buildLedger() {
@@ -109,88 +158,126 @@
       return p.connected;
     });
     const rows = [];
+    var cursor = 0;
 
-    connected.forEach(function (p) {
-      const amount = connectAmount(p);
-      const seed = hashSeed(p.id);
-      const stamp = p.connectedOn || isoStamp(TODAY);
-      const method = txnMethodFor(p);
-      const refunded = seed % 19 === 0;
+    function takePerson() {
+      return connected[cursor++];
+    }
 
-      if (seed % 9 === 0) {
-        rows.push({
+    function pushConnect(p, extra) {
+      rows.push(
+        personRow(p, {
+          key: extra.key || 'pay-' + p.id,
+          type: 'connect',
+          subtitle: 'Connect',
+          txnId: extra.txnId || txnIdFor(p),
+          status: extra.status,
+          at: extra.at,
+        })
+      );
+    }
+
+    function pushRefund(p, extra) {
+      rows.push(
+        personRow(p, {
+          key: extra.key || 'ref-' + p.id,
+          type: 'refund',
+          subtitle: 'Refund',
+          txnId: extra.txnId || 'RFN-' + txnIdFor(p).replace('GRC-', ''),
+          status: extra.status,
+          at: extra.at,
+        })
+      );
+    }
+
+    var pSuccess = takePerson();
+    var pPending = takePerson();
+    var pFailed = takePerson();
+    var pRefDone = takePerson();
+    var pRefPend = takePerson();
+    var pRefFail = takePerson();
+
+    if (pSuccess) pushConnect(pSuccess, { at: todayAt(23, 10), status: 'success' });
+    if (pPending) pushConnect(pPending, { at: todayAt(22, 50), status: 'processing' });
+    if (pFailed) {
+      pushConnect(pFailed, {
+        key: 'fail-' + pFailed.id,
+        at: todayAt(22, 30),
+        status: 'failed',
+        txnId: txnIdFor({ id: pFailed.id + '-fail', connectedOn: pFailed.connectedOn }),
+      });
+    }
+    if (pRefDone) {
+      pushConnect(pRefDone, { at: addDaysStamp(todayAt(16, 5), -5, 16, 5), status: 'success' });
+      pushRefund(pRefDone, { at: todayAt(22, 10), status: 'refunded' });
+    }
+    if (pRefPend) {
+      pushConnect(pRefPend, { at: addDaysStamp(todayAt(15, 40), -4, 15, 40), status: 'success' });
+      pushRefund(pRefPend, { at: todayAt(21, 50), status: 'processing' });
+    }
+    if (pRefFail) {
+      pushConnect(pRefFail, { at: addDaysStamp(todayAt(14, 20), -6, 14, 20), status: 'success' });
+      pushRefund(pRefFail, { at: todayAt(21, 30), status: 'failed' });
+    }
+
+    for (; cursor < connected.length; cursor++) {
+      var p = connected[cursor];
+      var seed = hashSeed(p.id);
+      var stamp = p.connectedOn || isoStamp(TODAY);
+      var roll = seed % 23;
+      if (roll === 0) {
+        pushConnect(p, {
+          key: 'fail-' + p.id,
+          at: stamp,
+          status: 'failed',
+          txnId: txnIdFor({ id: p.id + '-fail', connectedOn: stamp }),
+        });
+      } else if (roll === 1) {
+        pushConnect(p, {
           key: 'fail-' + p.id,
           at: addDaysStamp(stamp, -1, 10 + (seed % 8), 15),
-          type: 'connect',
-          name: p.name,
-          initials: p.initials,
-          amber: !!p.amber,
-          detail: p.name,
-          txnId: txnIdFor({ id: p.id + '-fail', connectedOn: stamp }),
-          method: method,
-          amount: amount,
           status: 'failed',
+          txnId: txnIdFor({ id: p.id + '-fail', connectedOn: stamp }),
         });
+        pushConnect(p, { at: stamp, status: 'success' });
+      } else {
+        pushConnect(p, { at: stamp, status: 'success' });
+        if (roll === 2) {
+          pushRefund(p, { at: addDaysStamp(stamp, 2 + (seed % 3), 14, 20), status: 'refunded' });
+        }
       }
-
-      rows.push({
-        key: 'pay-' + p.id,
-        at: stamp,
-        type: 'connect',
-        name: p.name,
-        initials: p.initials,
-        amber: !!p.amber,
-        detail: p.name,
-        txnId: txnIdFor(p),
-        method: method,
-        amount: amount,
-        status: refunded ? 'refunded' : 'success',
-      });
-
-      if (refunded) {
-        rows.push({
-          key: 'ref-' + p.id,
-          at: addDaysStamp(stamp, 2 + (seed % 4), 14, 20),
-          type: 'refund',
-          name: p.name,
-          initials: p.initials,
-          amber: !!p.amber,
-          detail: p.name,
-          txnId: 'RFN-' + txnIdFor(p).replace('GRC-', ''),
-          method: method,
-          amount: amount,
-          status: 'refunded',
-        });
-      }
-    });
+    }
 
     const earned = rows.reduce(function (n, r) {
-      return n + (r.type === 'connect' && r.status === 'success' ? r.amount : 0);
+      return n + (moneyMove(r) === 'in' ? r.amount : 0);
     }, 0);
     const refundedSum = rows.reduce(function (n, r) {
-      return n + (r.type === 'refund' ? r.amount : 0);
+      return n + (r.type === 'refund' && moneyMove(r) === 'out' ? r.amount : 0);
     }, 0);
     const net = Math.max(0, earned - refundedSum);
 
     const payouts = [
-      { at: '2026-07-31 16:40', share: 0.18, status: 'success' },
-      { at: '2026-08-15 17:05', share: 0.2, status: 'success' },
-      { at: '2026-08-31 16:20', share: 0.16, status: 'success' },
+      { at: todayAt(20, 30), amount: 12500, status: 'success' },
+      { at: todayAt(20, 10), amount: 8200, status: 'processing' },
+      { at: todayAt(19, 50), amount: 5400, status: 'failed' },
       { at: '2026-09-15 17:10', share: 0.18, status: 'success' },
-      { at: '2026-09-23 11:00', share: 0.08, status: 'processing' },
+      { at: '2026-08-31 16:20', share: 0.16, status: 'success' },
+      { at: '2026-08-15 17:05', share: 0.2, status: 'success' },
+      { at: '2026-07-31 16:40', share: 0.18, status: 'success' },
     ];
     payouts.forEach(function (pay, i) {
-      let amount = Math.round(net * pay.share);
+      var amount = pay.amount != null ? pay.amount : Math.round(net * pay.share);
       amount = Math.round(amount / 50) * 50;
       if (amount < 500) return;
       rows.push({
         key: 'wd-' + i,
         at: pay.at,
         type: 'withdrawal',
-        name: 'Bank payout',
+        name: 'HDFC Bank',
         initials: 'BK',
         amber: false,
-        detail: 'HDFC · ••4821',
+        detail: 'HDFC Bank',
+        subtitle: 'Payout · •••• 4821',
         txnId: 'WDL-' + String(1000 + i * 17) + '-' + String(hashSeed('wd' + i)).slice(0, 4).toUpperCase(),
         method: 'NEFT · HDFC',
         amount: amount,
@@ -316,8 +403,9 @@
 
   function addToBucket(map, key, row) {
     if (!map[key]) map[key] = { earnings: 0, withdrawn: 0 };
-    if (row.type === 'connect' && row.status === 'success') map[key].earnings += row.amount;
-    if (row.type === 'withdrawal' && row.status === 'success') map[key].withdrawn += row.amount;
+    if (row.type === 'connect' && moneyMove(row) === 'in') map[key].earnings += row.amount;
+    if (row.type === 'refund' && moneyMove(row) === 'out') map[key].earnings -= row.amount;
+    if (row.type === 'withdrawal' && moneyMove(row) === 'out') map[key].withdrawn += row.amount;
   }
 
   function buildSeries() {
@@ -476,9 +564,12 @@
   function matches(row) {
     if (!inRange(row.at)) return false;
     if (filter === 'withdrawal' && row.type !== 'withdrawal') return false;
-    if (filter !== 'all' && filter !== 'withdrawal' && row.status !== filter) return false;
+    if (filter === 'refunded' && row.type !== 'refund') return false;
+    if (filter === 'success' && row.status !== 'success') return false;
+    if (filter === 'processing' && row.status !== 'processing') return false;
+    if (filter === 'failed' && row.status !== 'failed') return false;
     if (!query) return true;
-    const hay = [row.detail, row.name, row.txnId, row.method, typeMeta(row.type), row.status]
+    const hay = [row.detail, row.name, row.txnId, row.method, typeMeta(row.type), row.status, row.subtitle]
       .join(' ')
       .toLowerCase();
     return hay.indexOf(query) >= 0;
@@ -487,24 +578,24 @@
   function renderStats() {
     const rows = rangedRows();
     const earned = rows.reduce(function (n, r) {
-      return n + (r.type === 'connect' && r.status === 'success' ? r.amount : 0);
+      return n + (r.type === 'connect' && moneyMove(r) === 'in' ? r.amount : 0);
     }, 0);
     const withdrawn = rows.reduce(function (n, r) {
-      return n + (r.type === 'withdrawal' && r.status === 'success' ? r.amount : 0);
+      return n + (r.type === 'withdrawal' && moneyMove(r) === 'out' ? r.amount : 0);
     }, 0);
     const refunded = rows.reduce(function (n, r) {
-      return n + (r.type === 'refund' ? r.amount : 0);
+      return n + (r.type === 'refund' && moneyMove(r) === 'out' ? r.amount : 0);
     }, 0);
-    const processing = rows.reduce(function (n, r) {
-      return n + (r.type === 'withdrawal' && r.status === 'processing' ? r.amount : 0);
+    const reserved = rows.reduce(function (n, r) {
+      return n + (moneyMove(r) === 'pending-out' ? r.amount : 0);
     }, 0);
     const successCount = rows.filter(function (r) {
-      return r.type === 'connect' && r.status === 'success';
+      return r.type === 'connect' && moneyMove(r) === 'in';
     }).length;
     const payoutCount = rows.filter(function (r) {
-      return r.type === 'withdrawal' && r.status === 'success';
+      return r.type === 'withdrawal' && moneyMove(r) === 'out';
     }).length;
-    const available = Math.max(0, earned - withdrawn - refunded - processing);
+    const available = Math.max(0, earned - withdrawn - refunded - reserved);
 
     document.getElementById('stat-earned').textContent = formatInr(earned);
     document.getElementById('stat-earned-hint').textContent =
@@ -528,10 +619,10 @@
     empty.hidden = visible.length > 0;
     visible.forEach(function (row) {
       const st = statusMeta(row.status);
-      const incoming = row.type === 'connect' && row.status === 'success';
-      const outgoing = row.type === 'withdrawal' || row.type === 'refund';
-      const amountCls = incoming ? 'is-in' : outgoing ? 'is-out' : 'is-flat';
-      const sign = incoming ? '' : outgoing ? '−' : '';
+      const amt = amountView(row);
+      const subtitle =
+        row.subtitle ||
+        (row.type === 'withdrawal' ? 'Payout' : row.type === 'refund' ? 'Refund' : 'Connect');
       const who =
         '<div class="people-who">' +
         '<span class="avatar sm' +
@@ -539,10 +630,12 @@
         '">' +
         escapeHtml(row.initials) +
         '</span>' +
-        '<div><strong>' +
+        '<div><strong title="' +
+        escapeHtml(row.detail) +
+        '">' +
         escapeHtml(row.detail) +
         '</strong><span>' +
-        escapeHtml(row.type === 'withdrawal' ? 'Payout' : 'Connect') +
+        escapeHtml(subtitle) +
         '</span></div></div>';
       const tr = document.createElement('tr');
       tr.innerHTML =
@@ -557,9 +650,9 @@
         '</td><td>' +
         escapeHtml(row.method) +
         '</td><td class="txn-amt ' +
-        amountCls +
+        amt.cls +
         '">' +
-        sign +
+        amt.sign +
         escapeHtml(formatInr(row.amount)) +
         '</td><td><span class="pill ' +
         st.cls +
@@ -850,14 +943,15 @@
     var addBtn = document.getElementById('add-bank-btn');
     if (!list) return;
     var banks = loadBanks();
-    if (addBtn) {
-      addBtn.hidden = banks.length >= 2;
-    }
+    if (addBtn) addBtn.hidden = banks.length !== 1;
+    var panel = document.querySelector('.bank-panel');
+    if (panel) panel.classList.toggle('is-empty', !banks.length);
     if (!banks.length) {
       list.innerHTML =
         '<div class="bank-empty">' +
-        '<strong>No payout bank yet</strong>' +
-        '<p>Link a bank to withdraw connect fees. You can add up to 2 accounts. The bank will text the number registered with it, then we verify the account.</p>' +
+        '<span class="bank-empty-icon" aria-hidden="true"><span class="material-symbols-rounded">account_balance</span></span>' +
+        '<strong>No payout bank</strong>' +
+        '<span class="bank-empty-copy">Add a bank to withdraw your fees.</span>' +
         '<button type="button" class="btn btn-primary btn-sm" data-bank-add>Add bank</button>' +
         '</div>';
       return;
