@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Transactions — GradRight Counselor</title>
-  <link rel="stylesheet" href="css/styles.css?v=seticon1" />
+  <link rel="stylesheet" href="css/styles.css?v=banks2" />
   <link rel="stylesheet" href="css/mobile.css?v=mobile1" />
 </head>
 <body data-page="transactions" data-verified="true">
@@ -97,6 +97,7 @@
           <a class="btn btn-secondary btn-sm" href="profile.html?tab=preview">Student preview</a>
         </div>
 
+        <div class="dash-top txn-top">
         <section class="panel analytics-panel">
           <div class="analytics-stats is-3">
             <div class="analytics-stat">
@@ -120,6 +121,15 @@
             <div class="analytics-tip" id="analytics-tip" hidden></div>
           </div>
         </section>
+
+        <section class="panel source-panel bank-panel">
+          <div class="panel-head">
+            <h2>Banks</h2>
+            <button type="button" class="btn btn-secondary btn-sm" id="add-bank-btn">Add bank</button>
+          </div>
+          <div class="source-list gr-scroll" id="bank-list"></div>
+        </section>
+        </div>
 
         <section class="panel txn-panel">
           <div class="panel-head txn-head">
@@ -155,9 +165,24 @@
       </div>
     </div>
   </div>
+
+  <div class="cal-modal" id="bank-modal" hidden>
+    <div class="cal-modal-backdrop" data-close-bank></div>
+    <div class="cal-modal-card bank-modal-card" role="dialog" aria-labelledby="bank-modal-title" aria-modal="true">
+      <div class="cal-modal-head">
+        <h2 id="bank-modal-title">Add bank</h2>
+        <button type="button" class="icon-btn" data-close-bank aria-label="Close">
+          <span class="material-symbols-rounded" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <div id="bank-modal-body"></div>
+      <div class="bank-modal-actions" id="bank-modal-actions"></div>
+    </div>
+  </div>
+
   <script src="js/session.js?v=auth-path1"></script>
   <script src="js/shell.js?v=mobile1"></script>
   <script src="js/people-db.js?v=txn1"></script>
-  <script src="js/transactions.js?v=txn2"></script>
+  <script src="js/transactions.js?v=banks1"></script>
 </body>
 </html>

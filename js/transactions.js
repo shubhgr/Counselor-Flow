@@ -784,5 +784,438 @@
     renderTable();
   });
 
+  var BANK_KEY = 'gradright_payout_banks_v1';
+  var BANK_OPTIONS = [
+    { id: 'hdfc', name: 'HDFC Bank', sms: 'HDFCBK' },
+    { id: 'icici', name: 'ICICI Bank', sms: 'ICICIB' },
+    { id: 'sbi', name: 'State Bank of India', sms: 'SBIINB' },
+    { id: 'axis', name: 'Axis Bank', sms: 'AXISBK' },
+    { id: 'kotak', name: 'Kotak Mahindra Bank', sms: 'KOTAKB' },
+  ];
+  var bankDraft = null;
+  var bankSmsTimer = null;
+  var bankCheckTimer = null;
+
+  function sessionPhone() {
+    var s = window.GradRightSession && GradRightSession.get && GradRightSession.get();
+    if (s && s.phone) return s.phone;
+    return '9876543210';
+  }
+
+  function sessionName() {
+    var s = window.GradRightSession && GradRightSession.get && GradRightSession.get();
+    return (s && s.name) || 'Priya Sharma';
+  }
+
+  function formatPhone(value) {
+    if (window.GradRightSession && GradRightSession.formatPhone) {
+      return GradRightSession.formatPhone(value);
+    }
+    var d = String(value || '').replace(/\D/g, '').slice(-10);
+    if (d.length !== 10) return value || '';
+    return '+91 ' + d.slice(0, 5) + ' ' + d.slice(5);
+  }
+
+  function maskAccount(num) {
+    var d = String(num || '').replace(/\D/g, '');
+    if (d.length < 4) return '••••';
+    return '•••• ' + d.slice(-4);
+  }
+
+  function smsCodeFor(phone) {
+    return String(100000 + (hashSeed(phone + 'bank') % 900000));
+  }
+
+  function loadBanks() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(BANK_KEY) || '[]');
+      return Array.isArray(raw) ? raw : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveBanks(list) {
+    localStorage.setItem(BANK_KEY, JSON.stringify(list));
+  }
+
+  function bankById(id) {
+    return BANK_OPTIONS.filter(function (b) {
+      return b.id === id;
+    })[0] || BANK_OPTIONS[0];
+  }
+
+  function renderBanks() {
+    var list = document.getElementById('bank-list');
+    var addBtn = document.getElementById('add-bank-btn');
+    if (!list) return;
+    var banks = loadBanks();
+    if (addBtn) {
+      addBtn.hidden = banks.length >= 2;
+    }
+    if (!banks.length) {
+      list.innerHTML =
+        '<div class="bank-empty">' +
+        '<strong>No payout bank yet</strong>' +
+        '<p>Link a bank to withdraw connect fees. You can add up to 2 accounts. The bank will text the number registered with it, then we verify the account.</p>' +
+        '<button type="button" class="btn btn-primary btn-sm" data-bank-add>Add bank</button>' +
+        '</div>';
+      return;
+    }
+    list.innerHTML = banks
+      .map(function (b, i) {
+        return (
+          '<article class="bank-card">' +
+          '<div class="bank-card-top"><strong>' +
+          escapeHtml(b.bankName) +
+          '</strong><span class="bank-pill">' +
+          (i === 0 ? 'Primary' : 'Verified') +
+          '</span></div>' +
+          '<div class="bank-card-meta">' +
+          escapeHtml(maskAccount(b.account)) +
+          '<br>IFSC ' +
+          escapeHtml(b.ifsc) +
+          '<br>' +
+          escapeHtml(b.holder) +
+          '</div>' +
+          '<div class="bank-card-actions">' +
+          (i === 0 ? '' : '<button type="button" data-bank-primary="' + i + '">Make primary</button>') +
+          '<button type="button" class="is-danger" data-bank-remove="' +
+          i +
+          '">Remove</button>' +
+          '</div></article>'
+        );
+      })
+      .join('');
+  }
+
+  function clearBankTimers() {
+    if (bankSmsTimer) {
+      clearTimeout(bankSmsTimer);
+      bankSmsTimer = null;
+    }
+    if (bankCheckTimer) {
+      clearInterval(bankCheckTimer);
+      bankCheckTimer = null;
+    }
+  }
+
+  function closeBankModal() {
+    var modal = document.getElementById('bank-modal');
+    if (modal) modal.hidden = true;
+    document.body.classList.remove('cal-modal-open');
+    clearBankTimers();
+    bankDraft = null;
+  }
+
+  function openBankModal() {
+    if (loadBanks().length >= 2) return;
+    bankDraft = {
+      step: 'phone',
+      phone: sessionPhone(),
+      bankId: 'hdfc',
+      account: '',
+      ifsc: '',
+      holder: sessionName(),
+      smsArrived: false,
+      checks: 0,
+    };
+    var modal = document.getElementById('bank-modal');
+    if (modal) modal.hidden = false;
+    document.body.classList.add('cal-modal-open');
+    paintBankStep();
+  }
+
+  function setBankActions(html) {
+    var el = document.getElementById('bank-modal-actions');
+    if (el) el.innerHTML = html;
+  }
+
+  function paintBankStep() {
+    var title = document.getElementById('bank-modal-title');
+    var body = document.getElementById('bank-modal-body');
+    if (!body || !bankDraft) return;
+    var bank = bankById(bankDraft.bankId);
+    var code = smsCodeFor(bankDraft.phone);
+
+    if (bankDraft.step === 'phone') {
+      if (title) title.textContent = 'Confirm mobile';
+      body.innerHTML =
+        '<p class="bank-step-note">Use the number registered with your bank. They will send a message to this number to start linking.</p>' +
+        '<label class="field"><span>Contact number</span>' +
+        '<input type="tel" id="bank-phone" inputmode="numeric" autocomplete="tel" value="' +
+        escapeHtml(formatPhone(bankDraft.phone)) +
+        '" /></label>';
+      setBankActions(
+        '<button type="button" class="btn btn-secondary" data-close-bank>Cancel</button>' +
+          '<button type="button" class="btn btn-primary" data-bank-next>Send bank message</button>'
+      );
+      return;
+    }
+
+    if (bankDraft.step === 'sms') {
+      if (title) title.textContent = 'Bank message';
+      body.innerHTML =
+        '<p class="bank-step-note">' +
+        escapeHtml(bank.name) +
+        ' is sending a message to ' +
+        escapeHtml(formatPhone(bankDraft.phone)) +
+        '. Keep this page open.</p>' +
+        (bankDraft.smsArrived
+          ? '<div class="bank-sms"><div class="bank-sms-from">' +
+            escapeHtml(bank.sms) +
+            '</div><p>Use ' +
+            escapeHtml(code) +
+            ' to confirm your GradRight payout account. Do not share this code.</p></div>'
+          : '<div class="bank-sms is-wait">Waiting for the bank message…</div>');
+      setBankActions(
+        '<button type="button" class="btn btn-secondary" data-close-bank>Cancel</button>' +
+          '<button type="button" class="btn btn-primary" data-bank-next' +
+          (bankDraft.smsArrived ? '' : ' disabled') +
+          '>Continue</button>'
+      );
+      if (!bankDraft.smsArrived) {
+        clearBankTimers();
+        bankSmsTimer = setTimeout(function () {
+          if (!bankDraft || bankDraft.step !== 'sms') return;
+          bankDraft.smsArrived = true;
+          paintBankStep();
+        }, 1400);
+      }
+      return;
+    }
+
+    if (bankDraft.step === 'code') {
+      if (title) title.textContent = 'Enter code';
+      body.innerHTML =
+        '<p class="bank-step-note">Enter the 6-digit code from the bank message.</p>' +
+        '<label class="field"><span>Verification code</span>' +
+        '<input type="text" id="bank-code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" /></label>' +
+        '<p class="hint-text" id="bank-code-err" hidden>That code does not match the bank message.</p>';
+      setBankActions(
+        '<button type="button" class="btn btn-secondary" data-close-bank>Cancel</button>' +
+          '<button type="button" class="btn btn-primary" data-bank-next>Verify code</button>'
+      );
+      return;
+    }
+
+    if (bankDraft.step === 'details') {
+      if (title) title.textContent = 'Bank details';
+      body.innerHTML =
+        '<p class="bank-step-note">Payouts go to this account after verification. You can link up to 2 banks.</p>' +
+        '<label class="field"><span>Bank</span><select id="bank-name">' +
+        BANK_OPTIONS.map(function (opt) {
+          return (
+            '<option value="' +
+            opt.id +
+            '"' +
+            (opt.id === bankDraft.bankId ? ' selected' : '') +
+            '>' +
+            escapeHtml(opt.name) +
+            '</option>'
+          );
+        }).join('') +
+        '</select></label>' +
+        '<label class="field"><span>Account number</span>' +
+        '<input type="text" id="bank-account" inputmode="numeric" value="' +
+        escapeHtml(bankDraft.account) +
+        '" /></label>' +
+        '<label class="field"><span>IFSC</span>' +
+        '<input type="text" id="bank-ifsc" value="' +
+        escapeHtml(bankDraft.ifsc) +
+        '" placeholder="HDFC0001234" /></label>' +
+        '<label class="field"><span>Account holder</span>' +
+        '<input type="text" id="bank-holder" value="' +
+        escapeHtml(bankDraft.holder) +
+        '" /></label>';
+      setBankActions(
+        '<button type="button" class="btn btn-secondary" data-close-bank>Cancel</button>' +
+          '<button type="button" class="btn btn-primary" data-bank-next>Start verification</button>'
+      );
+      return;
+    }
+
+    if (bankDraft.step === 'verify') {
+      if (title) title.textContent = 'Verifying';
+      var checks = [
+        'Mobile number matched',
+        'Bank message confirmed',
+        'Account details checked',
+        'Name match with your profile',
+      ];
+      body.innerHTML =
+        '<p class="bank-step-note">We are confirming this account with the bank. This usually takes a few seconds.</p>' +
+        '<div class="bank-checks">' +
+        checks
+          .map(function (label, i) {
+            var done = i < bankDraft.checks;
+            return (
+              '<div class="bank-check' +
+              (done ? ' is-done' : '') +
+              '"><span class="material-symbols-rounded" aria-hidden="true">' +
+              (done ? 'check_circle' : 'radio_button_unchecked') +
+              '</span>' +
+              escapeHtml(label) +
+              '</div>'
+            );
+          })
+          .join('') +
+        '</div>';
+      setBankActions(
+        '<button type="button" class="btn btn-primary" data-bank-next' +
+          (bankDraft.checks >= checks.length ? '' : ' disabled') +
+          '>Finish</button>'
+      );
+      if (bankDraft.checks < checks.length && !bankCheckTimer) {
+        bankCheckTimer = setInterval(function () {
+          if (!bankDraft || bankDraft.step !== 'verify') {
+            clearBankTimers();
+            return;
+          }
+          bankDraft.checks += 1;
+          if (bankDraft.checks >= checks.length) clearBankTimers();
+          paintBankStep();
+        }, 700);
+      }
+      return;
+    }
+
+    if (title) title.textContent = 'Bank linked';
+    body.innerHTML =
+      '<div class="bank-done-mark"><span class="material-symbols-rounded" aria-hidden="true">check</span></div>' +
+      '<p class="bank-step-note"><strong>' +
+      escapeHtml(bankDraft.bankName || bank.name) +
+      '</strong> is ready for payouts. Connect fees can be withdrawn to ' +
+      escapeHtml(maskAccount(bankDraft.account)) +
+      '.</p>';
+    setBankActions('<button type="button" class="btn btn-primary" data-close-bank>Done</button>');
+  }
+
+  function readBankFields() {
+    var phone = document.getElementById('bank-phone');
+    var code = document.getElementById('bank-code');
+    var name = document.getElementById('bank-name');
+    var account = document.getElementById('bank-account');
+    var ifsc = document.getElementById('bank-ifsc');
+    var holder = document.getElementById('bank-holder');
+    if (phone) {
+      bankDraft.phone = String(phone.value || '').replace(/\D/g, '').slice(-10);
+    }
+    if (name) bankDraft.bankId = name.value;
+    if (account) bankDraft.account = String(account.value || '').replace(/\D/g, '');
+    if (ifsc) bankDraft.ifsc = String(ifsc.value || '').toUpperCase().replace(/\s+/g, '');
+    if (holder) bankDraft.holder = holder.value.trim() || sessionName();
+    return code ? String(code.value || '').replace(/\D/g, '') : '';
+  }
+
+  function nextBankStep() {
+    if (!bankDraft) return;
+    var typed = readBankFields();
+    if (bankDraft.step === 'phone') {
+      if (bankDraft.phone.length !== 10) return;
+      bankDraft.step = 'sms';
+      bankDraft.smsArrived = false;
+      paintBankStep();
+      return;
+    }
+    if (bankDraft.step === 'sms') {
+      if (!bankDraft.smsArrived) return;
+      bankDraft.step = 'code';
+      paintBankStep();
+      return;
+    }
+    if (bankDraft.step === 'code') {
+      var err = document.getElementById('bank-code-err');
+      if (typed !== smsCodeFor(bankDraft.phone)) {
+        if (err) err.hidden = false;
+        return;
+      }
+      bankDraft.step = 'details';
+      paintBankStep();
+      return;
+    }
+    if (bankDraft.step === 'details') {
+      if (bankDraft.account.length < 8 || bankDraft.ifsc.length < 8) return;
+      bankDraft.bankName = bankById(bankDraft.bankId).name;
+      bankDraft.step = 'verify';
+      bankDraft.checks = 0;
+      paintBankStep();
+      return;
+    }
+    if (bankDraft.step === 'verify') {
+      if (bankDraft.checks < 4) return;
+      var list = loadBanks();
+      list.push({
+        id: 'b' + Date.now(),
+        bankId: bankDraft.bankId,
+        bankName: bankDraft.bankName,
+        account: bankDraft.account,
+        ifsc: bankDraft.ifsc,
+        holder: bankDraft.holder,
+        phone: bankDraft.phone,
+      });
+      saveBanks(list.slice(0, 2));
+      bankDraft.step = 'done';
+      paintBankStep();
+      renderBanks();
+    }
+  }
+
+  renderBanks();
+
+  var bankList = document.getElementById('bank-list');
+  var addBankBtn = document.getElementById('add-bank-btn');
+  var bankModal = document.getElementById('bank-modal');
+  if (addBankBtn) addBankBtn.addEventListener('click', openBankModal);
+  if (bankList) {
+    bankList.addEventListener('click', function (e) {
+      if (e.target.closest('[data-bank-add]')) {
+        openBankModal();
+        return;
+      }
+      var primary = e.target.closest('[data-bank-primary]');
+      if (primary) {
+        var idx = Number(primary.getAttribute('data-bank-primary'));
+        var rows = loadBanks();
+        if (!rows[idx]) return;
+        var picked = rows.splice(idx, 1)[0];
+        rows.unshift(picked);
+        saveBanks(rows);
+        renderBanks();
+        return;
+      }
+      var remove = e.target.closest('[data-bank-remove]');
+      if (remove) {
+        var at = Number(remove.getAttribute('data-bank-remove'));
+        var next = loadBanks().filter(function (_b, i) {
+          return i !== at;
+        });
+        saveBanks(next);
+        renderBanks();
+      }
+    });
+  }
+  if (bankModal) {
+    bankModal.addEventListener('click', function (e) {
+      if (e.target.closest('[data-close-bank]')) {
+        closeBankModal();
+        return;
+      }
+      if (e.target.closest('[data-bank-next]')) {
+        var nextBtn = e.target.closest('[data-bank-next]');
+        if (nextBtn.disabled) return;
+        nextBankStep();
+      }
+    });
+  }
+  document.addEventListener('keydown', function (e) {
+    if (!bankModal || bankModal.hidden) return;
+    if (e.key === 'Escape') closeBankModal();
+    if (e.key === 'Enter' && bankDraft && bankDraft.step !== 'verify' && bankDraft.step !== 'done') {
+      e.preventDefault();
+      nextBankStep();
+    }
+  });
+
   render();
 })();
