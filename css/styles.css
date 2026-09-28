@@ -9598,6 +9598,25 @@ body[data-page='transactions'] .people-search {
   color: var(--warn);
 }
 
+.bank-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bank-head-actions .btn {
+  width: auto;
+}
+
+#withdraw-btn[hidden] {
+  display: none;
+}
+
+#withdraw-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 @media (max-width: 980px) {
   .analytics-stats.is-3 {
     grid-template-columns: 1fr;

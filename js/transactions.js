@@ -139,6 +139,23 @@
     return isoStamp(new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), hour, minute || 0));
   }
 
+  var WD_KEY = 'gradright_user_withdrawals_v1';
+  var MIN_WITHDRAW = 500;
+  var withdrawDraft = null;
+
+  function loadUserWithdrawals() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(WD_KEY) || '[]');
+      return Array.isArray(raw) ? raw : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveUserWithdrawals(list) {
+    localStorage.setItem(WD_KEY, JSON.stringify(list));
+  }
+
   function personRow(p, extra) {
     return Object.assign(
       {
@@ -285,13 +302,17 @@
       });
     });
 
+    loadUserWithdrawals().forEach(function (row) {
+      rows.push(row);
+    });
+
     rows.sort(function (a, b) {
       return String(b.at).localeCompare(String(a.at));
     });
     return rows;
   }
 
-  const LEDGER = isApproved() ? buildLedger() : [];
+  let LEDGER = isApproved() ? buildLedger() : [];
 
   const MONTHS = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -586,16 +607,12 @@
     const refunded = rows.reduce(function (n, r) {
       return n + (r.type === 'refund' && moneyMove(r) === 'out' ? r.amount : 0);
     }, 0);
-    const reserved = rows.reduce(function (n, r) {
-      return n + (moneyMove(r) === 'pending-out' ? r.amount : 0);
-    }, 0);
     const successCount = rows.filter(function (r) {
       return r.type === 'connect' && moneyMove(r) === 'in';
     }).length;
     const payoutCount = rows.filter(function (r) {
       return r.type === 'withdrawal' && moneyMove(r) === 'out';
     }).length;
-    const available = Math.max(0, earned - withdrawn - refunded - reserved);
 
     document.getElementById('stat-earned').textContent = formatInr(earned);
     document.getElementById('stat-earned-hint').textContent =
@@ -603,9 +620,8 @@
     document.getElementById('stat-withdrawn').textContent = formatInr(withdrawn);
     document.getElementById('stat-withdrawn-hint').textContent =
       payoutCount + (payoutCount === 1 ? ' payout to bank' : ' payouts to bank');
-    document.getElementById('stat-available').textContent = formatInr(available);
-    document.getElementById('stat-available-hint').textContent =
-      rangeKey === 'all' ? 'Left to withdraw' : 'Left in this period';
+    document.getElementById('stat-available').textContent = formatInr(walletAvailable());
+    document.getElementById('stat-available-hint').textContent = 'Left to withdraw';
 
     const built = buildSeries();
     renderChart(built.series, built.grain);
@@ -730,6 +746,7 @@
     document.getElementById('filter-label').textContent = filterLabel(filter);
     renderStats();
     renderTable();
+    syncWithdrawBtn();
   }
 
   const presetBtn = document.getElementById('preset-btn');
@@ -954,6 +971,7 @@
         '<span class="bank-empty-copy">Add a bank to withdraw your fees.</span>' +
         '<button type="button" class="btn btn-primary btn-sm" data-bank-add>Add bank</button>' +
         '</div>';
+      syncWithdrawBtn();
       return;
     }
     list.innerHTML = banks
@@ -981,6 +999,7 @@
         );
       })
       .join('');
+    syncWithdrawBtn();
   }
 
   function clearBankTimers() {
@@ -1000,6 +1019,189 @@
     document.body.classList.remove('cal-modal-open');
     clearBankTimers();
     bankDraft = null;
+    withdrawDraft = null;
+  }
+
+  function showTxnModal() {
+    var modal = document.getElementById('bank-modal');
+    if (modal) modal.hidden = false;
+    document.body.classList.add('cal-modal-open');
+  }
+
+  function walletAvailable() {
+    var earned = 0;
+    var withdrawn = 0;
+    var refunded = 0;
+    var reserved = 0;
+    LEDGER.forEach(function (r) {
+      if (r.type === 'connect' && moneyMove(r) === 'in') earned += r.amount;
+      if (r.type === 'withdrawal' && moneyMove(r) === 'out') withdrawn += r.amount;
+      if (r.type === 'refund' && moneyMove(r) === 'out') refunded += r.amount;
+      if (moneyMove(r) === 'pending-out') reserved += r.amount;
+    });
+    return Math.max(0, earned - withdrawn - refunded - reserved);
+  }
+
+  function syncWithdrawBtn() {
+    var btn = document.getElementById('withdraw-btn');
+    if (!btn) return;
+    var hasBank = loadBanks().length > 0;
+    var ok = isApproved() && hasBank && walletAvailable() >= MIN_WITHDRAW;
+    btn.hidden = !hasBank;
+    btn.disabled = !ok;
+    btn.title = !isApproved()
+      ? 'Available after GradRight verifies you'
+      : !hasBank
+        ? 'Link a bank to withdraw'
+        : ok
+          ? 'Withdraw available balance'
+          : 'Need at least ₹' + MIN_WITHDRAW + ' available';
+  }
+
+  function openWithdrawModal(bankIndex) {
+    if (!isApproved()) return;
+    var available = walletAvailable();
+    if (available < MIN_WITHDRAW) return;
+    var banks = loadBanks();
+    showTxnModal();
+    if (!banks.length) {
+      withdrawDraft = { step: 'need-bank', amount: available };
+      paintWithdrawStep();
+      return;
+    }
+    var idx = Number(bankIndex);
+    if (!banks[idx]) idx = 0;
+    withdrawDraft = {
+      step: 'amount',
+      amount: available,
+      bankIndex: idx,
+    };
+    paintWithdrawStep();
+  }
+
+  function paintWithdrawStep() {
+    var title = document.getElementById('bank-modal-title');
+    var body = document.getElementById('bank-modal-body');
+    if (!body || !withdrawDraft) return;
+    var available = walletAvailable();
+    var banks = loadBanks();
+
+    if (withdrawDraft.step === 'need-bank') {
+      if (title) title.textContent = 'Add a bank';
+      body.innerHTML =
+        '<p class="bank-step-note">You have <strong>' +
+        escapeHtml(formatInr(available)) +
+        '</strong> ready to withdraw. Link a payout bank first, then send it there.</p>';
+      setBankActions(
+        '<button type="button" class="btn btn-secondary" data-close-bank>Cancel</button>' +
+          '<button type="button" class="btn btn-primary" data-wd-add-bank>Add bank</button>'
+      );
+      return;
+    }
+
+    if (withdrawDraft.step === 'done') {
+      var doneBank = banks[withdrawDraft.bankIndex] || banks[0];
+      if (title) title.textContent = 'Payout started';
+      body.innerHTML =
+        '<div class="bank-done-mark"><span class="material-symbols-rounded" aria-hidden="true">check</span></div>' +
+        '<p class="bank-step-note"><strong>' +
+        escapeHtml(formatInr(withdrawDraft.amount)) +
+        '</strong> is on the way to ' +
+        escapeHtml(doneBank ? doneBank.bankName : 'your bank') +
+        ' ' +
+        escapeHtml(doneBank ? maskAccount(doneBank.account) : '') +
+        '. NEFT usually lands in 1–2 hours.</p>';
+      setBankActions('<button type="button" class="btn btn-primary" data-close-bank>Done</button>');
+      return;
+    }
+
+    var selected = banks[withdrawDraft.bankIndex] || banks[0];
+    if (title) title.textContent = 'Withdraw';
+    body.innerHTML =
+      '<p class="bank-step-note">Available <strong>' +
+      escapeHtml(formatInr(available)) +
+      '</strong>. Payouts go by NEFT to your linked bank.</p>' +
+      '<label class="field"><span>Bank</span><select id="wd-bank">' +
+      banks
+        .map(function (b, i) {
+          return (
+            '<option value="' +
+            i +
+            '"' +
+            (i === Number(withdrawDraft.bankIndex) ? ' selected' : '') +
+            '>' +
+            escapeHtml(b.bankName) +
+            ' · ' +
+            escapeHtml(maskAccount(b.account)) +
+            (i === 0 ? ' (Primary)' : '') +
+            '</option>'
+          );
+        })
+        .join('') +
+      '</select></label>' +
+      '<label class="field"><span>Amount</span>' +
+      '<input type="text" id="wd-amount" inputmode="numeric" value="' +
+      escapeHtml(String(withdrawDraft.amount)) +
+      '" /></label>' +
+      '<p class="hint-text" id="wd-amount-err" hidden>Enter between ₹' +
+      MIN_WITHDRAW +
+      ' and ' +
+      formatInr(available) +
+      '.</p>';
+    setBankActions(
+      '<button type="button" class="btn btn-secondary" data-close-bank>Cancel</button>' +
+        '<button type="button" class="btn btn-primary" data-wd-next>Withdraw</button>'
+    );
+  }
+
+  function nextWithdrawStep() {
+    if (!withdrawDraft || withdrawDraft.step !== 'amount') return;
+    var banks = loadBanks();
+    if (!banks.length) {
+      withdrawDraft.step = 'need-bank';
+      paintWithdrawStep();
+      return;
+    }
+    var sel = document.getElementById('wd-bank');
+    var amtEl = document.getElementById('wd-amount');
+    var err = document.getElementById('wd-amount-err');
+    var idx = sel ? Number(sel.value) : withdrawDraft.bankIndex;
+    if (!banks[idx]) idx = 0;
+    var available = walletAvailable();
+    var amount = Math.round(Number(String(amtEl && amtEl.value ? amtEl.value : '').replace(/[^\d]/g, '')));
+    if (!Number.isFinite(amount) || amount < MIN_WITHDRAW || amount > available) {
+      if (err) err.hidden = false;
+      return;
+    }
+    var bank = banks[idx];
+    var opt = bankById(bank.bankId);
+    var stamp = isoStamp(TODAY);
+    var row = {
+      key: 'wd-user-' + Date.now(),
+      at: stamp,
+      type: 'withdrawal',
+      name: bank.bankName,
+      initials: 'BK',
+      amber: false,
+      detail: bank.bankName,
+      subtitle: 'Payout · ' + maskAccount(bank.account),
+      txnId: 'WDL-' + String(2000 + loadUserWithdrawals().length * 13) + '-' + String(hashSeed(stamp + amount)).slice(0, 4).toUpperCase(),
+      method: 'NEFT · ' + String((opt && opt.id) || 'hdfc').toUpperCase(),
+      amount: amount,
+      status: 'processing',
+    };
+    var extra = loadUserWithdrawals();
+    extra.push(row);
+    saveUserWithdrawals(extra);
+    LEDGER.push(row);
+    LEDGER.sort(function (a, b) {
+      return String(b.at).localeCompare(String(a.at));
+    });
+    withdrawDraft.amount = amount;
+    withdrawDraft.bankIndex = idx;
+    withdrawDraft.step = 'done';
+    paintWithdrawStep();
+    render();
   }
 
   function openBankModal() {
@@ -1259,8 +1461,14 @@
 
   var bankList = document.getElementById('bank-list');
   var addBankBtn = document.getElementById('add-bank-btn');
+  var withdrawBtn = document.getElementById('withdraw-btn');
   var bankModal = document.getElementById('bank-modal');
   if (addBankBtn) addBankBtn.addEventListener('click', openBankModal);
+  if (withdrawBtn) {
+    withdrawBtn.addEventListener('click', function () {
+      openWithdrawModal(0);
+    });
+  }
   if (bankList) {
     bankList.addEventListener('click', function (e) {
       if (e.target.closest('[data-bank-add]')) {
@@ -1295,6 +1503,15 @@
         closeBankModal();
         return;
       }
+      if (e.target.closest('[data-wd-add-bank]')) {
+        closeBankModal();
+        openBankModal();
+        return;
+      }
+      if (e.target.closest('[data-wd-next]')) {
+        nextWithdrawStep();
+        return;
+      }
       if (e.target.closest('[data-bank-next]')) {
         var nextBtn = e.target.closest('[data-bank-next]');
         if (nextBtn.disabled) return;
@@ -1305,6 +1522,11 @@
   document.addEventListener('keydown', function (e) {
     if (!bankModal || bankModal.hidden) return;
     if (e.key === 'Escape') closeBankModal();
+    if (e.key === 'Enter' && withdrawDraft && withdrawDraft.step === 'amount') {
+      e.preventDefault();
+      nextWithdrawStep();
+      return;
+    }
     if (e.key === 'Enter' && bankDraft && bankDraft.step !== 'verify' && bankDraft.step !== 'done') {
       e.preventDefault();
       nextBankStep();
