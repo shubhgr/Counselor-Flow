@@ -300,8 +300,9 @@
   }
 
   function paint(wrap) {
+    var panel = document.getElementById('notif-panel') || wrap;
     var items = allNotifications();
-    var list = wrap.querySelector('.notif-list');
+    var list = panel.querySelector('.notif-list');
     if (list) list.innerHTML = renderList(items);
     syncBadge(wrap, items);
   }
@@ -321,6 +322,19 @@
     saveRead(ids);
   }
 
+  function ensureTopbar() {
+    var topbar = document.querySelector('.main > .topbar') || document.querySelector('.topbar');
+    if (topbar) return topbar;
+    var main = document.querySelector('.main');
+    if (!main) return null;
+    topbar = document.createElement('header');
+    topbar.className = 'topbar';
+    topbar.setAttribute('role', 'banner');
+    topbar.innerHTML = '<h1>' + (document.title.split('—')[0].trim() || 'GradRight') + '</h1>';
+    main.insertBefore(topbar, main.firstChild);
+    return topbar;
+  }
+
   function ensureActions(topbar) {
     var actions = topbar.querySelector('.actions');
     if (actions) return actions;
@@ -330,46 +344,113 @@
     return actions;
   }
 
-  function mount() {
-    if (document.getElementById('notif-wrap')) return;
-    var topbar = document.querySelector('.main > .topbar') || document.querySelector('.topbar');
-    if (!topbar) return;
-    var page = document.body && document.body.dataset.page;
-    if (page === 'call') return;
+  /** Keep the bell as the last item in .actions (far right). */
+  function placeAtEnd(actions, wrap) {
+    if (!actions || !wrap) return;
+    if (actions.lastElementChild !== wrap) actions.appendChild(wrap);
+  }
 
-    var actions = ensureActions(topbar);
+  function buildWrap() {
     var wrap = document.createElement('div');
     wrap.className = 'notif-wrap';
     wrap.id = 'notif-wrap';
     wrap.innerHTML =
-      '<button type="button" class="icon-btn notif-bell" id="notif-bell" aria-label="Notifications" aria-expanded="false" aria-haspopup="true">' +
+      '<button type="button" class="icon-btn notif-bell" id="notif-bell" aria-label="Notifications" aria-expanded="false" aria-haspopup="dialog">' +
       '<span class="material-symbols-rounded" aria-hidden="true">notifications</span>' +
       '<span class="notif-badge" hidden></span>' +
-      '</button>' +
-      '<div class="notif-panel" id="notif-panel" hidden role="dialog" aria-label="Notifications">' +
+      '</button>';
+    return wrap;
+  }
+
+  function ensurePanel() {
+    var panel = document.getElementById('notif-panel');
+    var glassHtml =
+      '<div class="notif-pblur-stack" aria-hidden="true">' +
+      '<div class="notif-pblur"></div>' +
+      '<div class="notif-pblur"></div>' +
+      '<div class="notif-pblur"></div>' +
+      '<div class="notif-pblur"></div>' +
+      '<div class="notif-pblur"></div>' +
+      '<div class="notif-pblur"></div>' +
+      '<div class="notif-pblur"></div>' +
+      '<div class="notif-pblur"></div>' +
+      '</div>' +
+      '<div class="notif-pblur-tint" aria-hidden="true"></div>' +
+      '<div class="notif-blur notif-blur-top" aria-hidden="true"></div>' +
+      '<div class="notif-blur notif-blur-bottom" aria-hidden="true"></div>';
+
+    if (panel) {
+      if (!panel.querySelector('.notif-pblur-stack')) {
+        var inner = panel.querySelector('.notif-panel-inner');
+        panel.insertAdjacentHTML('afterbegin', glassHtml);
+        if (!inner) {
+          panel.insertAdjacentHTML(
+            'beforeend',
+            '<div class="notif-panel-inner">' +
+              '<div class="notif-head"><strong>Notifications</strong>' +
+              '<button type="button" class="notif-mark" id="notif-mark-all">Mark all read</button></div>' +
+              '<div class="notif-list gr-scroll"></div></div>'
+          );
+        }
+      }
+      return panel;
+    }
+
+    panel = document.createElement('div');
+    panel.className = 'notif-panel';
+    panel.id = 'notif-panel';
+    panel.hidden = true;
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', 'Notifications');
+    panel.innerHTML =
+      glassHtml +
+      '<div class="notif-panel-inner">' +
       '<div class="notif-head">' +
       '<strong>Notifications</strong>' +
       '<button type="button" class="notif-mark" id="notif-mark-all">Mark all read</button>' +
       '</div>' +
       '<div class="notif-list gr-scroll"></div>' +
       '</div>';
+    document.body.appendChild(panel);
+    return panel;
+  }
 
-    actions.insertBefore(wrap, actions.firstChild);
+  function ensureBackdrop() {
+    var el = document.getElementById('notif-backdrop');
+    if (el) return el;
+    el = document.createElement('button');
+    el.type = 'button';
+    el.id = 'notif-backdrop';
+    el.className = 'notif-backdrop';
+    el.setAttribute('aria-label', 'Close notifications');
+    el.hidden = true;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function bindPanel(wrap) {
+    if (wrap.dataset.bound === '1') return;
+    wrap.dataset.bound = '1';
 
     var bell = wrap.querySelector('#notif-bell');
-    var panel = wrap.querySelector('#notif-panel');
+    var panel = ensurePanel();
+    var backdrop = ensureBackdrop();
 
     function close() {
       panel.hidden = true;
+      backdrop.hidden = true;
       bell.setAttribute('aria-expanded', 'false');
       wrap.classList.remove('is-open');
+      document.body.classList.remove('notif-open');
     }
 
     function open() {
       paint(wrap);
       panel.hidden = false;
+      backdrop.hidden = false;
       bell.setAttribute('aria-expanded', 'true');
       wrap.classList.add('is-open');
+      document.body.classList.add('notif-open');
     }
 
     bell.addEventListener('click', function (e) {
@@ -378,7 +459,7 @@
       else close();
     });
 
-    wrap.addEventListener('click', function (e) {
+    panel.addEventListener('click', function (e) {
       e.stopPropagation();
       if (e.target.closest('#notif-mark-all')) {
         markAllRead();
@@ -391,19 +472,43 @@
       }
     });
 
-    document.addEventListener('click', function () {
-      if (!panel.hidden) close();
-    });
+    backdrop.addEventListener('click', close);
 
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !panel.hidden) close();
     });
+  }
 
+  function watchActions(actions, wrap) {
+    if (!actions || actions.dataset.notifWatch === '1') return;
+    actions.dataset.notifWatch = '1';
+    var obs = new MutationObserver(function () {
+      placeAtEnd(actions, wrap);
+    });
+    obs.observe(actions, { childList: true });
+  }
+
+  function mount() {
+    var topbar = ensureTopbar();
+    if (!topbar) return;
+
+    var actions = ensureActions(topbar);
+    var wrap = document.getElementById('notif-wrap');
+    if (!wrap) wrap = buildWrap();
+
+    placeAtEnd(actions, wrap);
+    watchActions(actions, wrap);
+    ensurePanel();
+    ensureBackdrop();
+    bindPanel(wrap);
     paint(wrap);
   }
 
   function boot() {
     mount();
+    /* Pages that rewrite .actions after load (e.g. person) — re-seat at end. */
+    window.setTimeout(mount, 0);
+    window.setTimeout(mount, 120);
   }
 
   if (document.readyState === 'loading') {
@@ -412,8 +517,11 @@
     boot();
   }
 
-  window.GradRightNotifications = { mount: mount, paint: function () {
-    var wrap = document.getElementById('notif-wrap');
-    if (wrap) paint(wrap);
-  } };
+  window.GradRightNotifications = {
+    mount: mount,
+    paint: function () {
+      var wrap = document.getElementById('notif-wrap');
+      if (wrap) paint(wrap);
+    },
+  };
 })();

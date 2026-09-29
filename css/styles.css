@@ -7168,6 +7168,11 @@ body.has-unsaved .content {
 .notif-wrap {
   position: relative;
   flex-shrink: 0;
+  margin-left: 0.15rem;
+}
+
+.topbar .actions .notif-wrap {
+  order: 999;
 }
 
 .notif-bell {
@@ -7191,39 +7196,212 @@ body.has-unsaved .content {
   box-sizing: border-box;
 }
 
+.notif-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: rgba(18, 16, 34, 0.06);
+  cursor: pointer;
+}
+
+.notif-backdrop[hidden] {
+  display: none !important;
+}
+
 .notif-panel {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
-  width: min(380px, calc(100vw - 2rem));
-  max-height: min(28rem, calc(100vh - 5.5rem));
+  position: fixed !important;
+  inset: 0 0 0 auto !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: auto !important;
+  width: min(380px, 92vw) !important;
+  max-width: 380px;
+  height: 100vh !important;
+  max-height: none !important;
+  z-index: 80;
   display: flex;
   flex-direction: column;
-  background: var(--surface);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 12px 40px rgba(18, 16, 34, 0.12);
-  z-index: 60;
+  background: transparent !important;
+  border: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0 !important;
+  box-shadow: none;
   overflow: hidden;
+  transform: none;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .notif-panel[hidden] {
   display: none !important;
 }
 
+/* Apple-style progressive blur: stacked masked layers (blur builds left → right) */
+.notif-pblur-stack {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.notif-pblur {
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+}
+
+/* Apple / Skiper progressive blur — strong at edges, clear in the middle */
+.notif-pblur-stack {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.notif-pblur {
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: 100%;
+  pointer-events: none;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+}
+
+/* TOP progressive stack (Skiper) */
+.notif-pblur:nth-child(1),
+.notif-pblur:nth-child(2),
+.notif-pblur:nth-child(3),
+.notif-pblur:nth-child(4) {
+  top: 0;
+  height: 55%;
+}
+
+.notif-pblur:nth-child(1) {
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 20%, transparent 70%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 20%, transparent 70%);
+}
+
+.notif-pblur:nth-child(2) {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 12%, transparent 50%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 12%, transparent 50%);
+}
+
+.notif-pblur:nth-child(3) {
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 8%, transparent 35%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 8%, transparent 35%);
+}
+
+.notif-pblur:nth-child(4) {
+  backdrop-filter: blur(36px);
+  -webkit-backdrop-filter: blur(36px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 22%);
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 22%);
+}
+
+/* BOTTOM progressive stack */
+.notif-pblur:nth-child(5),
+.notif-pblur:nth-child(6),
+.notif-pblur:nth-child(7),
+.notif-pblur:nth-child(8) {
+  bottom: 0;
+  top: auto;
+  height: 55%;
+}
+
+.notif-pblur:nth-child(5) {
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 20%, transparent 70%);
+  mask-image: linear-gradient(to top, #000 0%, #000 20%, transparent 70%);
+}
+
+.notif-pblur:nth-child(6) {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 12%, transparent 50%);
+  mask-image: linear-gradient(to top, #000 0%, #000 12%, transparent 50%);
+}
+
+.notif-pblur:nth-child(7) {
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 8%, transparent 35%);
+  mask-image: linear-gradient(to top, #000 0%, #000 8%, transparent 35%);
+}
+
+.notif-pblur:nth-child(8) {
+  backdrop-filter: blur(36px);
+  -webkit-backdrop-filter: blur(36px);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 22%);
+  mask-image: linear-gradient(to top, #000 0%, transparent 22%);
+}
+
+.notif-pblur-tint {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.42) 0%,
+    rgba(255, 255, 255, 0.08) 28%,
+    rgba(255, 255, 255, 0.04) 50%,
+    rgba(255, 255, 255, 0.08) 72%,
+    rgba(255, 255, 255, 0.38) 100%
+  );
+}
+
+.notif-panel-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: transparent;
+}
+
+/* Hide old single blur strips — stack handles progressive edges */
+.notif-blur {
+  display: none !important;
+}
+
 .notif-head {
+  position: relative;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.85rem 1rem 0.65rem;
-  border-bottom: 1px solid var(--line);
+  padding: 1.15rem 1.15rem 0.85rem;
   flex-shrink: 0;
+  background: transparent;
 }
 
 .notif-head strong {
-  font-size: 0.92rem;
+  font-size: 1rem;
   font-weight: 650;
+  letter-spacing: -0.02em;
 }
 
 .notif-mark {
@@ -7246,12 +7424,14 @@ body.has-unsaved .content {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 0.35rem;
+  padding: 0.35rem 0.65rem 5.5rem;
+  position: relative;
+  z-index: 1;
 }
 
 .notif-empty {
   margin: 0;
-  padding: 1.5rem 1rem;
+  padding: 2.5rem 1rem;
   text-align: center;
   font-size: 0.84rem;
   color: var(--muted);
@@ -7261,18 +7441,18 @@ body.has-unsaved .content {
   display: flex;
   align-items: flex-start;
   gap: 0.65rem;
-  padding: 0.7rem 0.75rem;
+  padding: 0.75rem 0.7rem;
   border-radius: 12px;
   text-decoration: none;
   color: inherit;
 }
 
 .notif-item:hover {
-  background: var(--bg);
+  background: rgba(255, 255, 255, 0.45);
 }
 
 .notif-item.is-unread {
-  background: rgba(120, 43, 255, 0.05);
+  background: rgba(120, 43, 255, 0.08);
 }
 
 .notif-item.is-urgent .notif-copy strong {

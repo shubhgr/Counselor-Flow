@@ -290,7 +290,7 @@
     if (document.querySelector('link[data-mobile-css]')) return;
     var link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'css/mobile.css?v=mobile1';
+    link.href = 'css/mobile.css?v=notif8';
     link.setAttribute('data-mobile-css', '1');
     document.head.appendChild(link);
   }
@@ -455,7 +455,7 @@
       return;
     }
     var script = document.createElement('script');
-    script.src = 'js/notifications.js?v=notif1';
+    script.src = 'js/notifications.js?v=notif8';
     script.dataset.notifications = '1';
     script.onload = function () {
       if (window.GradRightNotifications) GradRightNotifications.mount();
