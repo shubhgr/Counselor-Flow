@@ -393,6 +393,7 @@
       loadLiveCall(function () {
         if (window.GradRightLiveCall) GradRightLiveCall.mount();
       });
+      loadNotifications();
       return;
     }
 
@@ -438,6 +439,28 @@
     loadLiveCall(function () {
       if (window.GradRightLiveCall) GradRightLiveCall.mount();
     });
+    loadNotifications();
+  }
+
+  function loadNotifications() {
+    if (window.GradRightNotifications) {
+      GradRightNotifications.mount();
+      return;
+    }
+    var existing = document.querySelector('script[data-notifications]');
+    if (existing) {
+      existing.addEventListener('load', function () {
+        if (window.GradRightNotifications) GradRightNotifications.mount();
+      });
+      return;
+    }
+    var script = document.createElement('script');
+    script.src = 'js/notifications.js?v=notif1';
+    script.dataset.notifications = '1';
+    script.onload = function () {
+      if (window.GradRightNotifications) GradRightNotifications.mount();
+    };
+    document.head.appendChild(script);
   }
 
   ensureMobileCss();

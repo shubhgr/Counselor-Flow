@@ -164,12 +164,18 @@
   .cal-integrations,
   .cal-workspace-bar,
   .cal-booker,
+  .community-workspace,
   .community-workspace.is-profile-open,
   body[data-page='students'] .community-workspace.is-profile-open,
   .txn-head,
   .preview-card-compare,
   .c-public-grid {
     grid-template-columns: 1fr !important;
+  }
+
+  .community-rail {
+    padding-top: 0;
+    max-height: none;
   }
 
   .chat-layout,
@@ -284,6 +290,20 @@
   .cal-modal-card,
   .cal-oauth-card {
     width: min(100%, 440px);
+  }
+
+  .notif-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .notif-panel {
+    position: fixed;
+    right: 0.75rem;
+    left: 0.75rem;
+    top: auto;
+    width: auto;
+    max-height: min(70vh, 28rem);
   }
 }
 

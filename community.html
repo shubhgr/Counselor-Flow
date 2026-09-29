@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Community — GradRight Counselor</title>
-  <link rel="stylesheet" href="css/styles.css?v=seticon1" />
-  <link rel="stylesheet" href="css/mobile.css?v=mobile1" />
+  <link rel="stylesheet" href="css/styles.css?v=notif1" />
+  <link rel="stylesheet" href="css/mobile.css?v=mobile2" />
 </head>
 <body data-page="community">
   <div class="app">
@@ -64,6 +64,22 @@
           </div>
         </div>
 
+        <aside class="community-rail gr-scroll" id="community-rail" aria-label="Community sidebar">
+          <section class="panel community-rail-panel">
+            <div class="panel-head">
+              <h2>For you</h2>
+            </div>
+            <div class="community-foryou" id="community-foryou"></div>
+          </section>
+          <section class="panel community-rail-panel">
+            <div class="panel-head">
+              <h2>Trending topics</h2>
+            </div>
+            <div class="community-trending" id="community-trending"></div>
+            <p class="community-rail-note">Topics students are asking about in Community right now.</p>
+          </section>
+        </aside>
+
         <aside class="community-profile-panel" id="profile-panel" hidden aria-label="Profile">
           <div class="cpp-toolbar">
             <button type="button" class="btn btn-ghost btn-sm btn-back btn-back-icon" id="profile-back" hidden aria-label="Back">
@@ -83,8 +99,109 @@
   <script src="js/session.js"></script>
   <script src="js/people-db.js?v=txn1"></script>
   <script src="js/safety.js"></script>
-  <script src="js/shell.js?v=mobile1"></script>
+  <script src="js/shell.js?v=notif1"></script>
   <script>
+    const TODAY = (window.GradRightDB && GradRightDB.today) || new Date(2026, 8, 23, 18, 0);
+    const MONTHS_COMM = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+    const parseStamp =
+      (window.GradRightDB && GradRightDB.parseStamp) ||
+      function (s) {
+        if (!s) return null;
+        if (s instanceof Date) return isNaN(s.getTime()) ? null : s;
+        const p = String(s).trim().split(/[- :T]/).map(Number);
+        const d = new Date(p[0], (p[1] || 1) - 1, p[2] || 1, p[3] || 0, p[4] || 0);
+        return isNaN(d.getTime()) ? null : d;
+      };
+    const formatClock =
+      (window.GradRightDB && GradRightDB.formatTime) ||
+      function (d) {
+        const h = d.getHours();
+        const m = d.getMinutes();
+        const ap = h >= 12 ? 'PM' : 'AM';
+        return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + ' ' + ap;
+      };
+
+    function isoStamp(d) {
+      return (
+        d.getFullYear() +
+        '-' +
+        String(d.getMonth() + 1).padStart(2, '0') +
+        '-' +
+        String(d.getDate()).padStart(2, '0') +
+        ' ' +
+        String(d.getHours()).padStart(2, '0') +
+        ':' +
+        String(d.getMinutes()).padStart(2, '0')
+      );
+    }
+
+    function parseRelativeTime(label) {
+      const s = String(label || '').trim().toLowerCase();
+      const d = new Date(TODAY);
+      if (!s || s === 'just now') return d;
+      if (s === 'yesterday') {
+        d.setDate(d.getDate() - 1);
+        d.setHours(11, 15, 0, 0);
+        return d;
+      }
+      let m = s.match(/^(\d+)\s*m(?:in)?(?:utes?)?\s*ago$/);
+      if (m) {
+        d.setMinutes(d.getMinutes() - Number(m[1]));
+        return d;
+      }
+      m = s.match(/^(\d+)\s*h(?:r|ours?)?\s*ago$/);
+      if (m) {
+        d.setHours(d.getHours() - Number(m[1]));
+        return d;
+      }
+      m = s.match(/^(\d+)\s*d(?:ays?)?\s*ago$/);
+      if (m) {
+        d.setDate(d.getDate() - Number(m[1]));
+        d.setHours(16, 0, 0, 0);
+        return d;
+      }
+      const stamped = parseStamp(label);
+      return stamped || d;
+    }
+
+    function formatCommunityWhen(stamp) {
+      const d = stamp instanceof Date ? stamp : parseStamp(stamp) || parseRelativeTime(stamp);
+      if (!d) return '—';
+      const ageMin = Math.max(0, Math.floor((TODAY - d) / 60000));
+      if (ageMin < 1) return 'Just now';
+      if (ageMin < 60) return ageMin + ' min ago';
+      const ageHr = Math.floor(ageMin / 60);
+      if (ageHr < 5) return ageHr + ' hr ago';
+      const t0 = new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+      const d0 = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const diff = Math.round((t0 - d0) / 86400000);
+      const time = formatClock(d);
+      if (diff === 0) return 'Today, ' + time;
+      if (diff === 1) return 'Yesterday, ' + time;
+      return d.getDate() + ' ' + MONTHS_COMM[d.getMonth()] + ', ' + time;
+    }
+
+    function ensureAt(item) {
+      if (!item) return '';
+      if (item.at) return item.at;
+      item.at = isoStamp(parseRelativeTime(item.time));
+      return item.at;
+    }
+
+    function hydrateTimes(list) {
+      (list || []).forEach(function (p) {
+        ensureAt(p);
+        (p.comments || []).forEach(function (c) {
+          ensureAt(c);
+          (c.replies || []).forEach(ensureAt);
+        });
+      });
+    }
+
+    function displayWhen(item) {
+      return formatCommunityWhen(ensureAt(item));
+    }
+
     const AUTHORS = {
       'Rohan Kulkarni': {
         type: 'counselor',
@@ -560,7 +677,7 @@
         if (p.author === name) {
           authoredPosts.push({
             id: p.id,
-            time: p.time,
+            at: ensureAt(p),
             tag: p.tag,
             body: p.body,
             likes: p.likes,
@@ -569,7 +686,7 @@
         p.comments.forEach((c) => {
           if (c.author === name) {
             authoredReplies.push({
-              time: c.time,
+              at: ensureAt(c),
               text: c.text,
               onAuthor: p.author,
             });
@@ -577,7 +694,7 @@
           (c.replies || []).forEach((r) => {
             if (r.author === name) {
               authoredReplies.push({
-                time: r.time,
+                at: ensureAt(r),
                 text: r.text,
                 onAuthor: p.author,
               });
@@ -611,7 +728,7 @@
         '<div class="cmt-meta"><div class="c-name-row">' +
         nameButton(c.author) +
         '</div><span>' +
-        c.time +
+        displayWhen(c) +
         '</span></div>' +
         '<p>' +
         c.text +
@@ -663,7 +780,7 @@
         nameButton(p.author) +
         '</div>' +
         '<span>' +
-        p.time +
+        displayWhen(p) +
         ' · ' +
         p.tag +
         '</span></div>' +
@@ -795,9 +912,142 @@
       const composerOpen = !composer.hidden;
       empty.hidden = list.length > 0;
       feed.innerHTML = list.map(renderPost).join('');
+      renderRail();
       syncFilterUI();
       if (window.GradRightShell && GradRightShell.applyAccess) GradRightShell.applyAccess();
       if (!composerOpen) composer.hidden = true;
+    }
+
+    function myExpertiseTags() {
+      const tags = [];
+      const seen = {};
+      function add(tag) {
+        const t = String(tag || '').trim();
+        if (!t || seen[t.toLowerCase()]) return;
+        seen[t.toLowerCase()] = true;
+        tags.push(t);
+      }
+      add('US STEM');
+      add('SOP help');
+      add('Canada pathways');
+      add('UK');
+      if (window.GradRightServices && GradRightServices.get) {
+        GradRightServices.get().forEach(function (s) {
+          const title = String((s && s.title) || '');
+          if (/sop|essay/i.test(title)) add('SOP help');
+          if (/visa/i.test(title)) add('Visa');
+          if (/shortlist|school/i.test(title)) add('US STEM');
+          if (/canada/i.test(title)) add('Canada pathways');
+          if (/uk|warwick|lse/i.test(title)) add('UK');
+        });
+      }
+      const role = String((authorMeta(meName) && authorMeta(meName).role) || '');
+      if (/usa|us\b|stem/i.test(role)) add('US STEM');
+      if (/sop/i.test(role)) add('SOP help');
+      if (/canada/i.test(role)) add('Canada pathways');
+      if (/\buk\b/i.test(role)) add('UK');
+      return tags;
+    }
+
+    function forYouItems() {
+      const tags = myExpertiseTags().map(function (t) {
+        return t.toLowerCase();
+      });
+      return posts
+        .filter(function (p) {
+          const meta = authorMeta(p.author);
+          if (meta.type === 'counselor' || meta.type === 'professor') return false;
+          if (p.author === meName) return false;
+          return tags.indexOf(String(p.tag || '').toLowerCase()) >= 0;
+        })
+        .slice()
+        .sort(function (a, b) {
+          return String(ensureAt(b)).localeCompare(String(ensureAt(a)));
+        })
+        .slice(0, 5);
+    }
+
+    function trendingTopics() {
+      const counts = {};
+      posts.forEach(function (p) {
+        const tag = String(p.tag || '').trim() || 'General';
+        if (!counts[tag]) counts[tag] = { tag: tag, posts: 0, likes: 0 };
+        counts[tag].posts += 1;
+        counts[tag].likes += Number(p.likes) || 0;
+      });
+      return Object.keys(counts)
+        .map(function (k) {
+          return counts[k];
+        })
+        .sort(function (a, b) {
+          return b.posts + b.likes * 0.15 - (a.posts + a.likes * 0.15);
+        })
+        .slice(0, 6);
+    }
+
+    function renderRail() {
+      const forYouEl = document.getElementById('community-foryou');
+      const trendEl = document.getElementById('community-trending');
+      if (!forYouEl || !trendEl) return;
+      const items = forYouItems();
+      if (!items.length) {
+        forYouEl.innerHTML =
+          '<p class="community-rail-empty">No student questions match your profile topics yet. Keep answering in the feed to attract more.</p>';
+      } else {
+        forYouEl.innerHTML = items
+          .map(function (p) {
+            const meta = authorMeta(p.author);
+            const snippet = String(p.body || '').slice(0, 92) + (p.body.length > 92 ? '…' : '');
+            return (
+              '<button type="button" class="community-foryou-item" data-rail-post="' +
+              p.id +
+              '">' +
+              '<span class="avatar sm' +
+              (meta.amber ? ' amber' : '') +
+              '">' +
+              escapeHtml(meta.initials) +
+              '</span>' +
+              '<span class="community-foryou-copy">' +
+              '<strong>' +
+              escapeHtml(p.author) +
+              '</strong>' +
+              '<span class="community-foryou-meta">' +
+              escapeHtml(displayWhen(p)) +
+              ' · ' +
+              escapeHtml(p.tag) +
+              '</span>' +
+              '<span class="community-foryou-body">' +
+              escapeHtml(snippet) +
+              '</span></span></button>'
+            );
+          })
+          .join('');
+      }
+      const topics = trendingTopics();
+      trendEl.innerHTML = topics
+        .map(function (t) {
+          return (
+            '<button type="button" class="community-trend-item" data-rail-tag="' +
+            encodeURIComponent(t.tag) +
+            '">' +
+            '<strong>' +
+            escapeHtml(t.tag) +
+            '</strong>' +
+            '<span>' +
+            t.posts +
+            (t.posts === 1 ? ' post' : ' posts') +
+            '</span></button>'
+          );
+        })
+        .join('');
+    }
+
+    function escapeHtml(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
     }
 
     function findPost(id) {
@@ -970,7 +1220,7 @@
                 p.id +
                 '">' +
                 '<div class="c-activity-label">Post · ' +
-                p.time +
+                displayWhen(p) +
                 (p.tag ? ' · ' + p.tag : '') +
                 '</div>' +
                 '<p>' +
@@ -1084,6 +1334,7 @@
       posts.unshift({
         id: 'p' + Date.now(),
         author: s.name,
+        at: isoStamp(TODAY),
         time: 'Just now',
         tag: 'General',
         following: false,
@@ -1195,6 +1446,27 @@
         setTimeout(function () {
           el.classList.remove('is-flash');
         }, 1400);
+      });
+    }
+
+    const communityRail = document.getElementById('community-rail');
+    if (communityRail) {
+      communityRail.addEventListener('click', function (e) {
+        const postBtn = e.target.closest('[data-rail-post]');
+        if (postBtn) {
+          focusPost(postBtn.getAttribute('data-rail-post'));
+          return;
+        }
+        const tagBtn = e.target.closest('[data-rail-tag]');
+        if (tagBtn) {
+          const tag = decodeURIComponent(tagBtn.getAttribute('data-rail-tag') || '');
+          const search = document.getElementById('community-search');
+          query = tag;
+          if (search) search.value = tag;
+          filter = 'recent';
+          closePanel();
+          render();
+        }
       });
     }
 
@@ -1325,6 +1597,7 @@
       const entry = {
         id: 'x' + Date.now(),
         author: s.name,
+        at: isoStamp(TODAY),
         time: 'Just now',
         text: text,
         replies: [],
@@ -1368,6 +1641,7 @@
 
     function boot() {
       currentMe();
+      hydrateTimes(posts);
       buildSocialGraph();
       const meta = authorMeta(meName);
       document.getElementById('me-avatar').textContent = meta.initials;
