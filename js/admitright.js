@@ -266,6 +266,14 @@
       daysAgo: Math.max(0, Math.floor((TODAY - created) / 86400000)),
       events: events,
       lastActive: parseStamp(r.last_active_at),
+      extra: {
+        source: r.source,
+        languages: r.languages,
+        hostel: r.hostel,
+        scholarship: r.scholarship,
+        loan: r.loan,
+        careerGoal: r.career_goal,
+      },
     };
   }
 
@@ -339,8 +347,54 @@
     ncr.budget = { min: 15, max: 30, weight: 20 };
     ncr.activities = { values: ['Coding', 'Robotics', 'MUN'], weight: 10 };
     out[PROGRAMS[0].id].push({ id: newId(), name: 'Delhi NCR high achievers', criteria: ncr });
+    out[PROGRAMS[0].id] = out[PROGRAMS[0].id].concat(cseSeedPrefs());
     return out;
   }
+
+  /** Stable ids so the seeds are added to stored preferences only once. */
+  function cseSeedPrefs() {
+    var cse = PROGRAMS[0];
+    function make(id, name, edit) {
+      var c = baseCriteria(cse);
+      edit(c);
+      return { id: id, name: name, criteria: c };
+    }
+    return [
+      make('seed-cse-iit', 'JEE Advanced rankers', function (c) {
+        c.location = { radius: 2000, weight: 5 };
+        c.test = { tests: [req('JEE Advanced', 10000), req('JEE Main', 95)], weight: 50 };
+        c.class12 = { min: 85, weight: 25 };
+        c.class10 = { min: 85, weight: 10 };
+        c.budget = { min: 12, max: 30, weight: 15 };
+      }),
+      make('seed-cse-coders', 'Olympiad & hackathon coders', function (c) {
+        c.location = { radius: 500, weight: 10 };
+        c.test = { tests: [req('JEE Main', 85), req('BITSAT', 220), req('CUET UG', 85)], weight: 25 };
+        c.class12 = { min: 80, weight: 20 };
+        c.activities = { values: ['Coding', 'Olympiads', 'Hackathons', 'Robotics'], weight: 40 };
+      }),
+      make('seed-cse-local', 'Budget-friendly local talent', function (c) {
+        c.location = { radius: 50, weight: 40 };
+        c.test = { tests: [req('JEE Main', 75), req('CUET UG', 75), req('MHT CET', 75)], weight: 20 };
+        c.class12 = { min: 75, weight: 25 };
+        c.budget = { min: 8, max: 18, weight: 35 };
+      }),
+      make('seed-cse-cbse', 'CBSE 90%+ toppers', function (c) {
+        c.board = { values: ['CBSE', 'CISCE'], weight: 30 };
+        c.class12 = { min: 90, weight: 40 };
+        c.class10 = { min: 90, weight: 20 };
+        c.test = { tests: [req('JEE Main', 85), req('CUET UG', 90)], weight: 20 };
+      }),
+      make('seed-cse-jan', 'January 2027 intake', function (c) {
+        c.intake = { value: 'Jan 2027', weight: 40 };
+        c.test = { tests: [req('JEE Main', 70), req('CUET UG', 70), req('MHT CET', 70)], weight: 20 };
+        c.class12 = { min: 70, weight: 20 };
+        c.location = { radius: 300, weight: 15 };
+      }),
+    ];
+  }
+
+  var SEEDS_KEY = 'admitright_seeds_v1';
 
   function loadPrefs() {
     var defaults = defaultPrefs();
@@ -354,7 +408,15 @@
           });
           defaults[p.id] = stored[p.id];
         });
+        if (localStorage.getItem(SEEDS_KEY) !== '1') {
+          var cse = defaults[PROGRAMS[0].id];
+          cseSeedPrefs().forEach(function (seed) {
+            if (!cse.some(function (p) { return p.id === seed.id || p.name === seed.name; })) cse.push(seed);
+          });
+          localStorage.setItem(PREFS_KEY, JSON.stringify(defaults));
+        }
       }
+      localStorage.setItem(SEEDS_KEY, '1');
     } catch (e) {}
     return defaults;
   }
@@ -547,8 +609,30 @@
     return !state.range || s.daysAgo <= state.range;
   }
 
+  var SAVED_KEY = 'admitright_saved_v1';
+  var SAVED = {};
+  try {
+    (JSON.parse(localStorage.getItem(SAVED_KEY) || '[]') || []).forEach(function (id) { SAVED[id] = true; });
+  } catch (err) { SAVED = {}; }
+
+  function isSaved(id) {
+    return !!SAVED[id];
+  }
+
+  function toggleSaved(id) {
+    if (SAVED[id]) delete SAVED[id];
+    else SAVED[id] = true;
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify(Object.keys(SAVED))); } catch (err) { /* storage full or blocked */ }
+    return !!SAVED[id];
+  }
+
+  function savedView() {
+    return state.view === 'saved';
+  }
+
   function baseSet() {
     return STUDENTS.filter(function (s) {
+      if (savedView() && !SAVED[s.id]) return false;
       if (!inRange(s)) return false;
       if (state.program !== 'all' && s.program !== state.program) return false;
       return true;
@@ -559,7 +643,7 @@
     var q = state.query.trim().toLowerCase();
     return baseSet()
       .filter(function (s) {
-        if (state.stage !== null && s.stage < state.stage) return false;
+        if (!savedView() && state.stage !== null && s.stage < state.stage) return false;
         if (!passesFilters(s)) return false;
         if (!q) return true;
         return (s.name + ' ' + s.id + ' ' + s.city).toLowerCase().indexOf(q) !== -1;
@@ -811,16 +895,17 @@
 
   /* ——— Dashboard: students ——— */
 
-  function attrChips(s, limit) {
+  function attrChips(s) {
     if (!s.pref) return '<span class="ar-attr none">' + ico('tune') + 'No preference yet</span>';
     return s.parts
       .filter(function (p) { return p.weight > 0; })
       .sort(function (a, b) { return b.weight - a.weight; })
-      .slice(0, limit)
       .map(function (p) {
-        var cls = p.v >= 0.99 ? '' : p.v >= 0.5 ? ' partial' : ' miss';
-        var icon = p.v >= 0.99 ? 'check' : p.v >= 0.5 ? 'remove' : 'close';
-        return '<span class="ar-attr' + cls + '">' + ico(icon) + esc(p.label) + '</span>';
+        var rel = p.rel == null ? 0 : p.rel;
+        var tone = rel >= 75 ? 'hi' : rel >= 40 ? 'mid' : 'lo';
+        var tip = p.label + ': ' + p.note + ' · level with or ahead of ' + rel + '% of applicants';
+        return '<span class="ar-attr" title="' + esc(tip) + '"><b class="ar-attr-pct ' + tone + '">' + rel + '%</b>' +
+          '<i class="ar-attr-dot" aria-hidden="true"></i>' + esc(p.label) + '</span>';
       }).join('');
   }
 
@@ -836,14 +921,21 @@
       return '<span class="ar-attr none">' + esc(f) + '</span>';
     }).join('');
     return (
-      '<button type="button" class="ar-card" data-student="' + s.id + '">' +
+      '<div class="ar-card" role="button" tabindex="0" data-student="' + s.id + '">' +
       '<div class="ar-card-top"><div class="avatar">' + esc(s.initials) + '</div>' +
-      '<div class="ar-card-who"><strong>' + esc(s.name) + '</strong><small>' + esc(s.id) + ' · ' + esc(s.city) + '</small></div>' +
-      (all ? '' : '<div class="ar-score ' + scoreClass(s) + '">' + scoreHtml(s) + '</div>') + '</div>' +
-      '<div class="ar-attrs">' + (all ? facts : attrChips(s, 4)) + '</div>' +
+      '<div class="ar-card-who"><strong>' + esc(s.name) + '</strong><small>' + esc(s.id) + '</small></div>' +
+      (all ? '' : '<div class="ar-score ' + scoreClass(s) + '">' + scoreHtml(s) + '</div>') + cardSaveHtml(s.id) + '</div>' +
+      '<div class="ar-attrs">' + (all ? facts : attrChips(s)) + '</div>' +
       '<div class="ar-card-meta"><span>' + esc(programById(s.program).name) + '</span>' + stagePill(s) + '</div>' +
-      '</button>'
+      '</div>'
     );
+  }
+
+  function cardSaveHtml(id) {
+    var on = isSaved(id);
+    var tip = on ? 'Unsave' : 'Save';
+    return '<button type="button" class="ar-card-save' + (on ? ' on' : '') + '" data-card-save="' + id + '" aria-pressed="' + on + '" aria-label="' + tip + '" data-tip="' + tip + '">' +
+      ico('bookmark') + '</button>';
   }
 
   function bucketDefs() {
@@ -923,14 +1015,14 @@
     return n > TABLE_LIMIT ? '<div class="ar-col-empty">Showing top ' + TABLE_LIMIT + ' of ' + n + '. Use search or Export to get everyone.</div>' : '';
   }
 
-  function ordinal(n) {
-    var t = n % 100;
-    if (t >= 11 && t <= 13) return 'th';
-    return ['th', 'st', 'nd', 'rd'][n % 10] || 'th';
+  function studentCell(s) {
+    var sub = state.program === 'all' ? s.id + ' · ' + programById(s.program).name : s.id + ' · ' + s.city;
+    return '<td class="ar-td-student"><div class="ar-who"><span class="avatar sm">' + esc(s.initials) + '</span>' +
+      '<div><span class="ar-name">' + esc(s.name) + '</span><small class="ar-cell-sub">' + esc(sub) + '</small></div></div></td>';
   }
 
-  function studentCell(s) {
-    return '<td><span class="ar-name">' + esc(s.name) + '</span><small class="ar-cell-sub">' + esc(s.id) + ' · ' + esc(programById(s.program).name) + '</small></td>';
+  function saveCell(s) {
+    return '<td class="ar-td-save">' + cardSaveHtml(s.id) + '</td>';
   }
 
   /** A program's tables are split by match level; columns are the preference's criteria with each student's score on them. */
@@ -938,20 +1030,20 @@
     var pref = state.program === 'all' ? null : findPref(state.program, state.prefId);
     if (!pref) {
       $('table').innerHTML = '<div class="panel ar-table-wrap">' + (list.length
-        ? '<table class="ar-table"><thead><tr><th>Student</th><th>Stage</th><th>Stream</th><th>Class 12</th><th>Test</th><th>Budget</th><th>Location</th><th>Intake</th></tr></thead><tbody>' +
+        ? '<table class="ar-table ar-table-fit"><thead><tr><th class="ar-th-student">Student</th><th>Stage</th><th>Stream</th><th>Class 12</th><th>Test</th><th>Budget</th><th>Location</th><th>Intake</th><th class="ar-th-save"></th></tr></thead><tbody>' +
           list.slice(0, TABLE_LIMIT).map(function (s) {
             return '<tr data-student="' + s.id + '">' + studentCell(s) + '<td>' + stagePill(s) + '</td><td>' + esc(s.stream) + '</td>' +
               '<td>' + esc(markNote(s.mark12)) + '</td><td>' + esc(headlineTest(s)) + '</td><td>₹' + s.budget[0] + '–' + s.budget[1] + 'L</td>' +
-              '<td>' + esc(s.city) + ' · ' + s.km + ' km</td><td>' + esc(s.intake) + '</td></tr>';
+              '<td>' + esc(s.city) + ' · ' + s.km + ' km</td><td>' + esc(s.intake) + '</td>' + saveCell(s) + '</tr>';
           }).join('') + '</tbody></table>' + tableMore(list.length)
         : '<div class="ar-col-empty">No students match these filters.</div>') + '</div>';
       return;
     }
-    var crits = CRITERIA.filter(function (c) { return pref.criteria[c.id].weight > 0; });
-    var head = '<tr><th>Student</th><th>Match</th>' + crits.map(function (c) {
+    var crits = CRITERIA.filter(function (c) { return c.id !== 'board' && pref.criteria[c.id].weight > 0; });
+    var head = '<tr><th class="ar-th-student">Student</th><th class="ar-th-match">Match</th>' + crits.map(function (c) {
       return '<th title="Percentile among ' + esc(programById(state.program).name) + ' applicants on ' + esc(c.label.toLowerCase()) + '">' +
-        esc(c.label) + '<i class="ar-th-weight">' + pref.criteria[c.id].weight + '</i></th>';
-    }).join('') + '</tr>';
+        esc(c.id === 'activities' ? 'Activities' : c.label) + ' <i class="ar-th-weight">' + pref.criteria[c.id].weight + '</i></th>';
+    }).join('') + '<th class="ar-th-save"></th></tr>';
     $('table').innerHTML = bucketDefs().map(function (b, i) {
       var items = list.filter(function (s) { return s.bucket === i; });
       var rows = items.slice(0, TABLE_LIMIT).map(function (s) {
@@ -959,10 +1051,9 @@
           '<td><span class="ar-score ' + scoreClass(s) + '">' + scoreHtml(s) + '</span></td>' +
           crits.map(function (c) {
             var part = s.parts.filter(function (p) { return p.id === c.id; })[0];
-            var tone = part.rel >= 75 ? 'hi' : part.rel >= 40 ? 'mid' : 'lo';
             var tip = part.note + ' · level with or ahead of ' + part.rel + '% of ' + programById(s.program).name + ' applicants';
-            return '<td><b class="ar-cell-score ' + tone + '" title="' + esc(tip) + '">' + part.rel + '<small>' + ordinal(part.rel) + '</small></b></td>';
-          }).join('') + '</tr>';
+            return '<td><b class="ar-cell-score" title="' + esc(tip) + '">' + part.rel + '<small>%</small></b></td>';
+          }).join('') + saveCell(s) + '</tr>';
       }).join('');
       var shut = !!state.collapsed[i];
       return (
@@ -971,7 +1062,7 @@
         '<h3><i style="background:' + b.color + '"></i>' + b.name + '<b class="ar-col-count">' + items.length + '</b></h3>' +
         '<span class="ar-table-meta"><small>' + b.range + '</small>' + ico('expand_more') + '</span></button>' +
         (shut ? '' : items.length
-          ? '<div class="ar-table-scroll"><table class="ar-table"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>' + tableMore(items.length)
+          ? '<div class="ar-table-scroll"><table class="ar-table ar-table-fit"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>' + tableMore(items.length)
           : '<div class="ar-col-empty">No students here yet.</div>') +
         '</section>'
       );
@@ -980,7 +1071,7 @@
 
   function renderFilters(list) {
     var chips = [];
-    if (state.stage !== null) chips.push('<button type="button" class="ar-filter-chip" data-clear="stage">Reached: ' + esc(STAGES[state.stage].name) + ico('close') + '</button>');
+    if (!savedView() && state.stage !== null) chips.push('<button type="button" class="ar-filter-chip" data-clear="stage">Reached: ' + esc(STAGES[state.stage].name) + ico('close') + '</button>');
     if (filtersOn()) {
       var f = state.filters;
       if (f.min !== '' || f.max !== '') {
@@ -998,7 +1089,7 @@
 
     $('students-count').textContent = list.length;
     if ($('filter-show-count')) $('filter-show-count').textContent = list.length;
-    $('students-title').textContent = state.program === 'all' ? 'All students' : 'Students by match';
+    $('students-title').textContent = savedView() ? 'Saved students' : state.program === 'all' ? 'All students' : 'Students by match';
   }
 
   function renderFilterBtn() {
@@ -1133,8 +1224,11 @@
     }
     var list = visibleSet();
     renderFilters(list);
-    $('board').hidden = state.layout !== 'board';
-    $('table').hidden = state.layout !== 'table';
+    var noneSaved = savedView() && !Object.keys(SAVED).length;
+    $('saved-empty').hidden = !noneSaved;
+    $('board').hidden = noneSaved || state.layout !== 'board';
+    $('table').hidden = noneSaved || state.layout !== 'table';
+    if (noneSaved) return;
     if (state.layout === 'board') renderBoard();
     else renderTable(list);
   }
@@ -1192,26 +1286,17 @@
     $('pp-program-count').textContent = PROGRAMS.length;
     $('pp-program-list').innerHTML = PROGRAMS.map(function (p) {
       var n = STUDENTS.filter(function (s) { return s.program === p.id; }).length;
-      var k = prefsFor(p.id).length;
       return (
         '<button type="button" class="ar-pp-program' + (state.ppProgram === p.id ? ' active' : '') + '" data-pp-program="' + p.id + '">' +
-        '<strong>' + esc(p.name) + '</strong>' +
-        '<small>' + n + ' students · ' + k + ' preference' + (k === 1 ? '' : 's') + '</small></button>'
+        '<strong>' + esc(p.name) + '</strong><small>' + fmtNum(n) + '</small></button>'
       );
     }).join('');
 
     var program = programById(state.ppProgram);
-    var total = STUDENTS.filter(function (s) { return s.program === program.id; }).length;
-    $('pp-program-title').textContent = program.name;
-    $('pp-program-meta').textContent =
-      '₹' + program.fee + 'L fee · ' + (program.stream === 'Any' ? 'Any stream' : program.stream) + ' · ' +
-      program.seats + ' seats · ' + total + ' students interested';
-
     var prefs = prefsFor(program.id);
     if (!prefs.length) {
       $('pp-cards').innerHTML =
         '<article class="panel ar-pp-empty">' + ico('tune') + '<h3>No preferences yet</h3>' +
-        '<p>' + total + ' interested students aren’t scored until you tell us who fits ' + esc(program.name) + '.</p>' +
         '<button type="button" class="btn btn-primary btn-sm" id="pp-create-empty" data-create-pref="' + program.id + '">' +
         ico('add') + 'Create preference</button></article>';
       return;
@@ -1223,10 +1308,10 @@
       }).join('');
       return (
         '<article class="panel ar-pp-card">' +
-        '<div class="ar-pp-card-head"><div><h3>' + esc(pref.name) + '</h3>' +
-        (i === 0 ? '<span class="ar-default">Default for this program</span>' : '') + '</div></div>' +
+        '<div class="ar-pp-card-head"><h3>' + esc(pref.name) + '</h3>' +
+        (i === 0 ? '<span class="ar-default">Default</span>' : '') + '</div>' +
         '<div class="ar-crits">' + chips + '</div>' +
-        '<div class="ar-pp-card-foot"><span><b>' + n + '</b> of ' + total + ' students match</span>' +
+        '<div class="ar-pp-card-foot"><span><b>' + n + '</b> match</span>' +
         '<div class="ar-pp-actions">' +
         (prefs.length > 1 ? '<button type="button" class="btn btn-ghost btn-sm" data-delete-pref="' + pref.id + '">Delete</button>' : '') +
         '<button type="button" class="btn btn-secondary btn-sm" data-edit-pref="' + pref.id + '">Edit</button>' +
@@ -1238,7 +1323,8 @@
 
   function setView(view) {
     state.view = view;
-    $('view-dashboard').hidden = view !== 'dashboard';
+    $('view-dashboard').hidden = view === 'programs';
+    $('view-dashboard').classList.toggle('ar-saved-view', view === 'saved');
     $('view-programs').hidden = view !== 'programs';
     document.querySelectorAll('.ar-rail-item[data-go]').forEach(function (a) {
       a.classList.toggle('active', a.getAttribute('data-go') === view);
@@ -1253,6 +1339,7 @@
   /** modal shows a centred popup instead of the side panel. */
   function openDrawer(title, body, foot, modal) {
     $('drawer').classList.toggle('modal', !!modal);
+    $('drawer').classList.remove('ar-confirm-modal');
     $('drawer-title').textContent = title;
     $('drawer-body').innerHTML = body;
     $('drawer-foot').innerHTML = foot || '';
@@ -1289,6 +1376,48 @@
     );
   }
 
+  var profileCollapsed = { ai: true, match: true, profile: true, tests: true, activities: true, other: true, log: true };
+
+  function profileSection(key, title, html, cls) {
+    return (
+      '<details class="ar-block ar-fold' + (cls ? ' ' + cls : '') + '" data-fold="' + key + '"' + (profileCollapsed[key] ? '' : ' open') + '>' +
+      '<summary><h4>' + title + '</h4>' + ico('expand_more') + '</summary>' +
+      '<div class="ar-fold-body">' + html + '</div></details>'
+    );
+  }
+
+  function hashOf(str) {
+    var h = 0;
+    for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return h;
+  }
+
+  /** Extra profile answers from the AI flow; CSV columns win, otherwise stable demo values per student. */
+  function otherDetails(s) {
+    var x = s.extra || {};
+    var h = hashOf(s.id);
+    function pickBy(list, shift) {
+      return list[(h >>> shift) % list.length];
+    }
+    var goals = {
+      'btech-cse': ['Software engineer', 'Product engineer', 'Startup founder'],
+      'btech-ai': ['ML engineer', 'AI researcher', 'Data scientist'],
+      'bsc-ds': ['Data analyst', 'Data scientist', 'Business analyst'],
+      bba: ['Product manager', 'Consultant', 'Family business'],
+      bdes: ['UX designer', 'Product designer', 'Brand designer'],
+    }[s.program] || ['Not shared'];
+    return [
+      ['Career goal', x.careerGoal || pickBy(goals, 1)],
+      ['Came from', x.source || pickBy(['GradRight AI flow', 'Counsellor referral', 'Education fair', 'School partnership'], 3)],
+      ['Languages', x.languages || pickBy(['English, Hindi', 'English, Hindi, Punjabi', 'English, Hindi, Bengali', 'English'], 5)],
+      ['Needs hostel', x.hostel || (s.km > 60 ? 'Yes' : pickBy(['No', 'Maybe'], 7))],
+      ['Scholarship interest', x.scholarship || pickBy(['Yes', 'No', 'Merit only'], 9)],
+      ['Education loan', x.loan || pickBy(['Interested', 'Not needed', 'Exploring'], 11)],
+      ['Profile created', fmtDateTime(s.createdOn)],
+      ['Last active', s.lastActive ? fmtDateTime(s.lastActive) : 'Not yet'],
+    ];
+  }
+
   function openStudent(id) {
     var s = STUDENTS.filter(function (x) { return x.id === id; })[0];
     if (!s) return;
@@ -1311,34 +1440,25 @@
         return logRow(i === s.stage ? ' done current' : ' done', 'check', st.name, events[i], i === s.stage ? 'Current stage' : '');
       }).join('');
 
-    var earned = 0;
-    var possible = 0;
-    var matches = s.parts.filter(function (p) { return p.weight > 0; }).map(function (p) {
+    var scored = s.parts.filter(function (p) { return p.weight > 0; });
+    var matches = scored.map(function (p) {
       var pct = Math.round(p.v * 100);
-      var pts = Math.round(p.v * p.weight * 10) / 10;
-      earned += p.v * p.weight;
-      possible += p.weight;
       var tone = pct >= 99 ? 'hi' : pct >= 50 ? 'mid' : 'lo';
       return (
         '<div class="ar-match-row">' +
-        '<div class="ar-match-top"><span class="ar-match-label">' + esc(p.label) + '<i>Weight ' + p.weight + '</i></span>' +
-        '<em>' + esc(p.note) + '</em></div>' +
-        '<div class="ar-mini-track"><i class="' + tone + '" style="width:' + pct + '%"></i></div>' +
-        '<b class="ar-match-score ' + tone + '">' + pct + '%<small>' + fmtNum(pts) + ' / ' + p.weight + ' pts</small></b>' +
+        '<span class="ar-match-label">' + esc(p.label) + '</span>' +
+        '<em>' + esc(p.note) + '</em>' +
+        '<b class="ar-match-score ' + tone + '">' + pct + '%</b>' +
         '</div>'
       );
     }).join('');
-    if (possible) {
-      matches += '<div class="ar-match-total"><span>Match score</span><small>' + fmtNum(Math.round(earned * 10) / 10) + ' of ' + possible +
-        ' weighted points</small><b class="ar-match-score ' + scoreClass(s) + '">' + s.score + '%</b></div>';
+    if (scored.length) {
+      matches += '<div class="ar-match-total"><span>Match score</span><b class="ar-match-score ' + scoreClass(s) + '">' + s.score + '%</b></div>';
     }
 
-    var contact =
-      '<div class="ar-private">' +
-      '<div><span>Contact</span><strong class="ar-blur" aria-hidden="true">+91 98765 43210</strong></div>' +
-      '<div><span>Email</span><strong class="ar-blur" aria-hidden="true">student.name@gmail.com</strong></div>' +
-      '<p>' + ico('lock') + 'Contact details stay private. Use Reach out to connect through AdmitRight.</p>' +
-      '</div>';
+    var other = '<div class="ar-facts">' + otherDetails(s).map(function (f) {
+      return '<div><span>' + f[0] + '</span><strong>' + esc(f[1]) + '</strong></div>';
+    }).join('') + '</div>';
 
     var facts = [
       ['Location', s.city + ' · ' + s.km + ' km'], ['Stream', s.stream],
@@ -1365,9 +1485,6 @@
       return '<span class="pill">' + esc(a) + (custom ? ' · custom' : '') + '</span>';
     }).join('');
 
-    var verdict = !s.pref ? 'No preference yet' : s.bucket === 0
-      ? 'Clears “' + esc(s.pref.name) + '” (needs ' + MATCH_MIN + '%)'
-      : 'Below “' + esc(s.pref.name) + '” (needs ' + MATCH_MIN + '%)';
     if (!s.pref) {
       matches = '<p class="ar-muted">' + esc(program.name) + ' has no preference, so there’s nothing to match against.</p>' +
         '<button type="button" class="btn btn-secondary btn-sm ar-block-btn" data-create-pref="' + s.program + '">' + ico('add') + 'Create preference</button>';
@@ -1378,19 +1495,26 @@
       '<div class="ar-hero-who"><h3>' + esc(s.name) + '</h3><p>' + esc(s.id) + ' · ' + esc(program.name) + '</p>' +
       '<p style="margin-top:0.35rem">' + stagePill(s) + '</p></div>' +
       '<div class="ar-ring" style="--p:' + (s.score || 0) + ';--c:' + scoreColor(s) + '"><span>' + (s.score === null ? '—' : s.score + '%') + '</span></div></div>' +
-      '<div class="ar-ai"><h4>' + ico('auto_awesome') + 'AI summary</h4>' + aiSummary(s) + '</div>' +
-      '<div class="ar-block"><h4>Activity log</h4><div class="ar-journey">' + journey + '</div></div>' +
-      '<div class="ar-block"><h4>Preference match · ' + verdict + '</h4>' + matches + '</div>' +
-      '<div class="ar-block"><h4>Profile</h4>' + contact + '<div class="ar-facts">' + facts + '</div></div>' +
-      '<div class="ar-block"><h4>Test scores</h4>' + tests + '</div>' +
-      '<div class="ar-block"><h4>Extracurricular</h4><div class="ar-tags">' + activities + '</div></div>';
+      profileSection('ai', ico('auto_awesome') + 'AI summary', aiSummary(s), 'ar-ai') +
+      profileSection('match', 'Preference match', matches) +
+      profileSection('profile', 'Profile', '<div class="ar-facts">' + facts + '</div>') +
+      profileSection('tests', 'Test scores', tests) +
+      profileSection('activities', 'Extracurricular', '<div class="ar-tags">' + activities + '</div>') +
+      profileSection('other', 'Other details', other) +
+      profileSection('log', 'Activity log', '<div class="ar-journey">' + journey + '</div>');
 
     openDrawer(
       'Student profile',
       body,
-      '<button type="button" class="btn btn-secondary btn-sm" data-action="shortlist">Save to list</button>' +
+      saveBtnHtml(s.id) +
       '<button type="button" class="btn btn-primary btn-sm" data-action="reach">Reach out</button>'
     );
+  }
+
+  function saveBtnHtml(id) {
+    var on = isSaved(id);
+    return '<button type="button" class="btn btn-secondary btn-sm btn-icon ar-save-btn' + (on ? ' on' : '') + '" data-action="shortlist" data-id="' + id + '">' +
+      ico(on ? 'bookmark_added' : 'bookmark_add') + (on ? 'Saved' : 'Save to list') + '</button>';
   }
 
   /* ——— Preference editor ——— */
@@ -1647,14 +1771,27 @@
     toast(created ? 'Preference created.' : 'Preference saved. Students re-scored.');
   }
 
+  function confirmDeletePref(programId, prefId) {
+    if (prefsFor(programId).length <= 1) return;
+    var pref = findPref(programId, prefId);
+    openDrawer(
+      'Delete preference',
+      '<div class="ar-confirm">' + ico('delete') +
+      '<p>Delete <strong>“' + esc(pref.name) + '”</strong> from ' + esc(programById(programId).name) + '? This can’t be undone.</p></div>',
+      '<button type="button" class="btn btn-ghost btn-sm" data-close-drawer>Cancel</button>' +
+      '<button type="button" class="btn btn-danger btn-sm" data-confirm-delete="' + prefId + '" data-confirm-program="' + programId + '">Delete</button>',
+      true
+    );
+    $('drawer').classList.add('ar-confirm-modal');
+  }
+
   function deletePref(programId, prefId) {
     var list = prefsFor(programId);
     if (list.length <= 1) return;
-    var pref = findPref(programId, prefId);
-    if (!window.confirm('Delete “' + pref.name + '”? Students won’t be scored against it anymore.')) return;
     PREFS[programId] = list.filter(function (p) { return p.id !== prefId; });
     if (state.prefId === prefId) state.prefId = null;
     savePrefs();
+    closeDrawer();
     renderPrograms();
     toast('Preference deleted.');
   }
@@ -1812,6 +1949,14 @@
       return;
     }
 
+    var cardSave = t.closest('[data-card-save]');
+    if (cardSave) {
+      var savedNow = toggleSaved(cardSave.getAttribute('data-card-save'));
+      toast(savedNow ? 'Saved to your list.' : 'Removed from your list.');
+      renderStudents();
+      return;
+    }
+
     var student = t.closest('[data-student]');
     if (student) {
       openStudent(student.getAttribute('data-student'));
@@ -1838,7 +1983,13 @@
 
     var delPref = t.closest('[data-delete-pref]');
     if (delPref) {
-      deletePref(state.ppProgram, delPref.getAttribute('data-delete-pref'));
+      confirmDeletePref(state.ppProgram, delPref.getAttribute('data-delete-pref'));
+      return;
+    }
+
+    var confirmDel = t.closest('[data-confirm-delete]');
+    if (confirmDel) {
+      deletePref(confirmDel.getAttribute('data-confirm-program'), confirmDel.getAttribute('data-confirm-delete'));
       return;
     }
 
@@ -1886,7 +2037,13 @@
     if (action) {
       var act = action.getAttribute('data-action');
       if (act === 'save-pref') saveEditor();
-      else if (act === 'shortlist') toast('Saved to your list.');
+      else if (act === 'shortlist') {
+        var sid = action.getAttribute('data-id');
+        var nowSaved = toggleSaved(sid);
+        action.outerHTML = saveBtnHtml(sid);
+        toast(nowSaved ? 'Saved to your list.' : 'Removed from your list.');
+        renderStudents();
+      }
       else if (act === 'reach') toast('Outreach queued for this student.');
     }
   });
@@ -1921,6 +2078,11 @@
     updatePreview();
   });
 
+  $('drawer-body').addEventListener('toggle', function (e) {
+    var key = e.target.getAttribute && e.target.getAttribute('data-fold');
+    if (key) profileCollapsed[key] = !e.target.open;
+  }, true);
+
   $('drawer-body').addEventListener('keydown', function (e) {
     if (!editing || e.key !== 'Enter') return;
     if (e.target.id === 'pe-activity-new') {
@@ -1938,6 +2100,10 @@
       if (!$('drawer').hidden) closeDrawer();
     }
     if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('ar-pick')) e.target.click();
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('ar-card')) {
+      e.preventDefault();
+      openStudent(e.target.getAttribute('data-student'));
+    }
   });
 
   $('student-search').addEventListener('input', function (e) {

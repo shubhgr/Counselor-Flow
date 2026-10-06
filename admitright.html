@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=notif8" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar71" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar88" />
 </head>
 <body class="ar">
   <div class="app">
@@ -20,6 +20,9 @@
         <a class="ar-rail-item" href="#" data-go="programs" title="Programs &amp; preferences" aria-label="Programs and preferences">
           <span class="material-symbols-rounded" aria-hidden="true">school</span>
         </a>
+        <a class="ar-rail-item" href="#" data-go="saved" title="Saved students" aria-label="Saved students">
+          <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+        </a>
       </nav>
       <a class="ar-rail-item ar-rail-foot" href="index.html" title="Log out" aria-label="Log out">
         <span class="material-symbols-rounded" aria-hidden="true">logout</span>
@@ -31,8 +34,8 @@
       <div id="view-dashboard">
         <header class="topbar">
           <div class="ar-title">
-            <h1>Northfield University</h1>
-            <span class="ar-sub">Admissions dashboard</span>
+            <h1>BML Munjal University</h1>
+            <span class="ar-sub" id="dash-sub">Admissions dashboard</span>
           </div>
           <div class="actions">
             <div class="ar-menu-wrap">
@@ -61,13 +64,6 @@
                 <button type="button" class="ar-menu-item" data-range="30">Last 30 days</button>
               </div>
             </div>
-            <span class="ar-actions-sep" aria-hidden="true"></span>
-            <button type="button" class="btn btn-secondary btn-sm ar-icon-only" id="campaign-btn" aria-label="Trigger campaign" data-tip="Trigger campaign">
-              <span class="material-symbols-rounded" aria-hidden="true">send</span>
-            </button>
-            <button type="button" class="btn btn-primary btn-sm ar-icon-only" id="export-btn" aria-label="Export" data-tip="Export">
-              <span class="material-symbols-rounded" aria-hidden="true">download</span>
-            </button>
           </div>
         </header>
 
@@ -124,9 +120,21 @@
                   <button type="button" class="ar-seg-btn active" data-view="board" role="tab">Board</button>
                   <button type="button" class="ar-seg-btn" data-view="table" role="tab">Table</button>
                 </div>
+                <span class="ar-actions-sep" aria-hidden="true"></span>
+                <button type="button" class="btn btn-secondary btn-sm ar-icon-only" id="campaign-btn" aria-label="Trigger campaign" data-tip="Trigger campaign">
+                  <span class="material-symbols-rounded" aria-hidden="true">send</span>
+                </button>
+                <button type="button" class="btn btn-primary btn-sm ar-icon-only" id="export-btn" aria-label="Export" data-tip="Export">
+                  <span class="material-symbols-rounded" aria-hidden="true">download</span>
+                </button>
               </div>
             </div>
             <div class="ar-filters" id="active-filters" hidden></div>
+            <div class="panel ar-saved-empty" id="saved-empty" hidden>
+              <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+              <h3>No saved students yet</h3>
+              <p>Open a student’s profile and choose Save to list. They’ll show up here.</p>
+            </div>
             <div class="ar-board" id="board"></div>
             <div class="ar-tables" id="table" hidden></div>
           </section>
@@ -137,8 +145,14 @@
       <div id="view-programs" hidden>
         <header class="topbar">
           <div class="ar-title">
-            <h1>Programs &amp; preferences</h1>
-            <span class="ar-sub">Each program has its own preferences. A preference decides which students you see.</span>
+            <h1>BML Munjal University</h1>
+            <span class="ar-sub">Programs &amp; preferences</span>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-primary btn-sm btn-icon" id="pp-create">
+              <span class="material-symbols-rounded" aria-hidden="true">add</span>
+              Create preference
+            </button>
           </div>
         </header>
 
@@ -148,21 +162,10 @@
               <h2>Programs</h2>
               <span class="ar-meta" id="pp-program-count"></span>
             </div>
-            <p class="panel-lead">Programs come from your university catalogue. You can’t add them here.</p>
             <div class="ar-pp-list" id="pp-program-list"></div>
           </aside>
 
           <section class="ar-pp-main">
-            <div class="ar-section-head">
-              <div>
-                <h2 id="pp-program-title">Program</h2>
-                <p class="ar-lead" id="pp-program-meta"></p>
-              </div>
-              <button type="button" class="btn btn-primary btn-sm btn-icon" id="pp-create">
-                <span class="material-symbols-rounded" aria-hidden="true">add</span>
-                Create preference
-              </button>
-            </div>
             <div class="ar-pp-cards" id="pp-cards"></div>
           </section>
         </div>
@@ -186,6 +189,6 @@
 
   <div class="ar-toast" id="toast" hidden></div>
 
-  <script src="js/admitright.js?v=ar69"></script>
+  <script src="js/admitright.js?v=ar89"></script>
 </body>
 </html>
