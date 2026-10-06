@@ -1009,6 +1009,22 @@
   gap: 0.65rem;
 }
 
+.ar-card-scorebox {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.16rem;
+}
+
+.ar-score-updated {
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
 .ar-card-save {
   position: relative;
   flex: 0 0 auto;
@@ -1078,6 +1094,134 @@
 .ar-score.lo { color: var(--danger); }
 .ar-score.none { color: var(--muted); }
 
+.ar-score-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ar-delta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ar-delta s {
+  font-weight: 800;
+  text-decoration-thickness: 1px;
+}
+
+.ar-delta .material-symbols-rounded {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.ar-delta.up .material-symbols-rounded { color: var(--success); }
+.ar-delta.down .material-symbols-rounded { color: var(--danger); }
+
+.ar-edited {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin-left: 0.6rem;
+  font-style: normal;
+  font-size: 0.74rem;
+  color: var(--brand);
+}
+
+.ar-edited .material-symbols-rounded {
+  font-size: 14px;
+}
+
+.ar-edited-clear {
+  margin-left: 0.35rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ar-edited-clear:hover {
+  color: var(--ink);
+}
+
+.ar-match-was {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ar-hist {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--gray-50);
+  font-size: 0.78rem;
+}
+
+.ar-hist-head {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.ar-hist-head .material-symbols-rounded {
+  font-size: 16px;
+  color: var(--brand);
+}
+
+.ar-hist ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ar-hist li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.3rem 0;
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+}
+
+.ar-hist li:first-child {
+  border-top: 0;
+}
+
+.ar-hist li em {
+  margin-left: 0.3rem;
+  font-style: normal;
+  color: var(--muted);
+}
+
+.ar-hist-scores {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ar-hist-scores .material-symbols-rounded {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ar-hist-scores b { font-weight: 650; }
+.ar-hist-scores b.up { color: var(--success); }
+.ar-hist-scores b.down { color: var(--danger); }
+
 .ar-card-meta {
   display: flex;
   align-items: center;
@@ -1108,6 +1252,33 @@
 
 .ar-attr.none {
   color: var(--muted);
+}
+
+.ar-attr.old {
+  opacity: 0.62;
+}
+
+.ar-version-chip {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  margin: 0;
+  min-height: 0;
+  padding: 0.15rem 0.45rem;
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: inherit;
+  letter-spacing: inherit;
+  color: var(--brand);
+  background: var(--purple-50);
+  border-color: var(--purple-200);
+}
+
+.ar-version-chip.on {
+  color: var(--muted);
+  background: var(--gray-50);
+  border-color: var(--line);
 }
 
 .ar-attr-pct {
@@ -1803,8 +1974,8 @@
 
 .ar-match-total {
   display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: baseline;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
   gap: 0.6rem;
   padding: 0.7rem 0 0.1rem;
   font-size: 0.82rem;
@@ -1839,6 +2010,19 @@
 .ar-facts div strong {
   font-size: 0.84rem;
   font-weight: 550;
+}
+
+.ar-subsec {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line);
+}
+
+.ar-sublabel {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--muted);
 }
 
 .ar-private {
@@ -2232,6 +2416,52 @@
 .ar-editor-program strong {
   font-size: 0.88rem;
   color: var(--ink);
+}
+
+label.ar-editor-program {
+  position: relative;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+label.ar-editor-program:hover,
+label.ar-editor-program:focus-within {
+  border-color: var(--purple-200);
+  background: var(--purple-50);
+}
+
+.ar-editor-program > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.ar-editor-program select {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--ink);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  box-shadow: none;
+  height: auto;
+}
+
+.ar-editor-program select:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.ar-editor-program > .material-symbols-rounded:last-child {
+  color: var(--muted);
+  pointer-events: none;
 }
 
 .ar-score-box {

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AdmitRight — University dashboard</title>
+  <link rel="stylesheet" href="../css/styles.css?v=notif8" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar105" />
+</head>
+<body class="ar">
+  <div class="app">
+    <aside class="ar-rail" aria-label="Main navigation">
+      <a class="ar-rail-mark" href="#" data-go="dashboard" aria-label="AdmitRight">
+        <img src="../assets/gradright-logo-dark.png" alt="" />
+      </a>
+      <nav class="ar-rail-nav">
+        <a class="ar-rail-item active" href="#" data-go="dashboard" title="Dashboard" aria-label="Dashboard">
+          <span class="material-symbols-rounded" aria-hidden="true">space_dashboard</span>
+        </a>
+        <a class="ar-rail-item" href="#" data-go="programs" title="Programs &amp; preferences" aria-label="Programs and preferences">
+          <span class="material-symbols-rounded" aria-hidden="true">school</span>
+        </a>
+        <a class="ar-rail-item" href="#" data-go="saved" title="Saved students" aria-label="Saved students">
+          <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+        </a>
+      </nav>
+      <a class="ar-rail-item ar-rail-foot" href="../index.html" title="Log out" aria-label="Log out">
+        <span class="material-symbols-rounded" aria-hidden="true">logout</span>
+      </a>
+    </aside>
+
+    <div class="main">
+      <!-- Dashboard -->
+      <div id="view-dashboard">
+        <header class="topbar">
+          <div class="ar-title">
+            <h1>BML Munjal University</h1>
+            <span class="ar-sub" id="dash-sub">Admissions dashboard</span>
+          </div>
+          <div class="actions">
+            <div class="ar-menu-wrap">
+              <button type="button" class="chip-btn ar-picker" id="program-btn" aria-expanded="false">
+                <span class="ar-picker-text"><small>Program</small><span id="program-label">All programs</span></span>
+                <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+              </button>
+              <div class="ar-menu" id="program-menu" hidden></div>
+            </div>
+            <div class="ar-menu-wrap">
+              <button type="button" class="chip-btn ar-picker" id="pref-btn" aria-expanded="false">
+                <span class="ar-picker-text"><small>Preference</small><span id="pref-label">Default preference</span></span>
+                <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+              </button>
+              <div class="ar-menu" id="pref-menu" hidden></div>
+            </div>
+            <div class="ar-menu-wrap">
+              <button type="button" class="chip-btn" id="range-btn" aria-expanded="false">
+                <span id="range-label">All time</span>
+                <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+              </button>
+              <div class="ar-menu" id="range-menu" hidden>
+                <button type="button" class="ar-menu-item active" data-range="0">All time</button>
+                <button type="button" class="ar-menu-item" data-range="365">Last 1 year</button>
+                <button type="button" class="ar-menu-item" data-range="90">Last 3 months</button>
+                <button type="button" class="ar-menu-item" data-range="30">Last 30 days</button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div class="content ar-content">
+          <section class="ar-insights">
+            <div class="panel ar-funnel-panel" id="funnel">
+              <div class="panel-head">
+                <h2>Funnel</h2>
+                <div class="ar-head-actions">
+                  <button type="button" class="btn btn-ghost btn-sm" data-clear="stage" id="funnel-clear" hidden>Clear</button>
+                  <button type="button" class="ar-icon-btn ar-collapse-btn" data-toggle-insights aria-label="Collapse">
+                    <span class="material-symbols-rounded" aria-hidden="true">expand_less</span>
+                  </button>
+                </div>
+              </div>
+              <div class="ar-flist" id="funnel-grid"></div>
+              <div class="ar-mini" id="funnel-mini"></div>
+            </div>
+
+            <div class="panel ar-prefs-panel">
+              <div class="panel-head">
+                <h2 id="pref-panel-title">Preference</h2>
+                <div class="ar-head-actions">
+                  <button type="button" class="btn btn-ghost btn-sm" id="pref-panel-edit">Edit</button>
+                  <button type="button" class="ar-icon-btn ar-collapse-btn" data-toggle-insights aria-label="Collapse">
+                    <span class="material-symbols-rounded" aria-hidden="true">expand_less</span>
+                  </button>
+                </div>
+              </div>
+              <div id="prefs-summary"></div>
+              <div class="ar-mini" id="prefs-mini"></div>
+            </div>
+          </section>
+
+          <section class="ar-section" id="students">
+            <div class="ar-section-head">
+              <div>
+                <h2 class="ar-students-head"><span id="students-title">Students by match</span><span class="ar-head-count" id="students-count"></span></h2>
+              </div>
+              <div class="ar-tools">
+                <label class="ar-search">
+                  <span class="material-symbols-rounded" aria-hidden="true">search</span>
+                  <input type="search" id="student-search" placeholder="Search name, GR ID, city" />
+                </label>
+                <div class="ar-menu-wrap">
+                  <button type="button" class="chip-btn ar-intake-btn" id="intake-btn" aria-expanded="false">
+                    <span class="material-symbols-rounded" aria-hidden="true">event</span>
+                    <span id="intake-label">2027</span>
+                    <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+                  </button>
+                  <div class="ar-menu" id="intake-menu" hidden>
+                    <button type="button" class="ar-menu-item" data-intake="">All intakes</button>
+                    <button type="button" class="ar-menu-item" data-intake="2026">2026</button>
+                    <button type="button" class="ar-menu-item active" data-intake="2027">2027</button>
+                    <button type="button" class="ar-menu-item" data-intake="2028">2028</button>
+                    <button type="button" class="ar-menu-item" data-intake="2029">2029</button>
+                  </div>
+                </div>
+                <div class="ar-menu-wrap" id="filter-wrap">
+                  <button type="button" class="btn btn-secondary btn-sm btn-icon" id="filter-btn" aria-expanded="false">
+                    <span class="material-symbols-rounded" aria-hidden="true">filter_list</span>
+                    Filters
+                    <span class="ar-count" id="filter-count" hidden></span>
+                  </button>
+                  <div class="ar-menu ar-filter-menu" id="filter-menu" hidden></div>
+                </div>
+                <div class="ar-seg" role="tablist" aria-label="View">
+                  <button type="button" class="ar-seg-btn active" data-view="board" role="tab">Board</button>
+                  <button type="button" class="ar-seg-btn" data-view="table" role="tab">Table</button>
+                </div>
+                <span class="ar-actions-sep" aria-hidden="true"></span>
+                <button type="button" class="btn btn-secondary btn-sm ar-icon-only" id="campaign-btn" aria-label="Trigger campaign" data-tip="Trigger campaign">
+                  <span class="material-symbols-rounded" aria-hidden="true">send</span>
+                </button>
+                <button type="button" class="btn btn-primary btn-sm ar-icon-only" id="export-btn" aria-label="Export" data-tip="Export">
+                  <span class="material-symbols-rounded" aria-hidden="true">download</span>
+                </button>
+              </div>
+            </div>
+            <div class="ar-filters" id="active-filters" hidden></div>
+            <div class="panel ar-saved-empty" id="saved-empty" hidden>
+              <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+              <h3>No saved students yet</h3>
+              <p>Open a student’s profile and choose Save to list. They’ll show up here.</p>
+            </div>
+            <div class="ar-board" id="board"></div>
+            <div class="ar-tables" id="table" hidden></div>
+          </section>
+        </div>
+      </div>
+
+      <!-- Programs & preferences -->
+      <div id="view-programs" hidden>
+        <header class="topbar">
+          <div class="ar-title">
+            <h1>BML Munjal University</h1>
+            <span class="ar-sub">Programs &amp; preferences</span>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-primary btn-sm btn-icon" id="pp-create">
+              <span class="material-symbols-rounded" aria-hidden="true">add</span>
+              Create preference
+            </button>
+          </div>
+        </header>
+
+        <div class="content ar-pp">
+          <aside class="panel ar-pp-programs">
+            <div class="panel-head">
+              <h2>Programs</h2>
+              <span class="ar-meta" id="pp-program-count"></span>
+            </div>
+            <div class="ar-pp-list" id="pp-program-list"></div>
+          </aside>
+
+          <section class="ar-pp-main">
+            <div class="ar-pp-cards" id="pp-cards"></div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ar-drawer" id="drawer" hidden>
+    <div class="ar-drawer-backdrop" data-close-drawer></div>
+    <aside class="ar-drawer-card" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+      <div class="ar-drawer-head">
+        <strong id="drawer-title">Student</strong>
+        <button type="button" class="icon-btn" data-close-drawer aria-label="Close">
+          <span class="material-symbols-rounded" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <div class="ar-drawer-body gr-scroll" id="drawer-body"></div>
+      <div class="ar-drawer-foot" id="drawer-foot" hidden></div>
+    </aside>
+  </div>
+
+  <div class="ar-toast" id="toast" hidden></div>
+
+  <script src="js/admitright.js?v=ar105"></script>
+</body>
+</html>

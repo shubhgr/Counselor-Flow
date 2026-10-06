@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate temp AdmitRight student profiles as CSV.
 
-Usage: python3 data/generate_admitright_students.py [count] [seed]
-Writes data/admitright-students.csv (read by js/admitright.js).
+Usage: python3 admitright/data/generate_admitright_students.py [count] [seed]
+Writes admitright/data/admitright-students.csv (read by admitright/js/admitright.js).
 
 Marks are stored in each board's own grading:
   class*_scale = percent | cgpa10 (10-point GPA, % = GPA x 9.5) | ib45 (IB points out of 45)

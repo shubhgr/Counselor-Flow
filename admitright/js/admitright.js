@@ -124,7 +124,6 @@
     { id: 'stream', label: 'Stream', icon: 'science' },
     { id: 'board', label: 'Class 12 board', icon: 'account_balance' },
     { id: 'activities', label: 'Extracurricular', icon: 'sports_soccer' },
-    { id: 'intake', label: 'Intake', icon: 'event' },
   ];
   /** Every preference uses the same bands: Matches 80+, Close 60–79, Below under 60. */
   var MATCH_MIN = 80;
@@ -191,7 +190,7 @@
         activities: acts,
         budget: [budgetMin, budgetMax],
         program: program.id,
-        intake: rand() < 0.8 ? INTAKES[0] : INTAKES[1],
+        intake: spreadIntake('GR-' + (24180 + i * 37), rand() < 0.8 ? INTAKES[0] : INTAKES[1]),
         stage: stage,
         createdOn: createdOn,
         daysAgo: daysAgo,
@@ -238,6 +237,18 @@
     return m ? new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)) : null;
   }
 
+  /** The sample data is all 2027; spread students across intake years by GR ID, keeping their month. */
+  function spreadIntake(id, intake) {
+    var month = String(intake || 'Aug').split(' ')[0];
+    var n = hashOf(String(id)) % 100;
+    var year = n < 12 ? '2026' : n < 67 ? '2027' : n < 89 ? '2028' : '2029';
+    return month + ' ' + year;
+  }
+
+  function intakeYear(s) {
+    return String(s.intake || '').split(' ').pop();
+  }
+
   function studentFromRow(r) {
     var program = programById(r.program) ? r.program : PROGRAMS[0].id;
     var stage = STAGES.map(function (s) { return s.id; }).indexOf(r.stage);
@@ -260,7 +271,7 @@
       activities: (r.activities || '').split(';').map(function (a) { return a.trim(); }).filter(Boolean),
       budget: [Number(r.budget_min) || 0, Number(r.budget_max) || 0],
       program: program,
-      intake: r.intake,
+      intake: spreadIntake(r.id, r.intake),
       stage: stage === -1 ? 0 : stage,
       createdOn: created,
       daysAgo: Math.max(0, Math.floor((TODAY - created) / 86400000)),
@@ -330,7 +341,6 @@
       stream: { value: program.stream, weight: tech ? 30 : 1 },
       board: { values: BOARDS.slice(), weight: 10 },
       activities: { values: tech ? ['Coding', 'Robotics'] : ['Debate', 'Art', 'MUN'], weight: 10 },
-      intake: { value: 'Aug 2027', weight: 10 },
     };
   }
 
@@ -385,16 +395,17 @@
         c.class10 = { min: 90, weight: 20 };
         c.test = { tests: [req('JEE Main', 85), req('CUET UG', 90)], weight: 20 };
       }),
-      make('seed-cse-jan', 'January 2027 intake', function (c) {
-        c.intake = { value: 'Jan 2027', weight: 40 };
-        c.test = { tests: [req('JEE Main', 70), req('CUET UG', 70), req('MHT CET', 70)], weight: 20 };
-        c.class12 = { min: 70, weight: 20 };
-        c.location = { radius: 300, weight: 15 };
+      make('seed-cse-national', 'Pan-India strong scorers', function (c) {
+        c.location = { radius: 2500, weight: 5 };
+        c.test = { tests: [req('JEE Main', 90), req('BITSAT', 240), req('CUET UG', 90)], weight: 40 };
+        c.class12 = { min: 85, weight: 30 };
+        c.budget = { min: 15, max: 30, weight: 15 };
       }),
     ];
   }
 
-  var SEEDS_KEY = 'admitright_seeds_v1';
+  var SEEDS_KEY = 'admitright_seeds_v2';
+  var RETIRED_SEEDS = ['seed-cse-jan'];
 
   function loadPrefs() {
     var defaults = defaultPrefs();
@@ -409,7 +420,9 @@
           defaults[p.id] = stored[p.id];
         });
         if (localStorage.getItem(SEEDS_KEY) !== '1') {
-          var cse = defaults[PROGRAMS[0].id];
+          var cse = defaults[PROGRAMS[0].id] = defaults[PROGRAMS[0].id].filter(function (p) {
+            return RETIRED_SEEDS.indexOf(p.id) === -1;
+          });
           cseSeedPrefs().forEach(function (seed) {
             if (!cse.some(function (p) { return p.id === seed.id || p.name === seed.name; })) cse.push(seed);
           });
@@ -509,10 +522,6 @@
         var hit = s.activities.filter(function (a) { return wanted.indexOf(a.toLowerCase()) !== -1; }).length;
         return { v: hit ? clamp01(0.6 + hit * 0.4) : 0.2, raw: hit + s.activities.length / 100, note: s.activities.join(', ') };
       }
-      case 'intake': {
-        var okIntake = s.intake === p.value ? 1 : 0;
-        return { v: okIntake ? 1 : 0.4, raw: okIntake, note: s.intake };
-      }
     }
     return { v: 0, raw: 0, note: '' };
   }
@@ -542,6 +551,7 @@
     layout: 'board',
     query: '',
     range: 0,
+    intake: '2027',
     ppProgram: PROGRAMS[0].id,
     collapsed: {},
     filters: { min: '', max: '', vals: {} },
@@ -634,6 +644,7 @@
     return STUDENTS.filter(function (s) {
       if (savedView() && !SAVED[s.id]) return false;
       if (!inRange(s)) return false;
+      if (state.intake && intakeYear(s) !== state.intake) return false;
       if (state.program !== 'all' && s.program !== state.program) return false;
       return true;
     });
@@ -662,7 +673,6 @@
     stream: function (s) { return [s.stream]; },
     board: function (s) { return [s.board]; },
     activities: function (s) { return s.activities; },
-    intake: function (s) { return [s.intake]; },
   };
 
   function filtersOn() {
@@ -764,6 +774,172 @@
     return s.score === null ? '—' : s.score + '<small>%</small>';
   }
 
+  /* ——— Score changes after a preference edit ——— */
+
+  /* Per preference: { edits: [{ at, old: {id: score before}, now: {id: score after} }] }, oldest first,
+     holding only the students whose score moved in that edit. */
+  var CHANGES_KEY = 'admitright_pref_changes_v2';
+  var MAX_EDITS = 10;
+  var CHANGES = {};
+  var VERSION_VIEW = {};
+  try { CHANGES = JSON.parse(localStorage.getItem(CHANGES_KEY) || '{}') || {}; } catch (err) { CHANGES = {}; }
+  try { localStorage.removeItem('admitright_pref_changes_v1'); } catch (err) { /* blocked */ }
+
+  function saveChanges() {
+    try { localStorage.setItem(CHANGES_KEY, JSON.stringify(CHANGES)); } catch (err) { /* storage full or blocked */ }
+  }
+
+  function bucketOf(score) {
+    return score >= MATCH_MIN ? 0 : score >= CLOSE_MIN ? 1 : 2;
+  }
+
+  function editsFor(prefId) {
+    return (CHANGES[prefId] && CHANGES[prefId].edits) || [];
+  }
+
+  function recordChange(programId, before, after) {
+    var old = {};
+    var now = {};
+    var oldParts = {};
+    var up = 0;
+    var down = 0;
+    var moved = 0;
+    STUDENTS.forEach(function (s) {
+      if (s.program !== programId) return;
+      var beforeScore = scoreAgainst(s, before);
+      var afterScore = scoreAgainst(s, after);
+      var a = beforeScore.score;
+      var b = afterScore.score;
+      if (a === b) return;
+      old[s.id] = a;
+      now[s.id] = b;
+      oldParts[s.id] = beforeScore.parts.map(function (p) {
+        return { id: p.id, label: p.label, note: p.note, rel: Math.round((p.v || 0) * 100), weight: p.weight };
+      });
+      if (b > a) up += 1;
+      else down += 1;
+      if (bucketOf(a) !== bucketOf(b)) moved += 1;
+    });
+    if (!up && !down) return { up: 0, down: 0, moved: 0 };
+    var edits = editsFor(after.id).concat([{ at: Date.now(), old: old, now: now, oldParts: oldParts, before: clone(before) }]);
+    CHANGES[after.id] = { edits: edits.slice(-MAX_EDITS) };
+    saveChanges();
+    return { up: up, down: down, moved: moved };
+  }
+
+  /** Every edit that moved this student's score, oldest first, numbered within the preference. */
+  function historyFor(s) {
+    if (!s.pref || s.score === null) return [];
+    var edits = editsFor(s.pref.id);
+    var out = [];
+    edits.forEach(function (e, i) {
+      if (!Object.prototype.hasOwnProperty.call(e.old, s.id)) return;
+      out.push({ n: i + 1, at: e.at, was: e.old[s.id], now: e.now[s.id], parts: e.oldParts && e.oldParts[s.id] });
+    });
+    return out;
+  }
+
+  /** The latest edit that moved this student, if it still matches the score shown now. */
+  function changeFor(s) {
+    var h = historyFor(s);
+    var last = h[h.length - 1];
+    if (!last || last.now !== s.score) return null;
+    return {
+      was: last.was, at: last.at, edits: h.length,
+      diff: s.score - last.was,
+      from: bucketOf(last.was) !== s.bucket ? bucketOf(last.was) : null,
+    };
+  }
+
+  function changeTip(ch) {
+    return 'Was ' + ch.was + '% before the edit ' + timeAgo(ch.at) +
+      (ch.from !== null ? ' · was ' + bucketDefs()[ch.from].name : '') +
+      (ch.edits > 1 ? ' · changed in ' + ch.edits + ' edits' : '');
+  }
+
+  function deltaHtml(s) {
+    var ch = changeFor(s);
+    if (!ch) return '';
+    var up = ch.diff > 0;
+    var tip = changeTip(ch);
+    return '<span class="ar-delta ' + (up ? 'up' : 'down') + '" data-tip="' + esc(tip) + '" aria-label="' + esc(tip) + '">' +
+      '<s>' + ch.was + '%</s>' + ico(up ? 'arrow_upward' : 'arrow_downward') + '</span>';
+  }
+
+  function scoreDeltaHtml(s) {
+    return savedView() ? deltaHtml(s) : '';
+  }
+
+  function cardScoreBox(s) {
+    var showingOld = savedView() && VERSION_VIEW[s.id] && changeFor(s);
+    var ch = changeFor(s);
+    var score = showingOld ? ch.was : s.score;
+    var klass = showingOld
+      ? (ch.was >= MATCH_MIN ? 'hi' : ch.was >= CLOSE_MIN ? 'mid' : 'lo')
+      : scoreClass(s);
+    return '<div class="ar-card-scorebox"><div class="ar-score-wrap">' +
+      (showingOld ? '' : scoreDeltaHtml(s)) +
+      '<div class="ar-score ' + klass + '">' + (score == null ? '—' : score + '<small>%</small>') + '</div></div></div>';
+  }
+
+  function latestVersion(s) {
+    var h = historyFor(s);
+    return h[h.length - 1] || null;
+  }
+
+  function lastScorePref(s) {
+    if (!s.pref) return null;
+    var edits = editsFor(s.pref.id);
+    var last = edits[edits.length - 1];
+    if (last && last.before) return last.before;
+    var seeds = cseSeedPrefs();
+    for (var i = 0; i < seeds.length; i++) {
+      if (seeds[i].id === s.pref.id) return seeds[i];
+    }
+    return null;
+  }
+
+  function lastScoreParts(s) {
+    var pref = lastScorePref(s);
+    if (pref) {
+      return scoreAgainst(s, pref).parts.map(function (p) {
+        return { id: p.id, label: p.label, note: p.note, rel: Math.round((p.v || 0) * 100), weight: p.weight };
+      });
+    }
+    var v = latestVersion(s);
+    return v && v.parts && v.parts.length ? v.parts : null;
+  }
+
+  function editedHtml(prefId) {
+    var edits = editsFor(prefId);
+    if (!edits.length) return '';
+    return '<em class="ar-edited">' + ico('history') +
+      (edits.length > 1 ? 'Edited ' + edits.length + ' times · last ' : 'Edited ') + timeAgo(edits[edits.length - 1].at) +
+      '<button type="button" class="ar-edited-clear" data-clear-history="' + prefId + '">Clear</button></em>';
+  }
+
+  function historyHtml(s) {
+    var h = historyFor(s);
+    if (!h.length) return '';
+    var rows = h.slice().reverse().map(function (e) {
+      var up = e.now > e.was;
+      return '<li><span>Edit ' + e.n + ' <em>' + timeAgo(e.at) + '</em></span>' +
+        '<span class="ar-hist-scores">' + e.was + '%' + ico('arrow_forward') +
+        '<b class="' + (up ? 'up' : 'down') + '">' + e.now + '%</b></span></li>';
+    }).join('');
+    return '<div class="ar-hist"><div class="ar-hist-head">' + ico('history') + 'Score history</div><ul>' + rows + '</ul></div>';
+  }
+
+  function timeAgo(ts) {
+    var min = Math.round((Date.now() - ts) / 60000);
+    if (min < 1) return 'just now';
+    if (min < 60) return min + ' min ago';
+    var h = Math.round(min / 60);
+    if (h < 24) return h + ' hr ago';
+    var d = Math.round(h / 24);
+    return d + ' day' + (d === 1 ? '' : 's') + ' ago';
+  }
+
   function fmtDate(d) {
     var m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
     return d.getDate() + ' ' + m[d.getMonth()] + ' ' + d.getFullYear();
@@ -800,7 +976,6 @@
       case 'stream': return p.value === 'Any' ? 'Any stream' : p.value;
       case 'board': return p.values.length === BOARDS.length ? 'All boards' : p.values.join(', ') || 'None';
       case 'activities': return p.values.join(', ') || 'Any';
-      case 'intake': return p.value;
     }
     return '';
   }
@@ -895,18 +1070,30 @@
 
   /* ——— Dashboard: students ——— */
 
-  function attrChips(s) {
-    if (!s.pref) return '<span class="ar-attr none">' + ico('tune') + 'No preference yet</span>';
-    return s.parts
+  function attrChipsFromParts(parts, oldVersion) {
+    return parts
       .filter(function (p) { return p.weight > 0; })
       .sort(function (a, b) { return b.weight - a.weight; })
       .map(function (p) {
         var rel = p.rel == null ? 0 : p.rel;
         var tone = rel >= 75 ? 'hi' : rel >= 40 ? 'mid' : 'lo';
         var tip = p.label + ': ' + p.note + ' · level with or ahead of ' + rel + '% of applicants';
-        return '<span class="ar-attr" title="' + esc(tip) + '"><b class="ar-attr-pct ' + tone + '">' + rel + '%</b>' +
+        return '<span class="ar-attr' + (oldVersion ? ' old' : '') + '" title="' + esc(tip) + '"><b class="ar-attr-pct ' + tone + '">' + rel + '%</b>' +
           '<i class="ar-attr-dot" aria-hidden="true"></i>' + esc(p.label) + '</span>';
       }).join('');
+  }
+
+  function versionChip(s, showingOld) {
+    if (!savedView() || !changeFor(s) || !lastScoreParts(s)) return '';
+    return '<button type="button" class="ar-attr ar-version-chip' + (showingOld ? ' on' : '') + '" data-view-version="' + s.id + '">' +
+      (showingOld ? 'Now' : 'Last score') + '</button>';
+  }
+
+  function attrChips(s) {
+    if (!s.pref) return '<span class="ar-attr none">' + ico('tune') + 'No preference yet</span>';
+    var showingOld = savedView() && VERSION_VIEW[s.id];
+    var oldParts = showingOld ? lastScoreParts(s) : null;
+    return attrChipsFromParts(oldParts || s.parts, !!oldParts) + versionChip(s, !!oldParts);
   }
 
   function stagePill(s) {
@@ -924,7 +1111,8 @@
       '<div class="ar-card" role="button" tabindex="0" data-student="' + s.id + '">' +
       '<div class="ar-card-top"><div class="avatar">' + esc(s.initials) + '</div>' +
       '<div class="ar-card-who"><strong>' + esc(s.name) + '</strong><small>' + esc(s.id) + '</small></div>' +
-      (all ? '' : '<div class="ar-score ' + scoreClass(s) + '">' + scoreHtml(s) + '</div>') + cardSaveHtml(s.id) + '</div>' +
+      (all ? '' : cardScoreBox(s)) +
+      cardSaveHtml(s.id) + '</div>' +
       '<div class="ar-attrs">' + (all ? facts : attrChips(s)) + '</div>' +
       '<div class="ar-card-meta"><span>' + esc(programById(s.program).name) + '</span>' + stagePill(s) + '</div>' +
       '</div>'
@@ -1048,7 +1236,7 @@
       var items = list.filter(function (s) { return s.bucket === i; });
       var rows = items.slice(0, TABLE_LIMIT).map(function (s) {
         return '<tr data-student="' + s.id + '">' + studentCell(s) +
-          '<td><span class="ar-score ' + scoreClass(s) + '">' + scoreHtml(s) + '</span></td>' +
+          '<td><div class="ar-score-wrap"><span class="ar-score ' + scoreClass(s) + '">' + scoreHtml(s) + '</span>' + scoreDeltaHtml(s) + '</div></td>' +
           crits.map(function (c) {
             var part = s.parts.filter(function (p) { return p.id === c.id; })[0];
             var tip = part.note + ' · level with or ahead of ' + part.rel + '% of ' + programById(s.program).name + ' applicants';
@@ -1156,7 +1344,7 @@
     return Object.keys(seen).sort();
   }
 
-  var FILTER_ORDER = ['test', 'class12', 'class10', 'location', 'budget', 'stream', 'board', 'intake', 'activities'];
+  var FILTER_ORDER = ['test', 'class12', 'class10', 'location', 'budget', 'stream', 'board', 'activities'];
 
   /** One row per criterion the preference scores on, filtering on each student's actual value. */
   function renderFilterMenu() {
@@ -1210,6 +1398,10 @@
       '<div class="ar-fmenu-body gr-scroll">' +
       row(label('Match score'), rangeInputs(scoreAttr, f, '%')) +
       FILTER_ORDER.filter(function (id) { return pref.criteria[id].weight > 0; }).map(field).join('') +
+      row(label('Intake'), '<select class="ar-fselect" data-fintake aria-label="Intake">' +
+        [['', 'All intakes'], ['2026', '2026'], ['2027', '2027'], ['2028', '2028'], ['2029', '2029']].map(function (o) {
+          return '<option value="' + o[0] + '"' + (state.intake === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+        }).join('') + '</select>') +
       '</div>' +
       '<div class="ar-fmenu-foot"><button type="button" class="btn btn-primary btn-sm" data-fdone>Show <span id="filter-show-count">' +
       visibleSet().length + '</span> students</button></div>';
@@ -1311,7 +1503,8 @@
         '<div class="ar-pp-card-head"><h3>' + esc(pref.name) + '</h3>' +
         (i === 0 ? '<span class="ar-default">Default</span>' : '') + '</div>' +
         '<div class="ar-crits">' + chips + '</div>' +
-        '<div class="ar-pp-card-foot"><span><b>' + n + '</b> match</span>' +
+        '<div class="ar-pp-card-foot"><span><b>' + n + '</b> match' +
+        editedHtml(pref.id) + '</span>' +
         '<div class="ar-pp-actions">' +
         (prefs.length > 1 ? '<button type="button" class="btn btn-ghost btn-sm" data-delete-pref="' + pref.id + '">Delete</button>' : '') +
         '<button type="button" class="btn btn-secondary btn-sm" data-edit-pref="' + pref.id + '">Edit</button>' +
@@ -1376,7 +1569,7 @@
     );
   }
 
-  var profileCollapsed = { ai: true, match: true, profile: true, tests: true, activities: true, other: true, log: true };
+  var profileCollapsed = { match: true, profile: true, other: true, log: true };
 
   function profileSection(key, title, html, cls) {
     return (
@@ -1453,7 +1646,9 @@
       );
     }).join('');
     if (scored.length) {
-      matches += '<div class="ar-match-total"><span>Match score</span><b class="ar-match-score ' + scoreClass(s) + '">' + s.score + '%</b></div>';
+      matches += '<div class="ar-match-total"><span>Match score</span>' +
+        '<span></span>' +
+        '<b class="ar-match-score ' + scoreClass(s) + '">' + s.score + '%</b></div>';
     }
 
     var other = '<div class="ar-facts">' + otherDetails(s).map(function (f) {
@@ -1497,9 +1692,9 @@
       '<div class="ar-ring" style="--p:' + (s.score || 0) + ';--c:' + scoreColor(s) + '"><span>' + (s.score === null ? '—' : s.score + '%') + '</span></div></div>' +
       profileSection('ai', ico('auto_awesome') + 'AI summary', aiSummary(s), 'ar-ai') +
       profileSection('match', 'Preference match', matches) +
-      profileSection('profile', 'Profile', '<div class="ar-facts">' + facts + '</div>') +
-      profileSection('tests', 'Test scores', tests) +
-      profileSection('activities', 'Extracurricular', '<div class="ar-tags">' + activities + '</div>') +
+      profileSection('profile', 'Profile', '<div class="ar-facts">' + facts + '</div>' +
+        '<div class="ar-subsec"><span class="ar-sublabel">Test scores</span>' + tests + '</div>' +
+        '<div class="ar-subsec"><span class="ar-sublabel">Extracurricular</span><div class="ar-tags">' + activities + '</div></div>') +
       profileSection('other', 'Other details', other) +
       profileSection('log', 'Activity log', '<div class="ar-journey">' + journey + '</div>');
 
@@ -1650,7 +1845,10 @@
     var gradeHint = 'Boards grade differently. CGPA is converted × 9.5 and IB points ÷ 45 before comparing.';
 
     return (
-      '<div class="ar-editor-program">' + ico('school') + '<div><span>Program</span><strong>' + esc(program.name) + '</strong></div></div>' +
+      '<label class="ar-editor-program">' + ico('school') + '<div><span>Program</span>' +
+      '<select id="pe-program" aria-label="Program">' + PROGRAMS.map(function (p) {
+        return '<option value="' + p.id + '"' + (p.id === program.id ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+      }).join('') + '</select></div>' + ico('expand_more') + '</label>' +
       '<div class="field"><label>Preference name</label><input type="text" id="pe-name" value="' + esc(d.name) + '" placeholder="e.g. Delhi NCR high achievers" /></div>' +
 
       '<p class="ar-score-preview ar-preview-line" id="pe-preview"></p>' +
@@ -1670,10 +1868,7 @@
         return '<option' + (v === c.stream.value ? ' selected' : '') + '>' + v + '</option>';
       }).join('') + '</select>') +
       row('board', 'Accepted Class 12 boards', checks('pe-board', BOARDS, c.board.values)) +
-      row('activities', 'Extracurricular', activityEditor(c)) +
-      row('intake', 'Intake', '<select id="pe-intake">' + INTAKES.map(function (v) {
-        return '<option' + (v === c.intake.value ? ' selected' : '') + '>' + v + '</option>';
-      }).join('') + '</select>')
+      row('activities', 'Extracurricular', activityEditor(c))
     );
   }
 
@@ -1713,7 +1908,6 @@
       stream: { value: $('pe-stream').value, weight: weight('stream') },
       board: { values: checked('pe-board'), weight: weight('board') },
       activities: { values: checked('pe-activity'), weight: weight('activities') },
-      intake: { value: $('pe-intake').value, weight: weight('intake') },
     };
     Object.keys(saved).forEach(function (cid) { d.criteria[cid].saved = saved[cid]; });
   }
@@ -1731,6 +1925,7 @@
     var existing = prefId ? findPref(programId, prefId) : null;
     editing = {
       programId: programId,
+      fromProgramId: programId,
       prefId: existing ? existing.id : null,
       draft: existing ? clone(existing) : { id: null, name: '', criteria: baseCriteria(program) },
     };
@@ -1753,9 +1948,17 @@
       return;
     }
     var list = prefsFor(editing.programId);
-    if (editing.prefId) {
+    var change = null;
+    if (editing.prefId && editing.fromProgramId !== editing.programId) {
       d.id = editing.prefId;
+      PREFS[editing.fromProgramId] = prefsFor(editing.fromProgramId).filter(function (p) { return p.id !== d.id; });
+      PREFS[editing.programId] = list.concat(d);
+      if (state.prefId === d.id) state.prefId = null;
+    } else if (editing.prefId) {
+      d.id = editing.prefId;
+      var before = list.filter(function (p) { return p.id === d.id; })[0];
       PREFS[editing.programId] = list.map(function (p) { return p.id === d.id ? d : p; });
+      if (before) change = recordChange(editing.programId, before, d);
     } else {
       d.id = newId();
       PREFS[editing.programId] = list.concat(d);
@@ -1765,10 +1968,14 @@
     var programId = editing.programId;
     var prefId = d.id;
     closeDrawer();
+    state.ppProgram = programId;
     if (state.program === programId && (created || state.prefId === prefId)) state.prefId = prefId;
     if (state.view === 'programs') renderPrograms();
     else renderDashboard();
-    toast(created ? 'Preference created.' : 'Preference saved. Students re-scored.');
+    toast(created ? 'Preference created.'
+      : change && (change.up || change.down)
+        ? 'Preference saved. ' + change.up + ' scored higher, ' + change.down + ' lower.'
+        : 'Preference saved. No scores changed.');
   }
 
   function confirmDeletePref(programId, prefId) {
@@ -1791,6 +1998,10 @@
     PREFS[programId] = list.filter(function (p) { return p.id !== prefId; });
     if (state.prefId === prefId) state.prefId = null;
     savePrefs();
+    if (CHANGES[prefId]) {
+      delete CHANGES[prefId];
+      saveChanges();
+    }
     closeDrawer();
     renderPrograms();
     toast('Preference deleted.');
@@ -1798,7 +2009,18 @@
 
   /* ——— Events ——— */
 
-  var MENUS = [['program-btn', 'program-menu'], ['pref-btn', 'pref-menu'], ['range-btn', 'range-menu'], ['filter-btn', 'filter-menu']];
+  var MENUS = [['program-btn', 'program-menu'], ['pref-btn', 'pref-menu'], ['range-btn', 'range-menu'], ['intake-btn', 'intake-menu'], ['filter-btn', 'filter-menu']];
+
+  /** The toolbar menu and the Filters row both drive the same intake year. */
+  function setIntake(year) {
+    state.intake = year;
+    document.querySelectorAll('[data-intake]').forEach(function (b) {
+      var on = b.getAttribute('data-intake') === year;
+      b.classList.toggle('active', on);
+      if (on) $('intake-label').textContent = b.textContent;
+    });
+    renderDashboard();
+  }
 
   function closeMenus(except) {
     MENUS.forEach(function (m) {
@@ -1853,6 +2075,24 @@
       return;
     }
 
+    var clearHist = t.closest('[data-clear-history]');
+    if (clearHist) {
+      delete CHANGES[clearHist.getAttribute('data-clear-history')];
+      saveChanges();
+      renderPrograms();
+      toast('Score history cleared.');
+      return;
+    }
+
+    var version = t.closest('[data-view-version]');
+    if (version) {
+      e.preventDefault();
+      var sid = version.getAttribute('data-view-version');
+      VERSION_VIEW[sid] = !VERSION_VIEW[sid];
+      renderStudents();
+      return;
+    }
+
     if (t.closest('[data-toggle-insights]')) {
       var wasShut = localStorage.getItem('admitright_insights_collapsed') === '1';
       localStorage.setItem('admitright_insights_collapsed', wasShut ? '0' : '1');
@@ -1889,6 +2129,13 @@
       resetFilters();
       closeMenus();
       renderDashboard();
+      return;
+    }
+
+    var intakeItem = t.closest('[data-intake]');
+    if (intakeItem) {
+      closeMenus();
+      setIntake(intakeItem.getAttribute('data-intake'));
       return;
     }
 
@@ -2053,6 +2300,15 @@
   });
   $('drawer-body').addEventListener('change', function (e) {
     if (!editing) return;
+    if (e.target.id === 'pe-program') {
+      readEditor();
+      var next = e.target.value;
+      if (!editing.prefId) editing.draft.criteria = baseCriteria(programById(next));
+      editing.programId = next;
+      $('drawer-body').innerHTML = editorHtml();
+      updatePreview();
+      return;
+    }
     var inc = e.target.getAttribute && e.target.getAttribute('data-include');
     if (inc) {
       if (!e.target.checked && !$('drawer-body').querySelector('[data-include]:checked')) {
@@ -2130,6 +2386,10 @@
 
   /** Changing the test redraws the menu so its unit and hints follow; its old range no longer applies. */
   $('filter-menu').addEventListener('change', function (e) {
+    if (e.target.hasAttribute('data-fintake')) {
+      setIntake(e.target.value);
+      return;
+    }
     var id = e.target.getAttribute('data-fsel');
     if (!id) return;
     var vals = state.filters.vals;
