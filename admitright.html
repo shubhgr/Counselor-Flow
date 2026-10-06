@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=notif8" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar13" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar71" />
 </head>
 <body class="ar">
   <div class="app">
@@ -36,16 +36,15 @@
           </div>
           <div class="actions">
             <div class="ar-menu-wrap">
-              <button type="button" class="chip-btn" id="program-btn" aria-expanded="false">
-                <span id="program-label">All programs</span>
+              <button type="button" class="chip-btn ar-picker" id="program-btn" aria-expanded="false">
+                <span class="ar-picker-text"><small>Program</small><span id="program-label">All programs</span></span>
                 <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
               </button>
               <div class="ar-menu" id="program-menu" hidden></div>
             </div>
             <div class="ar-menu-wrap">
-              <button type="button" class="chip-btn" id="pref-btn" aria-expanded="false">
-                <span class="material-symbols-rounded" aria-hidden="true">tune</span>
-                <span id="pref-label">Default preference</span>
+              <button type="button" class="chip-btn ar-picker" id="pref-btn" aria-expanded="false">
+                <span class="ar-picker-text"><small>Preference</small><span id="pref-label">Default preference</span></span>
                 <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
               </button>
               <div class="ar-menu" id="pref-menu" hidden></div>
@@ -62,78 +61,74 @@
                 <button type="button" class="ar-menu-item" data-range="30">Last 30 days</button>
               </div>
             </div>
+            <span class="ar-actions-sep" aria-hidden="true"></span>
+            <button type="button" class="btn btn-secondary btn-sm ar-icon-only" id="campaign-btn" aria-label="Trigger campaign" data-tip="Trigger campaign">
+              <span class="material-symbols-rounded" aria-hidden="true">send</span>
+            </button>
+            <button type="button" class="btn btn-primary btn-sm ar-icon-only" id="export-btn" aria-label="Export" data-tip="Export">
+              <span class="material-symbols-rounded" aria-hidden="true">download</span>
+            </button>
           </div>
         </header>
 
         <div class="content ar-content">
-          <section class="ar-section" id="funnel">
-            <div class="ar-section-head">
-              <div>
-                <h2>Funnel</h2>
-                <p class="ar-lead">Where each student is in their AdmitRight journey. Click a stage to filter students.</p>
-              </div>
-              <div class="ar-seg" role="tablist" aria-label="Audience">
-                <button type="button" class="ar-seg-btn active" data-audience="matched" role="tab">For you</button>
-                <button type="button" class="ar-seg-btn" data-audience="all" role="tab">For all</button>
-              </div>
-            </div>
-            <div class="ar-funnel" id="funnel-grid"></div>
-          </section>
-
           <section class="ar-insights">
+            <div class="panel ar-funnel-panel" id="funnel">
+              <div class="panel-head">
+                <h2>Funnel</h2>
+                <div class="ar-head-actions">
+                  <button type="button" class="btn btn-ghost btn-sm" data-clear="stage" id="funnel-clear" hidden>Clear</button>
+                  <button type="button" class="ar-icon-btn ar-collapse-btn" data-toggle-insights aria-label="Collapse">
+                    <span class="material-symbols-rounded" aria-hidden="true">expand_less</span>
+                  </button>
+                </div>
+              </div>
+              <div class="ar-flist" id="funnel-grid"></div>
+              <div class="ar-mini" id="funnel-mini"></div>
+            </div>
+
             <div class="panel ar-prefs-panel">
               <div class="panel-head">
                 <h2 id="pref-panel-title">Preference</h2>
-                <button type="button" class="btn btn-ghost btn-sm" id="pref-panel-edit">Edit</button>
+                <div class="ar-head-actions">
+                  <button type="button" class="btn btn-ghost btn-sm" id="pref-panel-edit">Edit</button>
+                  <button type="button" class="ar-icon-btn ar-collapse-btn" data-toggle-insights aria-label="Collapse">
+                    <span class="material-symbols-rounded" aria-hidden="true">expand_less</span>
+                  </button>
+                </div>
               </div>
               <div id="prefs-summary"></div>
-            </div>
-
-            <div class="panel">
-              <div class="panel-head">
-                <h2>Average applicant profile</h2>
-                <span class="ar-meta" id="avg-count"></span>
-              </div>
-              <div class="ar-avg-grid" id="avg-profile"></div>
-            </div>
-
-            <div class="panel">
-              <div class="panel-head">
-                <h2>Interest by program</h2>
-                <span class="ar-meta">Students</span>
-              </div>
-              <div class="ar-bars" id="program-bars"></div>
+              <div class="ar-mini" id="prefs-mini"></div>
             </div>
           </section>
 
           <section class="ar-section" id="students">
             <div class="ar-section-head">
               <div>
-                <h2>Students by match</h2>
-                <p class="ar-lead" id="students-lead"></p>
+                <h2 class="ar-students-head"><span id="students-title">Students by match</span><span class="ar-head-count" id="students-count"></span></h2>
               </div>
               <div class="ar-tools">
                 <label class="ar-search">
                   <span class="material-symbols-rounded" aria-hidden="true">search</span>
                   <input type="search" id="student-search" placeholder="Search name, GR ID, city" />
                 </label>
+                <div class="ar-menu-wrap" id="filter-wrap">
+                  <button type="button" class="btn btn-secondary btn-sm btn-icon" id="filter-btn" aria-expanded="false">
+                    <span class="material-symbols-rounded" aria-hidden="true">filter_list</span>
+                    Filters
+                    <span class="ar-count" id="filter-count" hidden></span>
+                  </button>
+                  <div class="ar-menu ar-filter-menu" id="filter-menu" hidden></div>
+                </div>
                 <div class="ar-seg" role="tablist" aria-label="View">
                   <button type="button" class="ar-seg-btn active" data-view="board" role="tab">Board</button>
                   <button type="button" class="ar-seg-btn" data-view="table" role="tab">Table</button>
                 </div>
-                <button type="button" class="btn btn-secondary btn-sm btn-icon" id="campaign-btn">
-                  <span class="material-symbols-rounded" aria-hidden="true">send</span>
-                  Trigger campaign
-                </button>
-                <button type="button" class="btn btn-primary btn-sm btn-icon" id="export-btn">
-                  <span class="material-symbols-rounded" aria-hidden="true">download</span>
-                  Export
-                </button>
               </div>
             </div>
             <div class="ar-filters" id="active-filters" hidden></div>
             <div class="ar-board" id="board"></div>
-            <div class="panel ar-table-wrap" id="table" hidden></div>
+            <div class="ar-tables" id="table" hidden></div>
           </section>
         </div>
       </div>
@@ -191,6 +186,6 @@
 
   <div class="ar-toast" id="toast" hidden></div>
 
-  <script src="js/admitright.js?v=ar16"></script>
+  <script src="js/admitright.js?v=ar69"></script>
 </body>
 </html>

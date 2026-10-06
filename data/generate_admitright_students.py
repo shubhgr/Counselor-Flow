@@ -25,6 +25,7 @@ PROGRAMS = [
     ("bsc-ds", "PCM", 0.16),
     ("bba", "Any", 0.18),
     ("bdes", "Any", 0.12),
+    ("bcom", "Commerce", 0.10),
 ]
 STAGES = ["recommended", "opened", "shortlisted", "expert", "applied", "enrolled"]
 STAGE_WEIGHTS = [0.30, 0.25, 0.18, 0.13, 0.09, 0.05]
@@ -144,6 +145,8 @@ def test_value(rng, name, strong):
         return str(max(50, round(60000 * (1 - strong) ** 2 + rng.uniform(0, 3000))))
     if kind == "percentile":
         return f"{max(20.0, min(99.99, 40 + strong * 58 + rng.gauss(0, 8))):.2f}"
+    if name == "SAT":
+        return str(max(400, min(1600, round((700 + strong * 800 + rng.gauss(0, 80)) / 10) * 10)))
     return str(max(0, min(top, round(top * (0.25 + strong * 0.65 + rng.gauss(0, 0.07))))))
 
 
@@ -175,7 +178,16 @@ def pick_tests(rng, program, stream, strong):
         names.append("SAT")
     if not names:
         names.append("CUET UG")
-    parts = [f"{n}={test_value(rng, n, strong)}" for n in names]
+    values = {n: test_value(rng, n, strong) for n in names}
+    # JEE Advanced is only open to top JEE Main scorers; its rank follows the JEE Main percentile.
+    if "JEE Advanced" in values:
+        jee_main = float(values["JEE Main"])
+        if jee_main < 90:
+            names.remove("JEE Advanced")
+            del values["JEE Advanced"]
+        else:
+            values["JEE Advanced"] = str(max(50, round((100 - jee_main) / 10 * 60000 + rng.uniform(-1500, 1500))))
+    parts = [f"{n}={values[n]}" for n in names]
     if rng.random() < 0.06:
         cname, ctop = rng.choice(CUSTOM_TESTS)
         cval = max(0, min(ctop, round(ctop * (0.3 + strong * 0.6 + rng.gauss(0, 0.08)))))
@@ -190,8 +202,8 @@ def make_student(i, rng, used_emails):
     city, km = rng.choice(NEAR_CITIES) if rng.random() < 0.5 else rng.choice(FAR_CITIES)
     strong = rng.betavariate(2, 2.5)
 
-    if program_stream == "PCM":
-        stream = "PCM" if rng.random() < 0.75 else rng.choice(STREAMS)
+    if program_stream in ("PCM", "Commerce"):
+        stream = program_stream if rng.random() < 0.75 else rng.choice(STREAMS)
     else:
         stream = rng.choice(STREAMS)
 

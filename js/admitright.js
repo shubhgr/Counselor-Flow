@@ -5,7 +5,7 @@
  * and a preference decides which students the university sees.
  */
 (function () {
-  var PREFS_KEY = 'admitright_prefs_v4';
+  var PREFS_KEY = 'admitright_prefs_v5';
   var TODAY = new Date(2026, 9, 6);
 
   var STAGES = [
@@ -18,11 +18,12 @@
   ];
 
   var PROGRAMS = [
-    { id: 'btech-cse', name: 'B.Tech Computer Science', fee: 18, stream: 'PCM', seats: 240 },
-    { id: 'btech-ai', name: 'B.Tech AI & ML', fee: 20, stream: 'PCM', seats: 120 },
-    { id: 'bsc-ds', name: 'B.Sc Data Science', fee: 12, stream: 'PCM', seats: 90 },
-    { id: 'bba', name: 'BBA', fee: 10, stream: 'Any', seats: 180 },
-    { id: 'bdes', name: 'B.Des', fee: 16, stream: 'Any', seats: 60 },
+    { id: 'btech-cse', name: 'B.Tech Computer Science', fee: 18, stream: 'PCM', seats: 240, prefName: 'JEE Main 85+ coders' },
+    { id: 'btech-ai', name: 'B.Tech AI & ML', fee: 20, stream: 'PCM', seats: 120, prefName: 'Maths-strong AI aspirants' },
+    { id: 'bsc-ds', name: 'B.Sc Data Science', fee: 12, stream: 'PCM', seats: 90, prefName: 'Analytical PCM students' },
+    { id: 'bba', name: 'BBA', fee: 10, stream: 'Any', seats: 180, prefName: 'Business-minded all-rounders' },
+    { id: 'bdes', name: 'B.Des', fee: 16, stream: 'Any', seats: 60, prefName: 'UCEED & NATA creatives' },
+    { id: 'bcom', name: 'B.Com (Hons)', fee: 8, stream: 'Commerce', seats: 120, noDefaultPref: true },
   ];
 
   var BOARDS = ['CBSE', 'CISCE', 'UP Board', 'Maharashtra Board', 'Telangana Board', 'Other State Board', 'IB'];
@@ -125,7 +126,9 @@
     { id: 'activities', label: 'Extracurricular', icon: 'sports_soccer' },
     { id: 'intake', label: 'Intake', icon: 'event' },
   ];
-  var WEIGHT_LABEL = { 0: 'Off', 1: 'Low', 2: 'Medium', 3: 'High' };
+  /** Every preference uses the same bands: Matches 80+, Close 60–79, Below under 60. */
+  var MATCH_MIN = 80;
+  var CLOSE_MIN = 60;
 
   /* ——— Demo data ——— */
 
@@ -311,31 +314,31 @@
   function baseCriteria(program) {
     var tech = program.stream === 'PCM';
     return {
-      location: { radius: 100, weight: 2 },
-      test: { tests: (DEFAULT_TESTS[program.id] || [req('CUET UG', 70)]).map(function (t) { return Object.assign({}, t); }), weight: 3 },
-      class12: { min: tech ? 80 : 70, weight: 3 },
-      class10: { min: tech ? 75 : 65, weight: 1 },
-      budget: { min: Math.max(5, program.fee - 6), max: program.fee + 6, weight: 2 },
-      stream: { value: program.stream, weight: tech ? 3 : 0 },
-      board: { values: BOARDS.slice(), weight: 1 },
-      activities: { values: tech ? ['Coding', 'Robotics'] : ['Debate', 'Art', 'MUN'], weight: 1 },
-      intake: { value: 'Aug 2027', weight: 1 },
+      location: { radius: 100, weight: 20 },
+      test: { tests: (DEFAULT_TESTS[program.id] || [req('CUET UG', 70)]).map(function (t) { return Object.assign({}, t); }), weight: 30 },
+      class12: { min: tech ? 80 : 70, weight: 30 },
+      class10: { min: tech ? 75 : 65, weight: 10 },
+      budget: { min: Math.max(5, program.fee - 6), max: program.fee + 6, weight: 20 },
+      stream: { value: program.stream, weight: tech ? 30 : 1 },
+      board: { values: BOARDS.slice(), weight: 10 },
+      activities: { values: tech ? ['Coding', 'Robotics'] : ['Debate', 'Art', 'MUN'], weight: 10 },
+      intake: { value: 'Aug 2027', weight: 10 },
     };
   }
 
   function defaultPrefs() {
     var out = {};
     PROGRAMS.forEach(function (p) {
-      out[p.id] = [{ id: newId(), name: 'Standard intake', minScore: 80, criteria: baseCriteria(p) }];
+      out[p.id] = p.noDefaultPref ? [] : [{ id: newId(), name: p.prefName, criteria: baseCriteria(p) }];
     });
     var ncr = baseCriteria(PROGRAMS[0]);
-    ncr.location = { radius: 100, weight: 3 };
-    ncr.test = { tests: [req('JEE Main', 90), req('JEE Advanced', 15000), req('BITSAT', 250), req('CUET UG', 90)], weight: 3 };
-    ncr.class12 = { min: 90, weight: 3 };
-    ncr.class10 = { min: 85, weight: 2 };
-    ncr.budget = { min: 15, max: 30, weight: 2 };
-    ncr.activities = { values: ['Coding', 'Robotics', 'MUN'], weight: 1 };
-    out[PROGRAMS[0].id].push({ id: newId(), name: 'Delhi NCR high achievers', minScore: 90, criteria: ncr });
+    ncr.location = { radius: 100, weight: 40 };
+    ncr.test = { tests: [req('JEE Main', 90), req('JEE Advanced', 15000), req('BITSAT', 250), req('CUET UG', 90)], weight: 35 };
+    ncr.class12 = { min: 90, weight: 35 };
+    ncr.class10 = { min: 85, weight: 20 };
+    ncr.budget = { min: 15, max: 30, weight: 20 };
+    ncr.activities = { values: ['Coding', 'Robotics', 'MUN'], weight: 10 };
+    out[PROGRAMS[0].id].push({ id: newId(), name: 'Delhi NCR high achievers', criteria: ncr });
     return out;
   }
 
@@ -345,7 +348,11 @@
       var stored = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null');
       if (stored) {
         PROGRAMS.forEach(function (p) {
-          if (Array.isArray(stored[p.id]) && stored[p.id].length) defaults[p.id] = stored[p.id];
+          if (!Array.isArray(stored[p.id]) || !stored[p.id].length) return;
+          stored[p.id].forEach(function (pref) {
+            if (pref.name === 'Standard intake' && p.prefName) pref.name = p.prefName;
+          });
+          defaults[p.id] = stored[p.id];
         });
       }
     } catch (e) {}
@@ -391,47 +398,61 @@
     return rq.name + ' ' + fmtNum(rq.min) + '+/' + fmtNum(rq.max);
   }
 
+  /** How far past the bar a test result is, comparable across tests; ranks are lower-is-better. */
+  function testMargin(t, rq) {
+    if (rq.kind === 'rank') return (rq.min - t.value) / rq.min;
+    return (t.value - rq.min) / (rq.max || 100);
+  }
+
+  /** v is the credit against the preference; raw is an uncapped strength used to rank students against each other. */
   function criterionScore(id, s, p) {
     switch (id) {
       case 'location':
-        if (s.km <= p.radius) return { v: 1, note: s.km + ' km away' };
-        return { v: clamp01(0.7 - (s.km - p.radius) / p.radius), note: s.km + ' km away' };
+        if (s.km <= p.radius) return { v: 1, raw: -s.km, note: s.km + ' km away' };
+        return { v: clamp01(0.7 - (s.km - p.radius) / p.radius), raw: -s.km, note: s.km + ' km away' };
       case 'test': {
         var best = null;
         p.tests.forEach(function (rq) {
           s.tests.forEach(function (t) {
             if (t.name.toLowerCase() !== rq.name.toLowerCase()) return;
             var v = testCredit(t, rq);
-            if (!best || v > best.v) best = { v: v, note: testNote(t) };
+            var raw = testMargin(t, rq);
+            if (!best || raw > best.raw) best = { v: v, raw: raw, note: testNote(t) };
           });
         });
         if (best) return best;
-        return { v: 0, note: s.tests.length ? 'No accepted test' : 'No test' };
+        return { v: 0, raw: -1e9, note: s.tests.length ? 'No accepted test' : 'No test' };
       }
       case 'class12':
-        return { v: s.class12 >= p.min ? 1 : clamp01(0.8 - (p.min - s.class12) / 12), note: markNote(s.mark12) };
+        return { v: s.class12 >= p.min ? 1 : clamp01(0.8 - (p.min - s.class12) / 12), raw: s.class12, note: markNote(s.mark12) };
       case 'class10':
-        return { v: s.class10 >= p.min ? 1 : clamp01(0.8 - (p.min - s.class10) / 12), note: markNote(s.mark10) };
+        return { v: s.class10 >= p.min ? 1 : clamp01(0.8 - (p.min - s.class10) / 12), raw: s.class10, note: markNote(s.mark10) };
       case 'budget': {
         var note = '₹' + s.budget[0] + '–' + s.budget[1] + 'L';
-        if (s.budget[1] >= p.min && s.budget[0] <= p.max) return { v: 1, note: note };
+        if (s.budget[1] >= p.min && s.budget[0] <= p.max) return { v: 1, raw: 0, note: note };
         var gap = s.budget[1] < p.min ? p.min - s.budget[1] : s.budget[0] - p.max;
-        return { v: clamp01(0.7 - gap / 8), note: note };
+        return { v: clamp01(0.7 - gap / 8), raw: -gap, note: note };
       }
-      case 'stream':
-        return { v: p.value === 'Any' || s.stream === p.value ? 1 : 0, note: s.stream };
-      case 'board':
-        return { v: p.values.indexOf(s.board) !== -1 ? 1 : 0, note: s.board };
+      case 'stream': {
+        var okStream = p.value === 'Any' || s.stream === p.value ? 1 : 0;
+        return { v: okStream, raw: okStream, note: s.stream };
+      }
+      case 'board': {
+        var okBoard = p.values.indexOf(s.board) !== -1 ? 1 : 0;
+        return { v: okBoard, raw: okBoard, note: s.board };
+      }
       case 'activities': {
-        if (!p.values.length) return { v: 1, note: s.activities.join(', ') };
+        if (!p.values.length) return { v: 1, raw: s.activities.length, note: s.activities.join(', ') };
         var wanted = p.values.map(function (a) { return a.toLowerCase(); });
         var hit = s.activities.filter(function (a) { return wanted.indexOf(a.toLowerCase()) !== -1; }).length;
-        return { v: hit ? clamp01(0.6 + hit * 0.4) : 0.2, note: s.activities.join(', ') };
+        return { v: hit ? clamp01(0.6 + hit * 0.4) : 0.2, raw: hit + s.activities.length / 100, note: s.activities.join(', ') };
       }
-      case 'intake':
-        return { v: s.intake === p.value ? 1 : 0.4, note: s.intake };
+      case 'intake': {
+        var okIntake = s.intake === p.value ? 1 : 0;
+        return { v: okIntake ? 1 : 0.4, raw: okIntake, note: s.intake };
+      }
     }
-    return { v: 0, note: '' };
+    return { v: 0, raw: 0, note: '' };
   }
 
   function scoreAgainst(s, pref) {
@@ -444,7 +465,7 @@
         total += r.v * p.weight;
         weight += p.weight;
       }
-      return { id: c.id, label: c.label, v: r.v, note: r.note, weight: p.weight };
+      return { id: c.id, label: c.label, v: r.v, raw: r.raw, note: r.note, weight: p.weight };
     });
     return { score: weight ? Math.round((total / weight) * 100) : 0, parts: parts };
   }
@@ -453,14 +474,15 @@
 
   var state = {
     view: 'dashboard',
-    program: 'all',
+    program: PROGRAMS[0].id,
     prefId: null,
-    audience: 'matched',
     stage: null,
     layout: 'board',
     query: '',
     range: 0,
     ppProgram: PROGRAMS[0].id,
+    collapsed: {},
+    filters: { min: '', max: '', vals: {} },
   };
 
   function programById(id) {
@@ -473,14 +495,50 @@
     return prefsFor(s.program)[0];
   }
 
+  /** bucket 3 means the program has no preference yet, so the student isn't scored. */
   function rescore() {
     STUDENTS.forEach(function (s) {
       var pref = activePrefFor(s);
+      if (!pref) {
+        s.pref = null;
+        s.score = null;
+        s.parts = [];
+        s.bucket = 3;
+        return;
+      }
       var r = scoreAgainst(s, pref);
       s.pref = pref;
       s.score = r.score;
       s.parts = r.parts;
-      s.bucket = s.score >= pref.minScore ? 0 : s.score >= pref.minScore - 20 ? 1 : 2;
+      s.bucket = s.score >= MATCH_MIN ? 0 : s.score >= CLOSE_MIN ? 1 : 2;
+    });
+    rankParts();
+  }
+
+  /** Each part's rel is the share of the program's applicants this student is level with or ahead of on that criterion. */
+  function rankParts() {
+    var byProgram = {};
+    STUDENTS.forEach(function (s) {
+      if (!s.pref) return;
+      (byProgram[s.program] = byProgram[s.program] || []).push(s);
+    });
+    Object.keys(byProgram).forEach(function (pid) {
+      var group = byProgram[pid];
+      var n = group.length;
+      CRITERIA.forEach(function (c, ci) {
+        var sorted = group.map(function (s) { return s.parts[ci].raw; }).sort(function (a, b) { return a - b; });
+        group.forEach(function (s) {
+          var part = s.parts[ci];
+          var lo = 0;
+          var hi = n;
+          while (lo < hi) {
+            var mid = (lo + hi) >> 1;
+            if (sorted[mid] <= part.raw) lo = mid + 1;
+            else hi = mid;
+          }
+          part.rel = Math.round((lo / n) * 100);
+        });
+      });
     });
   }
 
@@ -489,24 +547,107 @@
     return !state.range || s.daysAgo <= state.range;
   }
 
-  function baseSet(everyone) {
+  function baseSet() {
     return STUDENTS.filter(function (s) {
       if (!inRange(s)) return false;
       if (state.program !== 'all' && s.program !== state.program) return false;
-      if (!everyone && state.audience === 'matched' && s.bucket !== 0) return false;
       return true;
     });
   }
 
-  function visibleSet(everyone) {
+  function visibleSet() {
     var q = state.query.trim().toLowerCase();
-    return baseSet(everyone)
+    return baseSet()
       .filter(function (s) {
         if (state.stage !== null && s.stage < state.stage) return false;
+        if (!passesFilters(s)) return false;
         if (!q) return true;
         return (s.name + ' ' + s.id + ' ' + s.city).toLowerCase().indexOf(q) !== -1;
       })
-      .sort(function (a, b) { return b.score - a.score; });
+      .sort(state.program === 'all' ? byProgress : byScore);
+  }
+
+  /** Criteria filtered by a numeric range on the student's actual value, and those picked from a list. */
+  var RANGE_FILTERS = {
+    location: { unit: 'km', get: function (s) { return s.km; } },
+    class12: { unit: '%', get: function (s) { return s.class12; } },
+    class10: { unit: '%', get: function (s) { return s.class10; } },
+    budget: { unit: '₹L' },
+  };
+  var PICK_FILTERS = {
+    stream: function (s) { return [s.stream]; },
+    board: function (s) { return [s.board]; },
+    activities: function (s) { return s.activities; },
+    intake: function (s) { return [s.intake]; },
+  };
+
+  function filtersOn() {
+    return state.program !== 'all' && !!findPref(state.program, state.prefId);
+  }
+
+  function filterActive(v) {
+    return !!v && ((v.min !== undefined && v.min !== '') || (v.max !== undefined && v.max !== '') || !!v.val);
+  }
+
+  function activeFilters() {
+    var vals = state.filters.vals;
+    return Object.keys(vals).filter(function (id) { return filterActive(vals[id]); });
+  }
+
+  function activeFilterCount() {
+    if (!filtersOn()) return 0;
+    var f = state.filters;
+    return (f.min !== '' || f.max !== '' ? 1 : 0) + activeFilters().length;
+  }
+
+  function resetFilters() {
+    state.filters = { min: '', max: '', vals: {} };
+  }
+
+  function within(x, v) {
+    return (v.min === undefined || v.min === '' || x >= Number(v.min)) && (v.max === undefined || v.max === '' || x <= Number(v.max));
+  }
+
+  /** The test a test filter applies to; defaults to the preference's first accepted test. */
+  function filterTest(pref) {
+    var tests = pref.criteria.test.tests;
+    var name = (state.filters.vals.test || {}).val;
+    return tests.filter(function (t) { return t.name === name; })[0] || tests[0];
+  }
+
+  /** Score and value filters only apply while a preference is scoring the students. */
+  function passesFilters(s) {
+    if (!filtersOn()) return true;
+    var f = state.filters;
+    if (f.min !== '' && (s.score === null || s.score < Number(f.min))) return false;
+    if (f.max !== '' && (s.score === null || s.score > Number(f.max))) return false;
+    var ids = activeFilters();
+    for (var i = 0; i < ids.length; i++) {
+      var id = ids[i];
+      var v = f.vals[id];
+      if (id === 'test') {
+        var rq = filterTest(s.pref);
+        var t = rq && s.tests.filter(function (x) { return x.name.toLowerCase() === rq.name.toLowerCase(); })[0];
+        if (!t || !within(t.value, v)) return false;
+      } else if (id === 'budget') {
+        if (v.min !== undefined && v.min !== '' && s.budget[1] < Number(v.min)) return false;
+        if (v.max !== undefined && v.max !== '' && s.budget[0] > Number(v.max)) return false;
+      } else if (RANGE_FILTERS[id]) {
+        if (!within(RANGE_FILTERS[id].get(s), v)) return false;
+      } else if (PICK_FILTERS[id] && v.val) {
+        if (PICK_FILTERS[id](s).indexOf(v.val) === -1) return false;
+      }
+    }
+    return true;
+  }
+
+  /** All programs has no single preference to rank by, so students further along the journey come first. */
+  function byProgress(a, b) {
+    return b.stage - a.stage || (b.lastActive || 0) - (a.lastActive || 0);
+  }
+
+  function byScore(a, b) {
+    return (b.score === null ? -1 : b.score) - (a.score === null ? -1 : a.score);
   }
 
   /* ——— Helpers ——— */
@@ -528,11 +669,15 @@
   }
 
   function scoreClass(s) {
-    return s.bucket === 0 ? 'hi' : s.bucket === 1 ? 'mid' : 'lo';
+    return ['hi', 'mid', 'lo', 'none'][s.bucket];
   }
 
   function scoreColor(s) {
-    return s.bucket === 0 ? 'var(--success)' : s.bucket === 1 ? 'var(--yellow-600)' : 'var(--danger)';
+    return ['var(--success)', 'var(--yellow-600)', 'var(--danger)', 'var(--gray-200)'][s.bucket];
+  }
+
+  function scoreHtml(s) {
+    return s.score === null ? '—' : s.score + '<small>%</small>';
   }
 
   function fmtDate(d) {
@@ -548,11 +693,6 @@
 
   function fmtDateTime(d) {
     return d ? fmtDate(d) + ', ' + fmtTime(d) : '';
-  }
-
-  function avg(list, fn) {
-    if (!list.length) return 0;
-    return list.reduce(function (sum, s) { return sum + fn(s); }, 0) / list.length;
   }
 
   var toastTimer;
@@ -584,34 +724,38 @@
   /** How many students in a program clear a preference's minimum score. */
   function matchCount(programId, pref) {
     return STUDENTS.filter(function (s) {
-      return s.program === programId && scoreAgainst(s, pref).score >= pref.minScore;
+      return s.program === programId && scoreAgainst(s, pref).score >= MATCH_MIN;
     }).length;
   }
 
   /* ——— Dashboard: funnel ——— */
 
-  /** Funnel cards count every student; the matched share is shown inside each card. */
+  /** Each funnel row shows students matching the preference out of everyone at that stage. */
   function renderFunnel() {
-    var set = baseSet(true);
+    var set = baseSet();
     var counts = STAGES.map(function (_, i) {
       return set.filter(function (s) { return s.stage >= i; }).length;
     });
     var matched = STAGES.map(function (_, i) {
       return set.filter(function (s) { return s.stage >= i && s.bucket === 0; }).length;
     });
-    var top = counts[0] || 1;
+    $('funnel-clear').hidden = state.stage === null;
+    var shownCounts = state.program === 'all' ? counts : matched;
+    $('funnel-mini').innerHTML = STAGES.map(function (st, i) {
+      return '<button type="button" class="ar-mini-step' + (state.stage === i ? ' active' : '') + '" data-stage="' + i + '" title="' + esc(st.name) + '">' +
+        '<span class="ar-mini-top">' + ico(st.icon) + '<b>' + shownCounts[i] + '</b></span><small>' + esc(st.name) + '</small></button>';
+    }).join('');
     $('funnel-grid').innerHTML = STAGES.map(function (st, i) {
-      var prev = i ? counts[i - 1] : counts[0];
-      var conv = prev ? Math.round((counts[i] / prev) * 100) : 0;
-      var matchPct = counts[i] ? Math.round((matched[i] / counts[i]) * 100) : 0;
+      var shown = state.program === 'all' ? counts : matched;
+      var prev = i ? shown[i - 1] : shown[0];
+      var conv = prev ? Math.round((shown[i] / prev) * 100) : 0;
       return (
-        '<button type="button" class="ar-stage' + (state.stage === i ? ' active' : '') + '" data-stage="' + i + '" title="' + esc(st.hint) + '">' +
-        '<div class="ar-stage-top"><span class="ar-stage-name">' + esc(st.name) + '</span>' +
-        '<span class="ar-stage-ico">' + ico(st.icon) + '</span></div>' +
-        '<strong>' + counts[i] + '</strong>' +
-        '<span class="ar-stage-hint">' + (i ? '<b>' + conv + '%</b> of previous' : 'Students in funnel') + '</span>' +
-        '<span class="ar-stage-match"><i></i><b>' + matched[i] + '</b> match preference</span>' +
-        '<div class="ar-stage-bar"><i style="width:' + Math.round((counts[i] / top) * 100) + '%"><span style="width:' + matchPct + '%"></span></i></div>' +
+        '<button type="button" class="ar-frow' + (state.stage === i ? ' active' : '') + '" data-stage="' + i + '">' +
+        '<span class="ar-frow-ico">' + ico(st.icon) + '</span>' +
+        '<span class="ar-frow-name">' + esc(st.name) + '<small>' + (i ? conv + '% of previous' : 'Students in funnel') + '</small></span>' +
+        (state.program === 'all'
+          ? '<strong>' + counts[i] + '</strong>'
+          : '<strong title="' + matched[i] + ' of ' + counts[i] + ' students match the preference">' + matched[i] + '</strong>') +
         '</button>'
       );
     }).join('');
@@ -624,33 +768,38 @@
       .slice(0, limit || CRITERIA.length)
       .map(function (c) {
         var w = pref.criteria[c.id].weight;
+        var tone = w >= 30 ? 3 : w >= 15 ? 2 : 1;
         return (
           '<div class="ar-pref-row"><span>' + esc(c.label) + '</span><strong>' + esc(criterionLine(c.id, pref.criteria[c.id])) +
-          '<i class="ar-weight w' + w + '">' + WEIGHT_LABEL[w] + '</i></strong></div>'
+          '<i class="ar-weight w' + tone + '" title="Weight">' + w + '</i></strong></div>'
         );
       }).join('');
   }
 
+  /** All programs shows the funnel alone; a picked program adds what its preference looks for. */
   function renderPrefPanel() {
+    var panel = document.querySelector('.ar-prefs-panel');
     var edit = $('pref-panel-edit');
-    if (state.program === 'all') {
-      $('pref-panel-title').textContent = 'Preferences';
-      edit.textContent = 'Manage';
-      $('prefs-summary').innerHTML =
-        '<p class="panel-lead">All programs view. Each student is scored with the first preference of their program.</p>' +
-        '<div class="ar-pref-list">' + PROGRAMS.map(function (p) {
-          var pref = prefsFor(p.id)[0];
-          return '<div class="ar-pref-row"><span>' + esc(p.name) + '</span><strong>' + esc(pref.name) +
-            '<i class="ar-weight w3">' + pref.minScore + '%+</i></strong></div>';
-        }).join('') + '</div>';
+    var all = state.program === 'all';
+    panel.hidden = all;
+    document.querySelector('.ar-insights').classList.toggle('single', all);
+    if (all) return;
+    var pref = findPref(state.program, state.prefId);
+    if (!pref) {
+      $('pref-panel-title').textContent = 'No preference yet';
+      edit.textContent = 'Create';
+      $('prefs-summary').innerHTML = '<p class="panel-lead">' + esc(programById(state.program).name) +
+        ' has no preference, so its students aren’t scored. Create one to sort them into Matches, Close and Below.</p>';
       return;
     }
-    var pref = findPref(state.program, state.prefId);
-    $('pref-panel-title').textContent = pref.name;
+    $('pref-panel-title').textContent = 'Preferences';
     edit.textContent = 'Edit';
-    $('prefs-summary').innerHTML =
-      '<div class="ar-threshold"><span>Show students scoring</span><strong>' + pref.minScore + '%+</strong></div>' +
-      '<div class="ar-pref-list">' + prefRows(pref, 6) + '</div>';
+    $('prefs-summary').innerHTML = '<div class="ar-pref-list">' + prefRows(pref) + '</div>';
+    var on = CRITERIA.filter(function (c) { return pref.criteria[c.id].weight > 0; });
+    $('prefs-mini').innerHTML = on.map(function (c) {
+      var line = criterionLine(c.id, pref.criteria[c.id]);
+      return '<span class="ar-mini-val" title="' + esc(c.label + ': ' + line) + '">' + esc(line) + '</span>';
+    }).join('');
   }
 
   /** The best accepted test if there is one, otherwise the first test taken. */
@@ -660,50 +809,10 @@
     return s.test ? testNote(s.test) : 'No test';
   }
 
-  function hasAcceptedTest(s) {
-    var part = (s.parts || []).filter(function (p) { return p.id === 'test'; })[0];
-    return !!part && part.v > 0;
-  }
-
-  function renderAverages() {
-    var set = baseSet();
-    $('avg-count').textContent = set.length + ' students';
-    var budgetAvg = avg(set, function (s) { return (s.budget[0] + s.budget[1]) / 2; });
-    var items = [
-      ['Class 12', avg(set, function (s) { return s.class12; }).toFixed(1) + '%'],
-      ['Class 10', avg(set, function (s) { return s.class10; }).toFixed(1) + '%'],
-      ['Has an accepted test', set.length ? Math.round((set.filter(hasAcceptedTest).length / set.length) * 100) + '%' : '—'],
-      ['Fee budget', '₹' + budgetAvg.toFixed(1) + 'L'],
-      ['Within 100 km', set.length ? Math.round((set.filter(function (s) { return s.km <= 100; }).length / set.length) * 100) + '%' : '—'],
-      ['Avg match', avg(set, function (s) { return s.score; }).toFixed(0) + '%'],
-    ];
-    $('avg-profile').innerHTML = items.map(function (it) {
-      return '<div><span>' + it[0] + '</span><strong>' + (set.length ? it[1] : '—') + '</strong></div>';
-    }).join('');
-  }
-
-  function renderProgramBars() {
-    var rows = PROGRAMS.map(function (p) {
-      var pref = prefsFor(p.id)[0];
-      var n = STUDENTS.filter(function (s) {
-        if (s.program !== p.id || !inRange(s)) return false;
-        return state.audience === 'all' || scoreAgainst(s, pref).score >= pref.minScore;
-      }).length;
-      return { p: p, n: n };
-    }).sort(function (a, b) { return b.n - a.n; });
-    var max = rows[0] ? rows[0].n || 1 : 1;
-    $('program-bars').innerHTML = rows.map(function (r) {
-      return (
-        '<button type="button" class="ar-bar' + (state.program === r.p.id ? ' active' : '') + '" data-program="' + r.p.id + '">' +
-        '<span>' + esc(r.p.name) + '</span><b>' + r.n + '</b>' +
-        '<div class="ar-bar-track"><i style="width:' + Math.round((r.n / max) * 100) + '%"></i></div></button>'
-      );
-    }).join('');
-  }
-
   /* ——— Dashboard: students ——— */
 
   function attrChips(s, limit) {
+    if (!s.pref) return '<span class="ar-attr none">' + ico('tune') + 'No preference yet</span>';
     return s.parts
       .filter(function (p) { return p.weight > 0; })
       .sort(function (a, b) { return b.weight - a.weight; })
@@ -720,112 +829,308 @@
     return '<span class="ar-stage-pill">' + ico(st.icon) + esc(st.name) + '</span>';
   }
 
+  /** Without a picked program there's no shared preference, so cards show profile facts instead of a score. */
   function cardHtml(s) {
+    var all = state.program === 'all';
+    var facts = [s.stream, 'Class 12 ' + s.class12 + '%', headlineTest(s)].map(function (f) {
+      return '<span class="ar-attr none">' + esc(f) + '</span>';
+    }).join('');
     return (
       '<button type="button" class="ar-card" data-student="' + s.id + '">' +
       '<div class="ar-card-top"><div class="avatar">' + esc(s.initials) + '</div>' +
       '<div class="ar-card-who"><strong>' + esc(s.name) + '</strong><small>' + esc(s.id) + ' · ' + esc(s.city) + '</small></div>' +
-      '<div class="ar-score ' + scoreClass(s) + '">' + s.score + '<small>%</small></div></div>' +
-      '<div class="ar-attrs">' + attrChips(s, 4) + '</div>' +
+      (all ? '' : '<div class="ar-score ' + scoreClass(s) + '">' + scoreHtml(s) + '</div>') + '</div>' +
+      '<div class="ar-attrs">' + (all ? facts : attrChips(s, 4)) + '</div>' +
       '<div class="ar-card-meta"><span>' + esc(programById(s.program).name) + '</span>' + stagePill(s) + '</div>' +
       '</button>'
     );
   }
 
-  /** Matches = at or above the preference minimum, Close = up to 20 points below, Below = further below. */
   function bucketDefs() {
-    var min;
-    if (state.program !== 'all') min = findPref(state.program, state.prefId).minScore;
-    else {
-      var mins = PROGRAMS.map(function (p) { return prefsFor(p.id)[0].minScore; });
-      if (mins.every(function (m) { return m === mins[0]; })) min = mins[0];
-    }
-    if (min == null) {
-      return [
-        { name: 'Matches preference', range: 'At or above its minimum', color: 'var(--green-500)' },
-        { name: 'Close', range: 'Up to 20 points below', color: 'var(--yellow-500)' },
-        { name: 'Below', range: 'More than 20 points below', color: 'var(--red-500)' },
-      ];
-    }
     return [
-      { name: 'Matches preference', range: min + '–100%', color: 'var(--green-500)' },
-      { name: 'Close', range: Math.max(0, min - 20) + '–' + (min - 1) + '%', color: 'var(--yellow-500)' },
-      { name: 'Below', range: 'Under ' + Math.max(0, min - 20) + '%', color: 'var(--red-500)' },
+      { name: 'Matches preference', range: MATCH_MIN + '–100%', color: 'var(--green-500)' },
+      { name: 'Close', range: CLOSE_MIN + '–' + (MATCH_MIN - 1) + '%', color: 'var(--yellow-500)' },
+      { name: 'Below', range: 'Under ' + CLOSE_MIN + '%', color: 'var(--red-500)' },
     ];
   }
 
-  var BOARD_LIMIT = 200;
+  /** Every student is on the board; cards are added in chunks as a column scrolls so large lists stay fast. */
+  var BOARD_CHUNK = 100;
   var TABLE_LIMIT = 300;
+  var boardCols = [];
 
-  /** The board always shows every match level; the audience toggle only narrows the funnel, stats and table. */
+  /** Students of programs without a preference get their own full-width section; it replaces the columns when that program is picked. */
   function renderBoard() {
-    var list = visibleSet(true);
-    $('board').innerHTML = bucketDefs().map(function (b, i) {
-      var items = list.filter(function (s) { return s.bucket === i; });
-      var body;
-      if (items.length) {
-        body = items.slice(0, BOARD_LIMIT).map(cardHtml).join('');
-        if (items.length > BOARD_LIMIT) body += '<div class="ar-col-empty">Showing top ' + BOARD_LIMIT + ' of ' + items.length + '. Search or switch to the table to see more.</div>';
-      }
-      else body = '<div class="ar-col-empty">No students here yet.</div>';
-      return (
-        '<div class="ar-col"><div class="ar-col-head"><h3><i style="background:' + b.color + '"></i>' + b.name +
-        '</h3><small>' + b.range + ' · ' + items.length + '</small></div>' +
-        '<div class="ar-col-list gr-scroll">' + body + '</div></div>'
-      );
-    }).join('');
-  }
-
-  function renderTable(list) {
-    if (!list.length) {
-      $('table').innerHTML = '<div class="ar-col-empty">No students match these filters.</div>';
+    var list = visibleSet();
+    if (state.program === 'all') {
+      boardCols = [{ items: list, shown: 0 }];
+      $('board').innerHTML =
+        '<div class="ar-col-list ar-col-grid ar-col-plain gr-scroll" data-col="0">' +
+        (list.length ? '' : '<div class="ar-col-empty">No students match these filters.</div>') + '</div>';
+      growColumn(0);
       return;
     }
-    $('table').innerHTML =
-      '<table class="ar-table"><thead><tr>' +
-      '<th>Student</th><th>GR ID</th><th>Program</th><th>Match</th><th>Stage</th><th>Class 12</th><th>Test</th><th>Budget</th><th>Location</th><th>Intake</th>' +
-      '</tr></thead><tbody>' +
-      list.slice(0, TABLE_LIMIT).map(function (s) {
-        return (
-          '<tr data-student="' + s.id + '">' +
-          '<td class="ar-name">' + esc(s.name) + '</td>' +
-          '<td>' + esc(s.id) + '</td>' +
-          '<td>' + esc(programById(s.program).name) + '</td>' +
-          '<td><span class="ar-score ' + scoreClass(s) + '">' + s.score + '<small>%</small></span></td>' +
-          '<td>' + stagePill(s) + '</td>' +
-          '<td>' + s.class12 + '%</td>' +
-          '<td>' + esc(headlineTest(s)) + '</td>' +
-          '<td>₹' + s.budget[0] + '–' + s.budget[1] + 'L</td>' +
-          '<td>' + esc(s.city) + ' · ' + s.km + ' km</td>' +
-          '<td>' + esc(s.intake) + '</td>' +
-          '</tr>'
-        );
-      }).join('') +
-      '</tbody></table>' +
-      (list.length > TABLE_LIMIT ? '<div class="ar-col-empty">Showing top ' + TABLE_LIMIT + ' of ' + list.length + '. Use search or Export to get everyone.</div>' : '');
+    boardCols = [0, 1, 2, 3].map(function (i) {
+      return { items: list.filter(function (s) { return s.bucket === i; }), shown: 0 };
+    });
+    var unscored = boardCols[3].items;
+    var scoredView = !!findPref(state.program, state.prefId);
+    var html = scoredView ? bucketDefs().map(function (b, i) {
+      var items = boardCols[i].items;
+      return (
+        '<div class="ar-col"><div class="ar-col-head"><h3><i style="background:' + b.color + '"></i>' + b.name +
+        '<b class="ar-col-count">' + items.length + '</b></h3><small>' + b.range + '</small></div>' +
+        '<div class="ar-col-list gr-scroll" data-col="' + i + '">' +
+        (items.length ? '' : '<div class="ar-col-empty">No students here yet.</div>') + '</div></div>'
+      );
+    }).join('') : '';
+    if (unscored.length) {
+      var names = PROGRAMS.filter(function (p) {
+        return unscored.some(function (s) { return s.program === p.id; });
+      });
+      html +=
+        '<div class="ar-col ar-col-wide"><div class="ar-col-head"><h3><i style="background:var(--gray-300)"></i>No preference yet</h3>' +
+        '<small>Not scored · ' + unscored.length + '</small></div>' +
+        '<div class="ar-col-note">' + esc(names.map(function (p) { return p.name; }).join(', ')) +
+        (names.length === 1 ? ' has' : ' have') + ' no preference, so these students aren’t scored.' +
+        names.map(function (p) {
+          return '<button type="button" class="btn btn-primary btn-sm" data-create-pref="' + p.id + '">' + ico('add') +
+            'Create preference' + (names.length > 1 ? ' for ' + esc(p.name) : '') + '</button>';
+        }).join('') + '</div>' +
+        '<div class="ar-col-list ar-col-grid gr-scroll" data-col="3"></div></div>';
+    }
+    $('board').innerHTML = html;
+    boardCols.forEach(function (_, i) { if (document.querySelector('[data-col="' + i + '"]')) growColumn(i); });
+  }
+
+  function growColumn(i) {
+    var col = boardCols[i];
+    if (!col || col.shown >= col.items.length) return;
+    var next = col.items.slice(col.shown, col.shown + BOARD_CHUNK);
+    col.shown += next.length;
+    document.querySelector('[data-col="' + i + '"]').insertAdjacentHTML('beforeend', next.map(cardHtml).join(''));
+  }
+
+  document.addEventListener('scroll', function (e) {
+    var el = e.target;
+    var plain = document.querySelector('.ar-col-plain');
+    if (plain && plain.getBoundingClientRect().bottom < window.innerHeight + 600) growColumn(0);
+    if (!el.getAttribute || !el.hasAttribute('data-col')) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 600) growColumn(Number(el.getAttribute('data-col')));
+  }, true);
+
+  function tableMore(n) {
+    return n > TABLE_LIMIT ? '<div class="ar-col-empty">Showing top ' + TABLE_LIMIT + ' of ' + n + '. Use search or Export to get everyone.</div>' : '';
+  }
+
+  function ordinal(n) {
+    var t = n % 100;
+    if (t >= 11 && t <= 13) return 'th';
+    return ['th', 'st', 'nd', 'rd'][n % 10] || 'th';
+  }
+
+  function studentCell(s) {
+    return '<td><span class="ar-name">' + esc(s.name) + '</span><small class="ar-cell-sub">' + esc(s.id) + ' · ' + esc(programById(s.program).name) + '</small></td>';
+  }
+
+  /** A program's tables are split by match level; columns are the preference's criteria with each student's score on them. */
+  function renderTable(list) {
+    var pref = state.program === 'all' ? null : findPref(state.program, state.prefId);
+    if (!pref) {
+      $('table').innerHTML = '<div class="panel ar-table-wrap">' + (list.length
+        ? '<table class="ar-table"><thead><tr><th>Student</th><th>Stage</th><th>Stream</th><th>Class 12</th><th>Test</th><th>Budget</th><th>Location</th><th>Intake</th></tr></thead><tbody>' +
+          list.slice(0, TABLE_LIMIT).map(function (s) {
+            return '<tr data-student="' + s.id + '">' + studentCell(s) + '<td>' + stagePill(s) + '</td><td>' + esc(s.stream) + '</td>' +
+              '<td>' + esc(markNote(s.mark12)) + '</td><td>' + esc(headlineTest(s)) + '</td><td>₹' + s.budget[0] + '–' + s.budget[1] + 'L</td>' +
+              '<td>' + esc(s.city) + ' · ' + s.km + ' km</td><td>' + esc(s.intake) + '</td></tr>';
+          }).join('') + '</tbody></table>' + tableMore(list.length)
+        : '<div class="ar-col-empty">No students match these filters.</div>') + '</div>';
+      return;
+    }
+    var crits = CRITERIA.filter(function (c) { return pref.criteria[c.id].weight > 0; });
+    var head = '<tr><th>Student</th><th>Match</th>' + crits.map(function (c) {
+      return '<th title="Percentile among ' + esc(programById(state.program).name) + ' applicants on ' + esc(c.label.toLowerCase()) + '">' +
+        esc(c.label) + '<i class="ar-th-weight">' + pref.criteria[c.id].weight + '</i></th>';
+    }).join('') + '</tr>';
+    $('table').innerHTML = bucketDefs().map(function (b, i) {
+      var items = list.filter(function (s) { return s.bucket === i; });
+      var rows = items.slice(0, TABLE_LIMIT).map(function (s) {
+        return '<tr data-student="' + s.id + '">' + studentCell(s) +
+          '<td><span class="ar-score ' + scoreClass(s) + '">' + scoreHtml(s) + '</span></td>' +
+          crits.map(function (c) {
+            var part = s.parts.filter(function (p) { return p.id === c.id; })[0];
+            var tone = part.rel >= 75 ? 'hi' : part.rel >= 40 ? 'mid' : 'lo';
+            var tip = part.note + ' · level with or ahead of ' + part.rel + '% of ' + programById(s.program).name + ' applicants';
+            return '<td><b class="ar-cell-score ' + tone + '" title="' + esc(tip) + '">' + part.rel + '<small>' + ordinal(part.rel) + '</small></b></td>';
+          }).join('') + '</tr>';
+      }).join('');
+      var shut = !!state.collapsed[i];
+      return (
+        '<section class="panel ar-table-wrap' + (shut ? ' collapsed' : '') + '">' +
+        '<button type="button" class="ar-table-head" data-toggle-table="' + i + '" aria-expanded="' + !shut + '">' +
+        '<h3><i style="background:' + b.color + '"></i>' + b.name + '<b class="ar-col-count">' + items.length + '</b></h3>' +
+        '<span class="ar-table-meta"><small>' + b.range + '</small>' + ico('expand_more') + '</span></button>' +
+        (shut ? '' : items.length
+          ? '<div class="ar-table-scroll"><table class="ar-table"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>' + tableMore(items.length)
+          : '<div class="ar-col-empty">No students here yet.</div>') +
+        '</section>'
+      );
+    }).join('');
   }
 
   function renderFilters(list) {
     var chips = [];
     if (state.stage !== null) chips.push('<button type="button" class="ar-filter-chip" data-clear="stage">Reached: ' + esc(STAGES[state.stage].name) + ico('close') + '</button>');
-    if (state.program !== 'all') chips.push('<button type="button" class="ar-filter-chip" data-clear="program">' + esc(programById(state.program).name) + ico('close') + '</button>');
+    if (filtersOn()) {
+      var f = state.filters;
+      if (f.min !== '' || f.max !== '') {
+        var range = f.min !== '' && f.max !== '' ? f.min + '–' + f.max + '%' : f.min !== '' ? f.min + '%+' : 'up to ' + f.max + '%';
+        chips.push('<button type="button" class="ar-filter-chip" data-clear="score">Match ' + range + ico('close') + '</button>');
+      }
+      var pref = findPref(state.program, state.prefId);
+      activeFilters().forEach(function (id) {
+        chips.push('<button type="button" class="ar-filter-chip" data-clear="crit:' + id + '">' + esc(filterChipText(id, f.vals[id], pref)) + ico('close') + '</button>');
+      });
+    }
+    renderFilterBtn();
     $('active-filters').innerHTML = chips.join('');
     $('active-filters').hidden = !chips.length;
 
-    var n = list.length + ' student' + (list.length === 1 ? '' : 's');
-    var lead;
-    if (state.program === 'all') {
-      lead = state.audience === 'matched' ? n + ' clear their program’s preference.' : n + ' across all match levels.';
-    } else {
-      var pref = findPref(state.program, state.prefId);
-      lead = state.audience === 'matched'
-        ? n + ' score ' + pref.minScore + '%+ on “' + pref.name + '”.'
-        : n + ' scored against “' + pref.name + '”.';
+    $('students-count').textContent = list.length;
+    if ($('filter-show-count')) $('filter-show-count').textContent = list.length;
+    $('students-title').textContent = state.program === 'all' ? 'All students' : 'Students by match';
+  }
+
+  function renderFilterBtn() {
+    var n = activeFilterCount();
+    $('filter-wrap').hidden = !filtersOn();
+    $('filter-count').hidden = !n;
+    $('filter-count').textContent = n;
+    $('filter-btn').classList.toggle('active', n > 0);
+  }
+
+  function testUnit(rq) {
+    return rq.kind === 'rank' ? 'rank' : rq.kind === 'percentile' ? '%ile' : '/ ' + fmtNum(rq.max);
+  }
+
+  function filterChipText(id, v, pref) {
+    var c = CRITERIA.filter(function (x) { return x.id === id; })[0];
+    var label = c.label;
+    var unit = RANGE_FILTERS[id] ? RANGE_FILTERS[id].unit : '';
+    if (id === 'test') {
+      var rq = filterTest(pref);
+      label = rq.name;
+      unit = testUnit(rq);
     }
-    $('students-lead').textContent = lead;
+    if (PICK_FILTERS[id]) return label + ': ' + v.val;
+    var lo = v.min !== undefined && v.min !== '';
+    var hi = v.max !== undefined && v.max !== '';
+    var money = id === 'budget';
+    var num = function (n) { return money ? '₹' + n + 'L' : n; };
+    var suffix = money ? '' : unit === 'rank' ? ' rank' : unit === '%' ? '%' : ' ' + unit;
+    if (lo && hi) return label + ' ' + num(v.min) + '–' + num(v.max) + suffix;
+    if (lo) return label + ' ≥ ' + num(v.min) + suffix;
+    if (hi) return label + ' ≤ ' + num(v.max) + suffix;
+    return label + ' taken';
+  }
+
+  /** The smallest and largest value among the program's students, used as input hints. */
+  function extent(get) {
+    var lo = Infinity;
+    var hi = -Infinity;
+    baseSet().forEach(function (s) {
+      var x = get(s);
+      if (x === null || x === undefined || isNaN(x)) return;
+      if (x < lo) lo = x;
+      if (x > hi) hi = x;
+    });
+    return lo === Infinity ? ['', ''] : [Math.floor(lo), Math.ceil(hi)];
+  }
+
+  /** Min/max fields with the unit inside each box; attr is the data attribute the input handler reads. */
+  function rangeInputs(attr, v, unit) {
+    var val = function (k) { return v[k] === undefined ? '' : v[k]; };
+    var money = unit === '₹L';
+    var field = function (k, ph) {
+      return '<label class="ar-fin">' + (money ? '<span>₹</span>' : '') +
+        '<input type="number" placeholder="' + ph + '" ' + attr(k) + ' value="' + val(k) + '" aria-label="' + ph + '">' +
+        '<span>' + (money ? 'L' : esc(unit)) + '</span></label>';
+    };
+    return '<div class="ar-frange">' + field('min', 'Min') + '<i>–</i>' + field('max', 'Max') + '</div>';
+  }
+
+  function pickOptions(get) {
+    var seen = {};
+    baseSet().forEach(function (s) { get(s).forEach(function (x) { if (x) seen[x] = true; }); });
+    return Object.keys(seen).sort();
+  }
+
+  var FILTER_ORDER = ['test', 'class12', 'class10', 'location', 'budget', 'stream', 'board', 'intake', 'activities'];
+
+  /** One row per criterion the preference scores on, filtering on each student's actual value. */
+  function renderFilterMenu() {
+    var pref = findPref(state.program, state.prefId);
+    if (!pref) return;
+    var f = state.filters;
+    var crit = function (id) { return CRITERIA.filter(function (c) { return c.id === id; })[0]; };
+    var numAttr = function (id) { return function (k) { return 'data-fnum="' + id + ':' + k + '"'; }; };
+    var span = function (ext, unit) {
+      if (ext[0] === '') return '';
+      return 'In data: ' + ext[0] + '–' + ext[1] + (unit === '%' ? '%' : unit ? ' ' + unit : '');
+    };
+    var row = function (labelHtml, control) {
+      return '<div class="ar-ffield">' + labelHtml + control + '</div>';
+    };
+    var label = function (text, hint) {
+      return '<span class="ar-flabel"' + (hint ? ' title="' + esc(hint) + '"' : '') + '>' + esc(text) + '</span>';
+    };
+    var field = function (id) {
+      var v = f.vals[id] || {};
+      var name = crit(id).label;
+      if (id === 'test') {
+        var rq = filterTest(pref);
+        var unit = testUnit(rq);
+        var ext = extent(function (s) {
+          var t = s.tests.filter(function (x) { return x.name.toLowerCase() === rq.name.toLowerCase(); })[0];
+          return t ? t.value : null;
+        });
+        return row('<select class="ar-fselect ar-flabel-select" data-fsel="test" aria-label="Test" title="' + esc(span(ext, unit)) + '">' +
+          pref.criteria.test.tests.map(function (t) {
+            return '<option' + (t.name === rq.name ? ' selected' : '') + '>' + esc(t.name) + '</option>';
+          }).join('') + '</select>', rangeInputs(numAttr('test'), v, unit));
+      }
+      if (id === 'budget') {
+        var lo = extent(function (s) { return s.budget[0]; })[0];
+        var hi = extent(function (s) { return s.budget[1]; })[1];
+        return row(label(name, lo === '' ? '' : 'In data: ₹' + lo + '–' + hi + 'L'), rangeInputs(numAttr(id), v, '₹L'));
+      }
+      if (RANGE_FILTERS[id]) {
+        var u = RANGE_FILTERS[id].unit;
+        return row(label(name, span(extent(RANGE_FILTERS[id].get), u)), rangeInputs(numAttr(id), v, u));
+      }
+      return row(label(name), '<select class="ar-fselect" data-fsel="' + id + '" aria-label="' + esc(name) + '"><option value="">Any</option>' +
+        pickOptions(PICK_FILTERS[id]).map(function (o) {
+          return '<option' + (v.val === o ? ' selected' : '') + '>' + esc(o) + '</option>';
+        }).join('') + '</select>');
+    };
+    var scoreAttr = function (k) { return 'data-fscore="' + k + '" min="0" max="100"'; };
+    $('filter-menu').innerHTML =
+      '<div class="ar-fmenu-head"><strong>Filters</strong><button type="button" class="ar-link" data-freset>Reset</button></div>' +
+      '<div class="ar-fmenu-body gr-scroll">' +
+      row(label('Match score'), rangeInputs(scoreAttr, f, '%')) +
+      FILTER_ORDER.filter(function (id) { return pref.criteria[id].weight > 0; }).map(field).join('') +
+      '</div>' +
+      '<div class="ar-fmenu-foot"><button type="button" class="btn btn-primary btn-sm" data-fdone>Show <span id="filter-show-count">' +
+      visibleSet().length + '</span> students</button></div>';
   }
 
   function renderStudents() {
+    var pref = filtersOn() && findPref(state.program, state.prefId);
+    if (pref) {
+      Object.keys(state.filters.vals).forEach(function (id) {
+        if (!(pref.criteria[id].weight > 0)) delete state.filters.vals[id];
+      });
+    }
     var list = visibleSet();
     renderFilters(list);
     $('board').hidden = state.layout !== 'board';
@@ -853,23 +1158,31 @@
     }
     prefBtn.disabled = false;
     prefBtn.title = '';
-    var active = findPref(state.program, state.prefId);
+    var active = findPref(state.program, state.prefId) || { id: null, name: 'No preference' };
     $('pref-label').textContent = active.name;
     $('pref-menu').innerHTML =
       prefsFor(state.program).map(function (p) {
         return '<button type="button" class="ar-menu-item' + (p.id === active.id ? ' active' : '') + '" data-pref="' + p.id + '">' +
-          esc(p.name) + '<small>' + p.minScore + '%+</small></button>';
+          esc(p.name) + '</button>';
       }).join('') +
       '<button type="button" class="ar-menu-item ar-menu-add" data-create-pref="' + state.program + '">' + ico('add') + 'Create preference</button>';
   }
 
+  function applyInsightsCollapse() {
+    var shut = localStorage.getItem('admitright_insights_collapsed') === '1';
+    document.querySelector('.ar-insights').classList.toggle('collapsed', shut);
+    document.querySelectorAll('[data-toggle-insights]').forEach(function (b) {
+      b.setAttribute('aria-label', shut ? 'Expand' : 'Collapse');
+      b.setAttribute('aria-expanded', String(!shut));
+    });
+  }
+
   function renderDashboard() {
+    applyInsightsCollapse();
     rescore();
     renderTopMenus();
     renderFunnel();
     renderPrefPanel();
-    renderAverages();
-    renderProgramBars();
     renderStudents();
   }
 
@@ -895,6 +1208,14 @@
       program.seats + ' seats · ' + total + ' students interested';
 
     var prefs = prefsFor(program.id);
+    if (!prefs.length) {
+      $('pp-cards').innerHTML =
+        '<article class="panel ar-pp-empty">' + ico('tune') + '<h3>No preferences yet</h3>' +
+        '<p>' + total + ' interested students aren’t scored until you tell us who fits ' + esc(program.name) + '.</p>' +
+        '<button type="button" class="btn btn-primary btn-sm" id="pp-create-empty" data-create-pref="' + program.id + '">' +
+        ico('add') + 'Create preference</button></article>';
+      return;
+    }
     $('pp-cards').innerHTML = prefs.map(function (pref, i) {
       var n = matchCount(program.id, pref);
       var chips = CRITERIA.filter(function (c) { return pref.criteria[c.id].weight > 0; }).map(function (c) {
@@ -903,8 +1224,7 @@
       return (
         '<article class="panel ar-pp-card">' +
         '<div class="ar-pp-card-head"><div><h3>' + esc(pref.name) + '</h3>' +
-        (i === 0 ? '<span class="ar-default">Default for this program</span>' : '') + '</div>' +
-        '<div class="ar-pp-score"><span>Show students scoring</span><strong>' + pref.minScore + '%+</strong></div></div>' +
+        (i === 0 ? '<span class="ar-default">Default for this program</span>' : '') + '</div></div>' +
         '<div class="ar-crits">' + chips + '</div>' +
         '<div class="ar-pp-card-foot"><span><b>' + n + '</b> of ' + total + ' students match</span>' +
         '<div class="ar-pp-actions">' +
@@ -930,7 +1250,9 @@
 
   /* ——— Drawer ——— */
 
-  function openDrawer(title, body, foot) {
+  /** modal shows a centred popup instead of the side panel. */
+  function openDrawer(title, body, foot, modal) {
+    $('drawer').classList.toggle('modal', !!modal);
     $('drawer-title').textContent = title;
     $('drawer-body').innerHTML = body;
     $('drawer-foot').innerHTML = foot || '';
@@ -961,7 +1283,8 @@
       esc(headlineTest(s)) + '. Budget ₹' + s.budget[0] + '–' + s.budget[1] + 'L for ' +
       esc(program.name) + ' (₹' + program.fee + 'L). Interested in ' + esc(s.activities.join(', ')) + '. ' +
       (strengths.length ? 'Strong on ' + esc(strengths.slice(0, 3).join(', ')) + '. ' : '') +
-      (gaps.length ? 'Gaps: ' + esc(gaps.join(', ')) + '. ' : 'No major gaps against this preference. ') +
+      (!s.pref ? esc(program.name) + ' has no preference yet, so this student isn’t scored. ' :
+        gaps.length ? 'Gaps: ' + esc(gaps.join(', ')) + '. ' : 'No major gaps against this preference. ') +
       '<br><br><strong>Next best step:</strong> ' + next
     );
   }
@@ -988,15 +1311,27 @@
         return logRow(i === s.stage ? ' done current' : ' done', 'check', st.name, events[i], i === s.stage ? 'Current stage' : '');
       }).join('');
 
-    var matches = s.parts.map(function (p) {
+    var earned = 0;
+    var possible = 0;
+    var matches = s.parts.filter(function (p) { return p.weight > 0; }).map(function (p) {
       var pct = Math.round(p.v * 100);
-      var color = p.weight === 0 ? 'var(--gray-200)' : pct >= 99 ? 'var(--green-500)' : pct >= 50 ? 'var(--yellow-500)' : 'var(--red-500)';
+      var pts = Math.round(p.v * p.weight * 10) / 10;
+      earned += p.v * p.weight;
+      possible += p.weight;
+      var tone = pct >= 99 ? 'hi' : pct >= 50 ? 'mid' : 'lo';
       return (
-        '<div class="ar-match-row"><span>' + esc(p.label) + (p.weight ? '' : ' · off') + '</span>' +
-        '<div class="ar-mini-track"><i style="width:' + pct + '%;background:' + color + '"></i></div>' +
-        '<em>' + esc(p.note) + '</em></div>'
+        '<div class="ar-match-row">' +
+        '<div class="ar-match-top"><span class="ar-match-label">' + esc(p.label) + '<i>Weight ' + p.weight + '</i></span>' +
+        '<em>' + esc(p.note) + '</em></div>' +
+        '<div class="ar-mini-track"><i class="' + tone + '" style="width:' + pct + '%"></i></div>' +
+        '<b class="ar-match-score ' + tone + '">' + pct + '%<small>' + fmtNum(pts) + ' / ' + p.weight + ' pts</small></b>' +
+        '</div>'
       );
     }).join('');
+    if (possible) {
+      matches += '<div class="ar-match-total"><span>Match score</span><small>' + fmtNum(Math.round(earned * 10) / 10) + ' of ' + possible +
+        ' weighted points</small><b class="ar-match-score ' + scoreClass(s) + '">' + s.score + '%</b></div>';
+    }
 
     var contact =
       '<div class="ar-private">' +
@@ -1014,14 +1349,14 @@
       return '<div><span>' + f[0] + '</span><strong>' + esc(f[1]) + '</strong></div>';
     }).join('');
 
-    var accepted = (s.pref.criteria.test.tests || []).map(function (rq) { return rq.name.toLowerCase(); });
+    var accepted = s.pref ? (s.pref.criteria.test.tests || []).map(function (rq) { return rq.name.toLowerCase(); }) : null;
     var tests = s.tests.length
       ? s.tests.map(function (t) {
-        var ok = accepted.indexOf(t.name.toLowerCase()) !== -1;
+        var ok = !!accepted && accepted.indexOf(t.name.toLowerCase()) !== -1;
         return '<div class="ar-test-row"><span>' + esc(t.name) +
           (t.custom ? '<i class="ar-tag">Custom</i>' : '') + '</span>' +
           '<strong>' + esc(testNote(t).slice(t.name.length + 1)) + '</strong>' +
-          '<em class="' + (ok ? 'ok' : '') + '">' + (ok ? 'Accepted' : 'Not in preference') + '</em></div>';
+          (accepted ? '<em class="' + (ok ? 'ok' : '') + '">' + (ok ? 'Accepted' : 'Not in preference') + '</em>' : '<em></em>') + '</div>';
       }).join('')
       : '<p class="ar-muted">No tests added.</p>';
 
@@ -1030,15 +1365,19 @@
       return '<span class="pill">' + esc(a) + (custom ? ' · custom' : '') + '</span>';
     }).join('');
 
-    var verdict = s.bucket === 0
-      ? 'Clears “' + esc(s.pref.name) + '” (needs ' + s.pref.minScore + '%)'
-      : 'Below “' + esc(s.pref.name) + '” (needs ' + s.pref.minScore + '%)';
+    var verdict = !s.pref ? 'No preference yet' : s.bucket === 0
+      ? 'Clears “' + esc(s.pref.name) + '” (needs ' + MATCH_MIN + '%)'
+      : 'Below “' + esc(s.pref.name) + '” (needs ' + MATCH_MIN + '%)';
+    if (!s.pref) {
+      matches = '<p class="ar-muted">' + esc(program.name) + ' has no preference, so there’s nothing to match against.</p>' +
+        '<button type="button" class="btn btn-secondary btn-sm ar-block-btn" data-create-pref="' + s.program + '">' + ico('add') + 'Create preference</button>';
+    }
 
     var body =
       '<div class="ar-hero"><div class="avatar lg">' + esc(s.initials) + '</div>' +
       '<div class="ar-hero-who"><h3>' + esc(s.name) + '</h3><p>' + esc(s.id) + ' · ' + esc(program.name) + '</p>' +
       '<p style="margin-top:0.35rem">' + stagePill(s) + '</p></div>' +
-      '<div class="ar-ring" style="--p:' + s.score + ';--c:' + scoreColor(s) + '"><span>' + s.score + '%</span></div></div>' +
+      '<div class="ar-ring" style="--p:' + (s.score || 0) + ';--c:' + scoreColor(s) + '"><span>' + (s.score === null ? '—' : s.score + '%') + '</span></div></div>' +
       '<div class="ar-ai"><h4>' + ico('auto_awesome') + 'AI summary</h4>' + aiSummary(s) + '</div>' +
       '<div class="ar-block"><h4>Activity log</h4><div class="ar-journey">' + journey + '</div></div>' +
       '<div class="ar-block"><h4>Preference match · ' + verdict + '</h4>' + matches + '</div>' +
@@ -1062,11 +1401,8 @@
     return JSON.parse(JSON.stringify(o));
   }
 
-  function weightSelect(cid, w) {
-    return '<select class="ar-weight-select" data-weight="' + cid + '" aria-label="How much this counts">' +
-      [3, 2, 1, 0].map(function (n) {
-        return '<option value="' + n + '"' + (n === w ? ' selected' : '') + '>' + WEIGHT_LABEL[n] + '</option>';
-      }).join('') + '</select>';
+  function weightSelect(cid, w, on) {
+    return '<input type="number" class="ar-weight-input" min="1" max="100" step="1" data-weight="' + cid + '" value="' + w + '" aria-label="Weight, 1 to 100"' + (on ? '' : ' disabled') + ' />';
   }
 
   function checks(name, all, selected) {
@@ -1077,9 +1413,9 @@
   }
 
   function unitSuffix(rq) {
-    if (rq.kind === 'rank') return 'rank or better';
-    if (rq.kind === 'percentile') return 'percentile+';
-    return 'out of ' + fmtNum(rq.max);
+    if (rq.kind === 'rank') return 'or better';
+    if (rq.kind === 'percentile') return '%ile or more';
+    return '/ ' + fmtNum(rq.max) + ' or more';
   }
 
   function testsEditor(c) {
@@ -1088,7 +1424,7 @@
       return (
         '<div class="ar-req">' +
         '<div class="ar-req-name"><strong>' + esc(rq.name) + '</strong>' +
-        '<small>' + (rq.custom ? '<i class="ar-tag">Custom</i>' : esc((info && info.hint) || (rq.kind === 'score' ? 'Score' : ''))) + '</small></div>' +
+        '<small>' + (rq.custom ? '<i class="ar-tag">Custom</i>' : esc((info && info.hint) || 'Score out of ' + fmtNum(rq.max))) + '</small></div>' +
         '<label class="ar-req-min"><input type="number" min="0"' + (rq.kind === 'score' ? ' max="' + rq.max + '"' : '') +
         ' step="any" data-test-min="' + i + '" value="' + rq.min + '" aria-label="' + esc(rq.name) + ' minimum" />' +
         '<span>' + unitSuffix(rq) + '</span></label>' +
@@ -1165,8 +1501,8 @@
     $('pe-activity-new').focus();
   }
 
+  /** Callers run readEditor() before changing the draft, so the DOM doesn't overwrite their change here. */
   function rerenderEditor() {
-    readEditor();
     var body = $('drawer-body');
     var top = body.scrollTop;
     body.innerHTML = editorHtml();
@@ -1179,9 +1515,13 @@
     var c = d.criteria;
     var program = programById(editing.programId);
 
+    /** Unticked criteria keep their settings but get weight 0, so they don't count. */
     function row(cid, label, control, hint) {
-      return '<div class="ar-form-row"><div class="field"><label>' + label + '</label>' + control +
-        (hint ? '<p class="ar-hint">' + hint + '</p>' : '') + '</div>' + weightSelect(cid, c[cid].weight) + '</div>';
+      var on = c[cid].weight > 0;
+      return '<div class="ar-form-row' + (on ? '' : ' off') + '" data-crit-row="' + cid + '"><div class="field">' +
+        '<label class="ar-include"><input type="checkbox" data-include="' + cid + '"' + (on ? ' checked' : '') + ' />' + label + '</label>' +
+        '<div class="ar-crit-body">' + control + (hint ? '<p class="ar-hint">' + hint + '</p>' : '') + '</div></div>' +
+        weightSelect(cid, on ? c[cid].weight : c[cid].saved || 10, on) + '</div>';
     }
     var gradeHint = 'Boards grade differently. CGPA is converted × 9.5 and IB points ÷ 45 before comparing.';
 
@@ -1189,13 +1529,10 @@
       '<div class="ar-editor-program">' + ico('school') + '<div><span>Program</span><strong>' + esc(program.name) + '</strong></div></div>' +
       '<div class="field"><label>Preference name</label><input type="text" id="pe-name" value="' + esc(d.name) + '" placeholder="e.g. Delhi NCR high achievers" /></div>' +
 
-      '<div class="ar-score-box">' +
-      '<div class="ar-score-box-head"><div><strong>Minimum match score</strong><span>Students scoring at or above this show on your dashboard.</span></div>' +
-      '<b id="pe-score-out">' + d.minScore + '%</b></div>' +
-      '<input type="range" min="40" max="100" step="5" id="pe-score" value="' + d.minScore + '" />' +
-      '<p class="ar-score-preview" id="pe-preview"></p></div>' +
+      '<p class="ar-score-preview ar-preview-line" id="pe-preview"></p>' +
 
-      '<div class="ar-editor-sub"><h4>What counts toward the score</h4><span>Weight</span></div>' +
+      '<div class="ar-editor-sub"><h4>What counts toward the score</h4><span>Weight (1–100)</span></div>' +
+      '<p class="ar-hint ar-editor-hint">Tick a criterion to include it in the match score. Unticked ones are ignored.</p>' +
       row('location', 'Location within (km)', '<input type="number" min="5" step="5" id="pe-radius" value="' + c.location.radius + '" />') +
       row('test', 'Entrance tests', testsEditor(c), 'Students need any one of these. Each test uses its own unit; the best one counts.') +
       row('class12', 'Class 12 marks', '<label class="ar-unit"><input type="number" min="0" max="100" id="pe-c12" value="' + c.class12.min + '" /><span>% and above</span></label>', gradeHint) +
@@ -1223,8 +1560,12 @@
       var v = Number($(id).value);
       return $(id).value === '' || isNaN(v) ? fallback : v;
     }
+    var saved = {};
     function weight(cid) {
-      return Number(body.querySelector('[data-weight="' + cid + '"]').value);
+      var v = Math.round(Number(body.querySelector('[data-weight="' + cid + '"]').value));
+      var prev = d.criteria[cid].weight || d.criteria[cid].saved || 10;
+      saved[cid] = isNaN(v) || v < 1 ? prev : Math.min(100, v);
+      return body.querySelector('[data-include="' + cid + '"]').checked ? saved[cid] : 0;
     }
     function checked(name) {
       return Array.prototype.map.call(body.querySelectorAll('input[name="' + name + '"]:checked'), function (i) { return i.value; });
@@ -1232,7 +1573,6 @@
     var bmin = num('pe-bmin', d.criteria.budget.min);
     var bmax = num('pe-bmax', d.criteria.budget.max);
     d.name = $('pe-name').value.trim();
-    d.minScore = Number($('pe-score').value);
     d.criteria = {
       location: { radius: num('pe-radius', d.criteria.location.radius), weight: weight('location') },
       test: {
@@ -1251,6 +1591,7 @@
       activities: { values: checked('pe-activity'), weight: weight('activities') },
       intake: { value: $('pe-intake').value, weight: weight('intake') },
     };
+    Object.keys(saved).forEach(function (cid) { d.criteria[cid].saved = saved[cid]; });
   }
 
   function updatePreview() {
@@ -1258,8 +1599,7 @@
     var d = editing.draft;
     var total = STUDENTS.filter(function (s) { return s.program === editing.programId; }).length;
     var n = matchCount(editing.programId, d);
-    $('pe-score-out').textContent = d.minScore + '%';
-    $('pe-preview').innerHTML = '<b>' + n + '</b> of ' + total + ' students in this program would show.';
+    $('pe-preview').innerHTML = '<b>' + n + '</b> of ' + total + ' students in this program would match (' + MATCH_MIN + '%+).';
   }
 
   function openEditor(programId, prefId) {
@@ -1268,13 +1608,14 @@
     editing = {
       programId: programId,
       prefId: existing ? existing.id : null,
-      draft: existing ? clone(existing) : { id: null, name: '', minScore: 80, criteria: baseCriteria(program) },
+      draft: existing ? clone(existing) : { id: null, name: '', criteria: baseCriteria(program) },
     };
     openDrawer(
       existing ? 'Edit preference' : 'Create preference',
       editorHtml(),
       '<button type="button" class="btn btn-ghost btn-sm" data-close-drawer>Cancel</button>' +
-      '<button type="button" class="btn btn-primary btn-sm" data-action="save-pref">' + (existing ? 'Save changes' : 'Create preference') + '</button>'
+      '<button type="button" class="btn btn-primary btn-sm" data-action="save-pref">' + (existing ? 'Save changes' : 'Create preference') + '</button>',
+      true
     );
     updatePreview();
   }
@@ -1293,7 +1634,7 @@
       PREFS[editing.programId] = list.map(function (p) { return p.id === d.id ? d : p; });
     } else {
       d.id = newId();
-      list.push(d);
+      PREFS[editing.programId] = list.concat(d);
     }
     savePrefs();
     var created = !editing.prefId;
@@ -1320,7 +1661,7 @@
 
   /* ——— Events ——— */
 
-  var MENUS = [['program-btn', 'program-menu'], ['pref-btn', 'pref-menu'], ['range-btn', 'range-menu']];
+  var MENUS = [['program-btn', 'program-menu'], ['pref-btn', 'pref-menu'], ['range-btn', 'range-menu'], ['filter-btn', 'filter-menu']];
 
   function closeMenus(except) {
     MENUS.forEach(function (m) {
@@ -1340,7 +1681,7 @@
   function setProgram(id) {
     state.program = id;
     state.prefId = null;
-    state.stage = null;
+    resetFilters();
     renderDashboard();
   }
 
@@ -1357,25 +1698,36 @@
 
     for (var i = 0; i < MENUS.length; i++) {
       if (t.closest('#' + MENUS[i][0])) {
+        if (MENUS[i][1] === 'filter-menu') renderFilterMenu();
         toggleMenu(MENUS[i][0], MENUS[i][1]);
         return;
       }
     }
 
-    var programItem = t.closest('[data-program]');
-    if (programItem) {
-      var pid = programItem.getAttribute('data-program');
-      closeMenus();
-      setProgram(programItem.classList.contains('ar-bar') && state.program === pid ? 'all' : pid);
+    if (t.closest('[data-freset]')) {
+      resetFilters();
+      renderFilterMenu();
+      renderStudents();
       return;
     }
 
-    var prefItem = t.closest('[data-pref]');
-    if (prefItem) {
-      state.prefId = prefItem.getAttribute('data-pref');
-      state.stage = null;
+    if (t.closest('[data-fdone]')) {
       closeMenus();
-      renderDashboard();
+      return;
+    }
+
+    if (t.closest('[data-toggle-insights]')) {
+      var wasShut = localStorage.getItem('admitright_insights_collapsed') === '1';
+      localStorage.setItem('admitright_insights_collapsed', wasShut ? '0' : '1');
+      applyInsightsCollapse();
+      return;
+    }
+
+    var toggleTable = t.closest('[data-toggle-table]');
+    if (toggleTable) {
+      var ti = toggleTable.getAttribute('data-toggle-table');
+      state.collapsed[ti] = !state.collapsed[ti];
+      renderStudents();
       return;
     }
 
@@ -1383,6 +1735,23 @@
     if (createPref) {
       closeMenus();
       openEditor(createPref.getAttribute('data-create-pref'));
+      return;
+    }
+
+    var programItem = t.closest('[data-program]');
+    if (programItem) {
+      var pid = programItem.getAttribute('data-program');
+      closeMenus();
+      setProgram(pid);
+      return;
+    }
+
+    var prefItem = t.closest('[data-pref]');
+    if (prefItem) {
+      state.prefId = prefItem.getAttribute('data-pref');
+      resetFilters();
+      closeMenus();
+      renderDashboard();
       return;
     }
 
@@ -1400,7 +1769,10 @@
 
     if (t.closest('#pref-panel-edit')) {
       if (state.program === 'all') setView('programs');
-      else openEditor(state.program, findPref(state.program, state.prefId).id);
+      else {
+        var current = findPref(state.program, state.prefId);
+        openEditor(state.program, current && current.id);
+      }
       return;
     }
 
@@ -1410,16 +1782,6 @@
       state.stage = state.stage === si ? null : si;
       renderFunnel();
       renderStudents();
-      return;
-    }
-
-    var aud = t.closest('[data-audience]');
-    if (aud) {
-      state.audience = aud.getAttribute('data-audience');
-      document.querySelectorAll('[role="tab"][data-audience]').forEach(function (b) {
-        b.classList.toggle('active', b.getAttribute('data-audience') === state.audience);
-      });
-      renderDashboard();
       return;
     }
 
@@ -1433,7 +1795,18 @@
 
     var clear = t.closest('[data-clear]');
     if (clear) {
-      if (clear.getAttribute('data-clear') === 'stage') state.stage = null;
+      var what = clear.getAttribute('data-clear');
+      if (what === 'score') {
+        state.filters.min = state.filters.max = '';
+        renderStudents();
+        return;
+      }
+      if (what.indexOf('crit:') === 0) {
+        delete state.filters.vals[what.slice(5)];
+        renderStudents();
+        return;
+      }
+      if (what === 'stage') state.stage = null;
       else setProgram('all');
       renderDashboard();
       return;
@@ -1474,10 +1847,7 @@
       state.program = state.ppProgram;
       state.prefId = usePref.getAttribute('data-use-pref');
       state.stage = null;
-      state.audience = 'matched';
-      document.querySelectorAll('[data-audience]').forEach(function (b) {
-        b.classList.toggle('active', b.getAttribute('data-audience') === 'matched');
-      });
+      resetFilters();
       setView('dashboard');
       $('students').scrollIntoView({ behavior: 'smooth' });
       return;
@@ -1497,6 +1867,7 @@
         return;
       }
       if (t.closest('[data-cancel-custom-test]')) {
+        readEditor();
         editing.customTest = false;
         rerenderEditor();
         return;
@@ -1525,6 +1896,19 @@
   });
   $('drawer-body').addEventListener('change', function (e) {
     if (!editing) return;
+    var inc = e.target.getAttribute && e.target.getAttribute('data-include');
+    if (inc) {
+      if (!e.target.checked && !$('drawer-body').querySelector('[data-include]:checked')) {
+        e.target.checked = true;
+        toast('Keep at least one criterion in the score.');
+        updatePreview();
+        return;
+      }
+      e.target.closest('[data-crit-row]').classList.toggle('off', !e.target.checked);
+      $('drawer-body').querySelector('[data-weight="' + inc + '"]').disabled = !e.target.checked;
+      updatePreview();
+      return;
+    }
     if (e.target.id === 'pe-add-test') {
       var name = e.target.value;
       if (!name) return;
@@ -1553,10 +1937,44 @@
       closeMenus();
       if (!$('drawer').hidden) closeDrawer();
     }
+    if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('ar-pick')) e.target.click();
   });
 
   $('student-search').addEventListener('input', function (e) {
     state.query = e.target.value;
+    renderStudents();
+  });
+
+  $('filter-menu').addEventListener('input', function (e) {
+    var v = e.target.value.trim();
+    var key = e.target.getAttribute('data-fscore');
+    if (key) {
+      state.filters[key] = v === '' ? '' : String(Math.max(0, Math.min(100, Math.round(Number(v)) || 0)));
+      renderStudents();
+      return;
+    }
+    var num = e.target.getAttribute('data-fnum');
+    if (!num) return;
+    var bits = num.split(':');
+    var vals = state.filters.vals;
+    vals[bits[0]] = vals[bits[0]] || {};
+    vals[bits[0]][bits[1]] = v === '' || isNaN(Number(v)) ? '' : v;
+    renderStudents();
+  });
+
+  /** Changing the test redraws the menu so its unit and hints follow; its old range no longer applies. */
+  $('filter-menu').addEventListener('change', function (e) {
+    var id = e.target.getAttribute('data-fsel');
+    if (!id) return;
+    var vals = state.filters.vals;
+    if (id === 'test') {
+      vals.test = { val: e.target.value };
+      renderFilterMenu();
+    } else if (e.target.value) {
+      vals[id] = { val: e.target.value };
+    } else {
+      delete vals[id];
+    }
     renderStudents();
   });
 
@@ -1569,7 +1987,7 @@
     var list = visibleSet();
     var rows = [['GR ID', 'Name', 'Program', 'Preference', 'Match %', 'Stage', 'Class 10', 'Class 12', 'Tests', 'Budget (L)', 'City', 'Km', 'Intake']].concat(
       list.map(function (s) {
-        return [s.id, s.name, programById(s.program).name, s.pref.name, s.score, STAGES[s.stage].name, markNote(s.mark10), markNote(s.mark12),
+        return [s.id, s.name, programById(s.program).name, s.pref ? s.pref.name : 'No preference', s.score === null ? '' : s.score, STAGES[s.stage].name, markNote(s.mark10), markNote(s.mark12),
           s.tests.map(testNote).join('; '), s.budget[0] + '-' + s.budget[1], s.city, s.km, s.intake];
       })
     );
