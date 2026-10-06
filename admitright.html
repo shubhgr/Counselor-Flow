@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AdmitRight — University dashboard</title>
+  <link rel="stylesheet" href="css/styles.css?v=notif8" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar13" />
+</head>
+<body class="ar">
+  <div class="app">
+    <aside class="ar-rail" aria-label="Main navigation">
+      <a class="ar-rail-mark" href="#" data-go="dashboard" aria-label="AdmitRight">
+        <img src="assets/gradright-logo-dark.png" alt="" />
+      </a>
+      <nav class="ar-rail-nav">
+        <a class="ar-rail-item active" href="#" data-go="dashboard" title="Dashboard" aria-label="Dashboard">
+          <span class="material-symbols-rounded" aria-hidden="true">space_dashboard</span>
+        </a>
+        <a class="ar-rail-item" href="#" data-go="programs" title="Programs &amp; preferences" aria-label="Programs and preferences">
+          <span class="material-symbols-rounded" aria-hidden="true">school</span>
+        </a>
+      </nav>
+      <a class="ar-rail-item ar-rail-foot" href="index.html" title="Log out" aria-label="Log out">
+        <span class="material-symbols-rounded" aria-hidden="true">logout</span>
+      </a>
+    </aside>
+
+    <div class="main">
+      <!-- Dashboard -->
+      <div id="view-dashboard">
+        <header class="topbar">
+          <div class="ar-title">
+            <h1>Northfield University</h1>
+            <span class="ar-sub">Admissions dashboard</span>
+          </div>
+          <div class="actions">
+            <div class="ar-menu-wrap">
+              <button type="button" class="chip-btn" id="program-btn" aria-expanded="false">
+                <span id="program-label">All programs</span>
+                <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+              </button>
+              <div class="ar-menu" id="program-menu" hidden></div>
+            </div>
+            <div class="ar-menu-wrap">
+              <button type="button" class="chip-btn" id="pref-btn" aria-expanded="false">
+                <span class="material-symbols-rounded" aria-hidden="true">tune</span>
+                <span id="pref-label">Default preference</span>
+                <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+              </button>
+              <div class="ar-menu" id="pref-menu" hidden></div>
+            </div>
+            <div class="ar-menu-wrap">
+              <button type="button" class="chip-btn" id="range-btn" aria-expanded="false">
+                <span id="range-label">All time</span>
+                <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+              </button>
+              <div class="ar-menu" id="range-menu" hidden>
+                <button type="button" class="ar-menu-item active" data-range="0">All time</button>
+                <button type="button" class="ar-menu-item" data-range="365">Last 1 year</button>
+                <button type="button" class="ar-menu-item" data-range="90">Last 3 months</button>
+                <button type="button" class="ar-menu-item" data-range="30">Last 30 days</button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div class="content ar-content">
+          <section class="ar-section" id="funnel">
+            <div class="ar-section-head">
+              <div>
+                <h2>Funnel</h2>
+                <p class="ar-lead">Where each student is in their AdmitRight journey. Click a stage to filter students.</p>
+              </div>
+              <div class="ar-seg" role="tablist" aria-label="Audience">
+                <button type="button" class="ar-seg-btn active" data-audience="matched" role="tab">For you</button>
+                <button type="button" class="ar-seg-btn" data-audience="all" role="tab">For all</button>
+              </div>
+            </div>
+            <div class="ar-funnel" id="funnel-grid"></div>
+          </section>
+
+          <section class="ar-insights">
+            <div class="panel ar-prefs-panel">
+              <div class="panel-head">
+                <h2 id="pref-panel-title">Preference</h2>
+                <button type="button" class="btn btn-ghost btn-sm" id="pref-panel-edit">Edit</button>
+              </div>
+              <div id="prefs-summary"></div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-head">
+                <h2>Average applicant profile</h2>
+                <span class="ar-meta" id="avg-count"></span>
+              </div>
+              <div class="ar-avg-grid" id="avg-profile"></div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-head">
+                <h2>Interest by program</h2>
+                <span class="ar-meta">Students</span>
+              </div>
+              <div class="ar-bars" id="program-bars"></div>
+            </div>
+          </section>
+
+          <section class="ar-section" id="students">
+            <div class="ar-section-head">
+              <div>
+                <h2>Students by match</h2>
+                <p class="ar-lead" id="students-lead"></p>
+              </div>
+              <div class="ar-tools">
+                <label class="ar-search">
+                  <span class="material-symbols-rounded" aria-hidden="true">search</span>
+                  <input type="search" id="student-search" placeholder="Search name, GR ID, city" />
+                </label>
+                <div class="ar-seg" role="tablist" aria-label="View">
+                  <button type="button" class="ar-seg-btn active" data-view="board" role="tab">Board</button>
+                  <button type="button" class="ar-seg-btn" data-view="table" role="tab">Table</button>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm btn-icon" id="campaign-btn">
+                  <span class="material-symbols-rounded" aria-hidden="true">send</span>
+                  Trigger campaign
+                </button>
+                <button type="button" class="btn btn-primary btn-sm btn-icon" id="export-btn">
+                  <span class="material-symbols-rounded" aria-hidden="true">download</span>
+                  Export
+                </button>
+              </div>
+            </div>
+            <div class="ar-filters" id="active-filters" hidden></div>
+            <div class="ar-board" id="board"></div>
+            <div class="panel ar-table-wrap" id="table" hidden></div>
+          </section>
+        </div>
+      </div>
+
+      <!-- Programs & preferences -->
+      <div id="view-programs" hidden>
+        <header class="topbar">
+          <div class="ar-title">
+            <h1>Programs &amp; preferences</h1>
+            <span class="ar-sub">Each program has its own preferences. A preference decides which students you see.</span>
+          </div>
+        </header>
+
+        <div class="content ar-pp">
+          <aside class="panel ar-pp-programs">
+            <div class="panel-head">
+              <h2>Programs</h2>
+              <span class="ar-meta" id="pp-program-count"></span>
+            </div>
+            <p class="panel-lead">Programs come from your university catalogue. You can’t add them here.</p>
+            <div class="ar-pp-list" id="pp-program-list"></div>
+          </aside>
+
+          <section class="ar-pp-main">
+            <div class="ar-section-head">
+              <div>
+                <h2 id="pp-program-title">Program</h2>
+                <p class="ar-lead" id="pp-program-meta"></p>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="pp-create">
+                <span class="material-symbols-rounded" aria-hidden="true">add</span>
+                Create preference
+              </button>
+            </div>
+            <div class="ar-pp-cards" id="pp-cards"></div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ar-drawer" id="drawer" hidden>
+    <div class="ar-drawer-backdrop" data-close-drawer></div>
+    <aside class="ar-drawer-card" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+      <div class="ar-drawer-head">
+        <strong id="drawer-title">Student</strong>
+        <button type="button" class="icon-btn" data-close-drawer aria-label="Close">
+          <span class="material-symbols-rounded" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <div class="ar-drawer-body gr-scroll" id="drawer-body"></div>
+      <div class="ar-drawer-foot" id="drawer-foot" hidden></div>
+    </aside>
+  </div>
+
+  <div class="ar-toast" id="toast" hidden></div>
+
+  <script src="js/admitright.js?v=ar16"></script>
+</body>
+</html>
