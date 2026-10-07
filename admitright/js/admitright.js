@@ -23,7 +23,7 @@
     { id: 'bsc-ds', name: 'B.Sc Data Science', fee: 12, stream: 'PCM', seats: 90, prefName: 'Analytical PCM students' },
     { id: 'bba', name: 'BBA', fee: 10, stream: 'Any', seats: 180, prefName: 'Business-minded all-rounders' },
     { id: 'bdes', name: 'B.Des', fee: 16, stream: 'Any', seats: 60, prefName: 'UCEED & NATA creatives' },
-    { id: 'bcom', name: 'B.Com (Hons)', fee: 8, stream: 'Commerce', seats: 120, noDefaultPref: true },
+    { id: 'bcom', name: 'B.Com (Hons)', fee: 8, stream: 'Commerce', seats: 120, prefName: 'Commerce toppers' },
   ];
 
   var BOARDS = ['CBSE', 'CISCE', 'UP Board', 'Maharashtra Board', 'Telangana Board', 'Other State Board', 'IB'];
@@ -298,6 +298,10 @@
     }).filter(function (r) { return r.id; }).map(studentFromRow).map(withDerived);
   }
 
+  /* data/students-data.js embeds the CSV so the dashboard works when index.html is opened straight from disk. */
+  var BUNDLED_STUDENTS = window.ADMITRIGHT_STUDENTS_CSV ? studentsFromCsv(window.ADMITRIGHT_STUDENTS_CSV) : [];
+  if (BUNDLED_STUDENTS.length) STUDENTS = BUNDLED_STUDENTS;
+
   /** Shortcuts used across the dashboard: marks as %, Class 12 board, headline test. */
   function withDerived(s) {
     s.class10 = s.mark10.pct;
@@ -347,7 +351,7 @@
   function defaultPrefs() {
     var out = {};
     PROGRAMS.forEach(function (p) {
-      out[p.id] = p.noDefaultPref ? [] : [{ id: newId(), name: p.prefName, criteria: baseCriteria(p) }];
+      out[p.id] = [{ id: newId(), name: p.prefName, criteria: baseCriteria(p) }];
     });
     var ncr = baseCriteria(PROGRAMS[0]);
     ncr.location = { radius: 100, weight: 40 };
@@ -448,6 +452,12 @@
 
   function findPref(programId, prefId) {
     return prefsFor(programId).filter(function (p) { return p.id === prefId; })[0] || prefsFor(programId)[0];
+  }
+
+  /** The first preference of a program is its default; it can be duplicated but not edited or deleted. */
+  function isDefaultPref(programId, prefId) {
+    var first = prefsFor(programId)[0];
+    return !!first && first.id === prefId;
   }
 
   /* ——— Scoring ——— */
@@ -702,17 +712,50 @@
 
   function saveFilters() {
     try {
-      localStorage.setItem(FILTERS_KEY, JSON.stringify({ filters: state.filters, intake: state.intake }));
+      localStorage.setItem(FILTERS_KEY, JSON.stringify({
+        program: state.program, prefId: state.prefId, filters: state.filters, intake: state.intake,
+      }));
     } catch (err) { /* storage full or blocked */ }
   }
 
-  try {
-    var savedFilters = JSON.parse(localStorage.getItem(FILTERS_KEY) || 'null');
-    if (savedFilters && savedFilters.filters) {
-      state.filters = savedFilters.filters;
-      if (typeof savedFilters.intake === 'string') state.intake = savedFilters.intake;
-    }
-  } catch (err) { /* ignore bad saved filters */ }
+  /** Saved filters only apply to the program and preference they were saved with. */
+  function applySavedFilters() {
+    resetFilters();
+    try {
+      var saved = JSON.parse(localStorage.getItem(FILTERS_KEY) || 'null');
+      if (!saved || !saved.filters || saved.program !== state.program || saved.prefId !== state.prefId) return;
+      state.filters = saved.filters;
+      if (typeof saved.intake === 'string') state.intake = saved.intake;
+    } catch (err) { /* ignore bad saved filters */ }
+  }
+
+  /* The current program, preference and filters survive a refresh within the same tab. */
+  var VIEW_KEY = 'admitright_view_v1';
+
+  function saveViewState() {
+    if (document.body.classList.contains('ar-locked')) return;
+    try {
+      sessionStorage.setItem(VIEW_KEY, JSON.stringify({
+        program: state.program, prefId: state.prefId, filters: state.filters, intake: state.intake,
+      }));
+    } catch (err) { /* storage blocked */ }
+  }
+
+  function readViewState() {
+    try {
+      var v = JSON.parse(sessionStorage.getItem(VIEW_KEY) || 'null');
+      return v && (v.program === 'all' || programById(v.program)) ? v : null;
+    } catch (err) { return null; }
+  }
+
+  (function restoreViewState() {
+    var v = readViewState();
+    if (!v) return;
+    state.program = v.program;
+    state.prefId = v.prefId;
+    if (v.filters) state.filters = v.filters;
+    if (typeof v.intake === 'string') state.intake = v.intake;
+  })();
 
   function within(x, v) {
     return (v.min === undefined || v.min === '' || x >= Number(v.min)) && (v.max === undefined || v.max === '' || x <= Number(v.max));
@@ -1068,7 +1111,7 @@
       return;
     }
     $('pref-panel-title').textContent = 'Preferences';
-    edit.textContent = 'Edit';
+    edit.textContent = isDefaultPref(state.program, pref.id) ? 'Duplicate' : 'Edit';
     $('prefs-summary').innerHTML = '<div class="ar-pref-list">' + prefRows(pref) + '</div>';
     var on = CRITERIA.filter(function (c) { return pref.criteria[c.id].weight > 0; });
     $('prefs-mini').innerHTML = on.map(function (c) {
@@ -1158,7 +1201,7 @@
   /** Students of programs without a preference get their own full-width section; it replaces the columns when that program is picked. */
   function renderBoard() {
     var list = visibleSet();
-    if (state.program === 'all') {
+    if (state.program === 'all' || savedView()) {
       boardCols = [{ items: list, shown: 0 }];
       $('board').innerHTML =
         '<div class="ar-col-list ar-col-grid ar-col-plain gr-scroll" data-col="0">' +
@@ -1248,9 +1291,8 @@
       return '<th title="Percentile among ' + esc(programById(state.program).name) + ' applicants on ' + esc(c.label.toLowerCase()) + '">' +
         esc(c.id === 'activities' ? 'Activities' : c.label) + ' <i class="ar-th-weight">' + pref.criteria[c.id].weight + '</i></th>';
     }).join('') + '<th class="ar-th-save"></th></tr>';
-    $('table').innerHTML = bucketDefs().map(function (b, i) {
-      var items = list.filter(function (s) { return s.bucket === i; });
-      var rows = items.slice(0, TABLE_LIMIT).map(function (s) {
+    function rowsFor(items) {
+      return items.slice(0, TABLE_LIMIT).map(function (s) {
         return '<tr data-student="' + s.id + '">' + studentCell(s) +
           '<td><div class="ar-score-wrap"><span class="ar-score ' + scoreClass(s) + '">' + scoreHtml(s) + '</span>' + scoreDeltaHtml(s) + '</div></td>' +
           crits.map(function (c) {
@@ -1259,6 +1301,16 @@
             return '<td><b class="ar-cell-score" title="' + esc(tip) + '">' + part.rel + '<small>%</small></b></td>';
           }).join('') + saveCell(s) + '</tr>';
       }).join('');
+    }
+    if (savedView()) {
+      $('table').innerHTML = '<section class="panel ar-table-wrap">' + (list.length
+        ? '<div class="ar-table-scroll"><table class="ar-table ar-table-fit"><thead>' + head + '</thead><tbody>' + rowsFor(list) + '</tbody></table></div>' + tableMore(list.length)
+        : '<div class="ar-col-empty">No students match these filters.</div>') + '</section>';
+      return;
+    }
+    $('table').innerHTML = bucketDefs().map(function (b, i) {
+      var items = list.filter(function (s) { return s.bucket === i; });
+      var rows = rowsFor(items);
       var shut = !!state.collapsed[i];
       return (
         '<section class="panel ar-table-wrap' + (shut ? ' collapsed' : '') + '">' +
@@ -1434,6 +1486,7 @@
     }
     var list = visibleSet();
     renderFilters(list);
+    saveViewState();
     var noneSaved = savedView() && !Object.keys(SAVED).length;
     $('saved-empty').hidden = !noneSaved;
     $('board').hidden = noneSaved || state.layout !== 'board';
@@ -1495,10 +1548,9 @@
   function renderPrograms() {
     $('pp-program-count').textContent = PROGRAMS.length;
     $('pp-program-list').innerHTML = PROGRAMS.map(function (p) {
-      var n = STUDENTS.filter(function (s) { return s.program === p.id; }).length;
       return (
         '<button type="button" class="ar-pp-program' + (state.ppProgram === p.id ? ' active' : '') + '" data-pp-program="' + p.id + '">' +
-        '<strong>' + esc(p.name) + '</strong><small>' + fmtNum(n) + '</small></button>'
+        '<strong>' + esc(p.name) + '</strong></button>'
       );
     }).join('');
 
@@ -1512,7 +1564,6 @@
       return;
     }
     $('pp-cards').innerHTML = prefs.map(function (pref, i) {
-      var n = matchCount(program.id, pref);
       var chips = CRITERIA.filter(function (c) { return pref.criteria[c.id].weight > 0; }).map(function (c) {
         return '<span class="ar-crit">' + ico(c.icon) + esc(criterionLine(c.id, pref.criteria[c.id])) + '</span>';
       }).join('');
@@ -1521,12 +1572,11 @@
         '<div class="ar-pp-card-head"><h3>' + esc(pref.name) + '</h3>' +
         (i === 0 ? '<span class="ar-default">Default</span>' : '') + '</div>' +
         '<div class="ar-crits">' + chips + '</div>' +
-        '<div class="ar-pp-card-foot"><span><b>' + n + '</b> match' +
-        editedHtml(pref.id) + '</span>' +
+        '<div class="ar-pp-card-foot">' +
         '<div class="ar-pp-actions">' +
-        (prefs.length > 1 ? '<button type="button" class="btn btn-ghost btn-sm" data-delete-pref="' + pref.id + '">Delete</button>' : '') +
-        '<button type="button" class="btn btn-secondary btn-sm" data-edit-pref="' + pref.id + '">Edit</button>' +
-        '<button type="button" class="btn btn-primary btn-sm" data-use-pref="' + pref.id + '">View students</button>' +
+        (i > 0 ? '<button type="button" class="btn btn-ghost btn-sm" data-delete-pref="' + pref.id + '">Delete</button>' : '') +
+        '<button type="button" class="btn btn-secondary btn-sm" data-dup-pref="' + pref.id + '">' + ico('content_copy') + 'Duplicate</button>' +
+        (i > 0 ? '<button type="button" class="btn btn-secondary btn-sm" data-edit-pref="' + pref.id + '">Edit</button>' : '') +
         '</div></div></article>'
       );
     }).join('');
@@ -1938,14 +1988,21 @@
     $('pe-preview').innerHTML = '<b>' + n + '</b> of ' + total + ' students in this program would match (' + MATCH_MIN + '%+).';
   }
 
-  function openEditor(programId, prefId) {
+  function openEditor(programId, prefId, copyOf) {
     var program = programById(programId);
     var existing = prefId ? findPref(programId, prefId) : null;
+    var draft = existing ? clone(existing) : { id: null, name: '', criteria: baseCriteria(program) };
+    if (copyOf) {
+      draft = clone(copyOf);
+      draft.id = null;
+      draft.name = copyOf.name + ' (copy)';
+    }
     editing = {
       programId: programId,
       fromProgramId: programId,
       prefId: existing ? existing.id : null,
-      draft: existing ? clone(existing) : { id: null, name: '', criteria: baseCriteria(program) },
+      copy: !!copyOf,
+      draft: draft,
     };
     openDrawer(
       existing ? 'Edit preference' : 'Create preference',
@@ -1955,6 +2012,48 @@
       true
     );
     updatePreview();
+  }
+
+  var creatingFor = null;
+
+  function openCreateChooser(programId) {
+    creatingFor = programId;
+    openDrawer(
+      'Create preference',
+      '<div class="ar-create-choices">' +
+      '<button type="button" class="ar-create-choice" data-create-choice="new">' + ico('add') +
+      '<span><strong>Create new</strong><small>Start from a blank preference</small></span></button>' +
+      '<button type="button" class="ar-create-choice" data-create-choice="existing">' + ico('content_copy') +
+      '<span><strong>Use existing</strong><small>Copy a preference you already have</small></span></button>' +
+      '</div>',
+      '',
+      true
+    );
+    $('drawer').classList.add('ar-confirm-modal');
+  }
+
+  function prefOptions(programId) {
+    var prefs = prefsFor(programId);
+    if (!prefs.length) return '<option value="">No preferences in this program</option>';
+    return prefs.map(function (p) { return '<option value="' + p.id + '">' + esc(p.name) + '</option>'; }).join('');
+  }
+
+  function openCopyPicker() {
+    var programId = prefsFor(creatingFor).length ? creatingFor
+      : (PROGRAMS.filter(function (p) { return prefsFor(p.id).length; })[0] || programById(creatingFor)).id;
+    openDrawer(
+      'Use existing preference',
+      '<div class="ar-copy-pick">' +
+      '<label class="field"><span>Program</span><select id="pc-program">' + PROGRAMS.map(function (p) {
+        return '<option value="' + p.id + '"' + (p.id === programId ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+      }).join('') + '</select></label>' +
+      '<label class="field"><span>Preference</span><select id="pc-pref">' + prefOptions(programId) + '</select></label>' +
+      '</div>',
+      '<button type="button" class="btn btn-ghost btn-sm" data-create-back>Back</button>' +
+      '<button type="button" class="btn btn-primary btn-sm" data-copy-continue>Continue</button>',
+      true
+    );
+    $('drawer').classList.add('ar-confirm-modal');
   }
 
   function saveEditor() {
@@ -2012,7 +2111,7 @@
 
   function deletePref(programId, prefId) {
     var list = prefsFor(programId);
-    if (list.length <= 1) return;
+    if (list.length <= 1 || isDefaultPref(programId, prefId)) return;
     PREFS[programId] = list.filter(function (p) { return p.id !== prefId; });
     if (state.prefId === prefId) state.prefId = null;
     savePrefs();
@@ -2135,7 +2234,37 @@
     var createPref = t.closest('[data-create-pref]');
     if (createPref) {
       closeMenus();
-      openEditor(createPref.getAttribute('data-create-pref'));
+      openCreateChooser(createPref.getAttribute('data-create-pref'));
+      return;
+    }
+
+    var choice = t.closest('[data-create-choice]');
+    if (choice) {
+      if (choice.getAttribute('data-create-choice') === 'new') openEditor(creatingFor);
+      else openCopyPicker();
+      return;
+    }
+
+    if (t.closest('[data-create-back]')) {
+      openCreateChooser(creatingFor);
+      return;
+    }
+
+    if (t.closest('[data-copy-continue]')) {
+      var srcProgram = $('pc-program').value;
+      var src = findPref(srcProgram, $('pc-pref').value);
+      if (!src) {
+        toast('Pick a preference to copy.');
+        return;
+      }
+      openEditor(srcProgram, null, src);
+      return;
+    }
+
+    var dupPref = t.closest('[data-dup-pref]');
+    if (dupPref) {
+      var orig = findPref(state.ppProgram, dupPref.getAttribute('data-dup-pref'));
+      if (orig) openEditor(state.ppProgram, null, orig);
       return;
     }
 
@@ -2179,7 +2308,8 @@
       if (state.program === 'all') setView('programs');
       else {
         var current = findPref(state.program, state.prefId);
-        openEditor(state.program, current && current.id);
+        if (current && isDefaultPref(state.program, current.id)) openEditor(state.program, null, current);
+        else openEditor(state.program, current && current.id);
       }
       return;
     }
@@ -2242,12 +2372,13 @@
     }
 
     if (t.closest('#pp-create')) {
-      openEditor(state.ppProgram);
+      openCreateChooser(state.ppProgram);
       return;
     }
 
     var editPref = t.closest('[data-edit-pref]');
     if (editPref) {
+      if (isDefaultPref(state.ppProgram, editPref.getAttribute('data-edit-pref'))) return;
       openEditor(state.ppProgram, editPref.getAttribute('data-edit-pref'));
       return;
     }
@@ -2323,11 +2454,15 @@
     if (editing) updatePreview();
   });
   $('drawer-body').addEventListener('change', function (e) {
+    if (e.target.id === 'pc-program') {
+      $('pc-pref').innerHTML = prefOptions(e.target.value);
+      return;
+    }
     if (!editing) return;
     if (e.target.id === 'pe-program') {
       readEditor();
       var next = e.target.value;
-      if (!editing.prefId) editing.draft.criteria = baseCriteria(programById(next));
+      if (!editing.prefId && !editing.copy) editing.draft.criteria = baseCriteria(programById(next));
       editing.programId = next;
       $('drawer-body').innerHTML = editorHtml();
       updatePreview();
@@ -2454,13 +2589,124 @@
 
   setIntake(state.intake);
 
-  if (window.fetch && location.protocol !== 'file:') {
+  /* ——— Login and starting preference ——— */
+
+  var SESSION_KEY = 'admitright_session';
+
+  function showGate(id) {
+    document.body.classList.add('ar-locked');
+    $('gate-login').hidden = id !== 'gate-login';
+    $('gate-setup').hidden = id !== 'gate-setup';
+  }
+
+  function unlock() {
+    document.body.classList.remove('ar-locked');
+    $('gate-login').hidden = true;
+    $('gate-setup').hidden = true;
+  }
+
+  function startWith(programId, prefId, keepFilters) {
+    state.program = programId;
+    state.prefId = prefId;
+    state.stage = null;
+    if (!keepFilters) applySavedFilters();
+    unlock();
+    setView('dashboard');
+  }
+
+  var setupProgram = PROGRAMS[0].id;
+
+  function renderSetup() {
+    $('setup-program-count').textContent = PROGRAMS.length;
+    $('setup-program-list').innerHTML = PROGRAMS.map(function (p) {
+      return '<button type="button" class="ar-pp-program' + (p.id === setupProgram ? ' active' : '') + '" data-setup-program="' + p.id + '">' +
+        '<strong>' + esc(p.name) + '</strong></button>';
+    }).join('');
+    var prefs = prefsFor(setupProgram);
+    if (!prefs.length) {
+      $('setup-cards').innerHTML =
+        '<article class="panel ar-pp-empty">' + ico('tune') + '<h3>No preferences yet</h3>' +
+        '<button type="button" class="btn btn-primary btn-sm" data-setup-pref="">Open dashboard</button></article>';
+      return;
+    }
+    $('setup-cards').innerHTML = prefs.map(function (pref, i) {
+      var chips = CRITERIA.filter(function (c) { return pref.criteria[c.id].weight > 0; }).map(function (c) {
+        return '<span class="ar-crit">' + ico(c.icon) + esc(criterionLine(c.id, pref.criteria[c.id])) + '</span>';
+      }).join('');
+      return (
+        '<article class="panel ar-pp-card">' +
+        '<div class="ar-pp-card-head"><h3>' + esc(pref.name) + '</h3>' +
+        (i === 0 ? '<span class="ar-default">Default</span>' : '') + '</div>' +
+        '<div class="ar-crits">' + chips + '</div>' +
+        '<div class="ar-pp-card-foot">' +
+        '<button type="button" class="btn btn-primary btn-sm ar-setup-go" data-setup-pref="' + pref.id + '">Open dashboard' + ico('arrow_forward') + '</button></div>' +
+        '</article>'
+      );
+    }).join('');
+  }
+
+  function openSetup() {
+    setupProgram = state.program === 'all' || !programById(state.program) ? PROGRAMS[0].id : state.program;
+    renderSetup();
+    showGate('gate-setup');
+  }
+
+  function afterLogin() {
+    var view = readViewState();
+    if (view) startWith(view.program, view.prefId, true);
+    else openSetup();
+  }
+
+  $('login-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var email = $('login-email').value.trim();
+    var pass = $('login-pass').value;
+    var err = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? 'Enter a valid email address.'
+      : !pass ? 'Enter your password.' : '';
+    $('login-error').textContent = err;
+    $('login-error').hidden = !err;
+    if (err) return;
+    try { sessionStorage.setItem(SESSION_KEY, email); } catch (er) { /* blocked */ }
+    $('login-pass').value = '';
+    afterLogin();
+  });
+
+  $('gate-setup').addEventListener('click', function (e) {
+    var prog = e.target.closest('[data-setup-program]');
+    if (prog) {
+      setupProgram = prog.getAttribute('data-setup-program');
+      renderSetup();
+      return;
+    }
+    var go = e.target.closest('[data-setup-pref]');
+    if (go) startWith(setupProgram, go.getAttribute('data-setup-pref') || null);
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('[data-logout]')) return;
+    e.preventDefault();
+    try {
+      sessionStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem(VIEW_KEY);
+    } catch (er) { /* blocked */ }
+    closeDrawer();
+    closeMenus();
+    showGate('gate-login');
+  });
+
+  var signedIn = null;
+  try { signedIn = sessionStorage.getItem(SESSION_KEY); } catch (er) { signedIn = null; }
+  if (signedIn) afterLogin();
+  else showGate('gate-login');
+
+  if (!BUNDLED_STUDENTS.length && window.fetch && location.protocol !== 'file:') {
     fetch(STUDENTS_CSV, { cache: 'no-store' })
       .then(function (res) { return res.ok ? res.text() : Promise.reject(res.status); })
       .then(function (text) {
         var list = studentsFromCsv(text);
         if (!list.length) return;
         STUDENTS = list;
+        if (!$('gate-setup').hidden) renderSetup();
         if (state.view === 'programs') renderPrograms();
         else renderDashboard();
         toast('Loaded ' + list.length + ' students from CSV.');

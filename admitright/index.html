@@ -4,14 +4,56 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AdmitRight — University dashboard</title>
-  <link rel="stylesheet" href="../css/styles.css?v=notif8" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar106" />
+  <link rel="stylesheet" href="css/styles.css?v=notif8" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar125" />
 </head>
-<body class="ar">
+<body class="ar ar-locked">
+  <section class="ar-gate" id="gate-login" hidden>
+    <form class="ar-gate-card" id="login-form" novalidate>
+      <img class="ar-gate-logo" src="assets/gradright-logo-dark.png" alt="AdmitRight" />
+      <h1>Log in to AdmitRight</h1>
+      <p class="ar-gate-lead">BML Munjal University admissions team</p>
+      <div class="field">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" autocomplete="username" placeholder="name@university.edu" />
+      </div>
+      <div class="field">
+        <label for="login-pass">Password</label>
+        <input type="password" id="login-pass" autocomplete="current-password" placeholder="Enter your password" />
+      </div>
+      <p class="ar-gate-error" id="login-error" hidden></p>
+      <button type="submit" class="btn btn-primary ar-gate-btn">Log in</button>
+    </form>
+  </section>
+
+  <section class="ar-gate ar-gate-wide" id="gate-setup" hidden>
+    <div class="ar-setup">
+      <header class="ar-setup-head">
+        <div>
+          <img class="ar-gate-logo" src="assets/gradright-logo-dark.png" alt="AdmitRight" />
+          <h1>Choose where to start</h1>
+          <p class="ar-gate-lead">Pick a course, then open the dashboard with one of its preferences.</p>
+        </div>
+      </header>
+      <div class="ar-pp">
+        <aside class="panel ar-pp-programs">
+          <div class="panel-head">
+            <h2>Courses</h2>
+            <span class="ar-meta" id="setup-program-count"></span>
+          </div>
+          <div class="ar-pp-list" id="setup-program-list"></div>
+        </aside>
+        <section class="ar-pp-main">
+          <div class="ar-pp-cards" id="setup-cards"></div>
+        </section>
+      </div>
+    </div>
+  </section>
+
   <div class="app">
     <aside class="ar-rail" aria-label="Main navigation">
       <a class="ar-rail-mark" href="#" data-go="dashboard" aria-label="AdmitRight">
-        <img src="../assets/gradright-logo-dark.png" alt="" />
+        <img src="assets/gradright-logo-dark.png" alt="" />
       </a>
       <nav class="ar-rail-nav">
         <a class="ar-rail-item active" href="#" data-go="dashboard" title="Dashboard" aria-label="Dashboard">
@@ -24,7 +66,7 @@
           <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
         </a>
       </nav>
-      <a class="ar-rail-item ar-rail-foot" href="../index.html" title="Log out" aria-label="Log out">
+      <a class="ar-rail-item ar-rail-foot" href="#" data-logout title="Log out" aria-label="Log out">
         <span class="material-symbols-rounded" aria-hidden="true">logout</span>
       </a>
     </aside>
@@ -203,6 +245,7 @@
 
   <div class="ar-toast" id="toast" hidden></div>
 
-  <script src="js/admitright.js?v=ar106"></script>
+  <script src="data/students-data.js?v=ar125"></script>
+  <script src="js/admitright.js?v=ar125"></script>
 </body>
 </html>
