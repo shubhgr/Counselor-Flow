@@ -698,6 +698,22 @@
     state.filters = { min: '', max: '', vals: {} };
   }
 
+  var FILTERS_KEY = 'admitright_filters_v1';
+
+  function saveFilters() {
+    try {
+      localStorage.setItem(FILTERS_KEY, JSON.stringify({ filters: state.filters, intake: state.intake }));
+    } catch (err) { /* storage full or blocked */ }
+  }
+
+  try {
+    var savedFilters = JSON.parse(localStorage.getItem(FILTERS_KEY) || 'null');
+    if (savedFilters && savedFilters.filters) {
+      state.filters = savedFilters.filters;
+      if (typeof savedFilters.intake === 'string') state.intake = savedFilters.intake;
+    }
+  } catch (err) { /* ignore bad saved filters */ }
+
   function within(x, v) {
     return (v.min === undefined || v.min === '' || x >= Number(v.min)) && (v.max === undefined || v.max === '' || x <= Number(v.max));
   }
@@ -1403,7 +1419,9 @@
           return '<option value="' + o[0] + '"' + (state.intake === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
         }).join('') + '</select>') +
       '</div>' +
-      '<div class="ar-fmenu-foot"><button type="button" class="btn btn-primary btn-sm" data-fdone>Show <span id="filter-show-count">' +
+      '<div class="ar-fmenu-foot">' +
+      '<button type="button" class="btn btn-secondary btn-sm" data-fsave>Save</button>' +
+      '<button type="button" class="btn btn-primary btn-sm" data-fdone>Apply · <span id="filter-show-count">' +
       visibleSet().length + '</span> students</button></div>';
   }
 
@@ -2070,6 +2088,12 @@
       return;
     }
 
+    if (t.closest('[data-fsave]')) {
+      saveFilters();
+      toast('Filters saved.');
+      return;
+    }
+
     if (t.closest('[data-fdone]')) {
       closeMenus();
       return;
@@ -2428,7 +2452,7 @@
     toast('Exported ' + list.length + ' students.');
   });
 
-  renderDashboard();
+  setIntake(state.intake);
 
   if (window.fetch && location.protocol !== 'file:') {
     fetch(STUDENTS_CSV, { cache: 'no-store' })

@@ -792,14 +792,18 @@
 
 .ar-fmenu-foot {
   display: flex;
+  gap: 0.5rem;
   padding: 0.6rem 1rem;
   border-top: 1px solid var(--line);
   background: var(--surface);
 }
 
 .ar-fmenu-foot .btn {
-  width: 100%;
   justify-content: center;
+}
+
+.ar-fmenu-foot [data-fdone] {
+  flex: 1;
 }
 
 /* Match board */
