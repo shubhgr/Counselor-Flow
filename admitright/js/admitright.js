@@ -9,13 +9,80 @@
   var TODAY = new Date(2026, 9, 6);
 
   var STAGES = [
-    { id: 'recommended', name: 'Recommended', icon: 'auto_awesome', hint: 'AI recommended your program' },
-    { id: 'opened', name: 'Program page opened', icon: 'visibility', hint: 'Viewed the program page' },
-    { id: 'shortlisted', name: 'Shortlisted', icon: 'bookmark', hint: 'Added to shortlist' },
-    { id: 'expert', name: 'Expert assistance', icon: 'support_agent', hint: 'Talked to an expert' },
+    { id: 'recommended', name: 'Recommendation', icon: 'auto_awesome', hint: 'AI recommended your program' },
+    { id: 'pdd', name: 'PDD opened', icon: 'visibility', hint: 'Opened the program detail page' },
     { id: 'applied', name: 'Application started', icon: 'edit_document', hint: 'Started the application' },
+    { id: 'completed', name: 'Application completed', icon: 'task', hint: 'Submitted the application' },
+    { id: 'admit', name: 'Admit offered', icon: 'verified', hint: 'Received an admit offer' },
+    { id: 'fee', name: 'Fee paid', icon: 'payments', hint: 'Paid the seat fee' },
     { id: 'enrolled', name: 'Enrolled', icon: 'school', hint: 'Confirmed enrolment' },
   ];
+
+  /** Things a student can do at any point, outside the funnel order. */
+  var ACTIONS = [
+    { id: 'shortlisted', name: 'Shortlisted', icon: 'bookmark' },
+    { id: 'callback', name: 'Call back requested', icon: 'phone_callback' },
+    { id: 'loan', name: 'Loan options explored', icon: 'account_balance' },
+  ];
+
+  /**
+   * The source data still uses the old six steps (recommended, opened, shortlisted, expert, applied, enrolled).
+   * Shortlisted and expert become actions; "applied" students are spread over the application → fee steps by GR ID.
+   * oldEvents holds one date (or null) per old step.
+   */
+  function toFunnel(id, oldStage, oldEvents, loan, createdOn) {
+    var h = hashOf(String(id) + ':funnel');
+    var applied = oldEvents[4];
+    var enrolled = oldEvents[5];
+    var stage = [0, 1, 1, 1, 2, 6][oldStage] || 0;
+    if (oldStage === 4) stage = 2 + (h % 4);
+    var events = [oldEvents[0], oldEvents[1], applied, null, null, null, enrolled];
+    if (applied) {
+      var end = enrolled ? enrolled.getTime() : Math.min(TODAY.getTime(), applied.getTime() + 45 * 86400000);
+      var gap = (end - applied.getTime()) / 4;
+      for (var k = 3; k <= 5; k++) {
+        if (k <= stage) events[k] = new Date(applied.getTime() + (k - 2) * gap);
+      }
+    }
+    var explored = loan ? /interested|exploring/i.test(loan) : (h >>> 4) % 3 === 0;
+    var loanAt = explored ? new Date(Math.min(TODAY.getTime(), (oldEvents[1] || createdOn).getTime() + 2 * 86400000)) : null;
+    return {
+      stage: stage,
+      events: events,
+      actions: { shortlisted: oldEvents[2] || null, callback: oldEvents[3] || null, loan: loanAt },
+    };
+  }
+
+  function actionsDone(s) {
+    return ACTIONS.filter(function (a) { return s.actions && s.actions[a.id]; }).map(function (a) { return a.id; });
+  }
+
+  /**
+   * A student can explore several programs, each with its own funnel progress and actions. The data only has the main
+   * program, so up to two more are demo values, stable per GR ID, in the first three funnel steps.
+   */
+  function programJourneys(s) {
+    var list = [{ program: s.program, stage: s.stage, events: s.events, actions: s.actions }];
+    var h = hashOf(String(s.id) + ':programs');
+    var others = PROGRAMS.filter(function (p) { return p.id !== s.program; });
+    var start = (s.events[0] || s.createdOn).getTime();
+    for (var k = 0; k < h % 3; k++) {
+      var p = others[(h >>> (4 + k * 3)) % others.length];
+      if (list.some(function (j) { return j.program === p.id; })) continue;
+      var stage = (h >>> (12 + k * 2)) % 3;
+      var offset = (k + 1) * 9 * 86400000;
+      var events = STAGES.map(function (_, i) {
+        return i <= stage ? new Date(Math.min(TODAY.getTime(), start + offset + i * 12 * 86400000)) : null;
+      });
+      var actions = {};
+      ACTIONS.forEach(function (a, ai) {
+        var done = (h >>> (18 + k * 3 + ai)) % 2 === 1;
+        actions[a.id] = done ? new Date(Math.min(TODAY.getTime(), events[stage].getTime() + (ai + 1) * 3 * 86400000)) : null;
+      });
+      list.push({ program: p.id, stage: stage, events: events, actions: actions });
+    }
+    return list;
+  }
 
   var PROGRAMS = [
     { id: 'btech-cse', name: 'B.Tech Computer Science', fee: 18, stream: 'PCM', seats: 240, prefName: 'JEE Main 85+ coders' },
@@ -115,16 +182,31 @@
   var LAST = ['Sharma', 'Verma', 'Gupta', 'Singh', 'Kapoor', 'Mehta', 'Jain', 'Agarwal', 'Reddy', 'Iyer',
     'Malhotra', 'Bansal', 'Chopra', 'Saxena', 'Mishra', 'Yadav', 'Khanna', 'Joshi'];
 
+  /* binary criteria are met or not (Yes/No); the rest earn partial credit and show a percentage. */
   var CRITERIA = [
-    { id: 'location', label: 'Location', icon: 'location_on' },
+    { id: 'location', label: 'Location', icon: 'location_on', binary: true },
     { id: 'test', label: 'Test score', icon: 'quiz' },
     { id: 'class12', label: 'Class 12', icon: 'school' },
     { id: 'class10', label: 'Class 10', icon: 'menu_book' },
     { id: 'budget', label: 'Fee budget', icon: 'payments' },
-    { id: 'stream', label: 'Stream', icon: 'science' },
-    { id: 'board', label: 'Class 12 board', icon: 'account_balance' },
-    { id: 'activities', label: 'Extracurricular', icon: 'sports_soccer' },
+    { id: 'stream', label: 'Stream', icon: 'science', binary: true },
+    { id: 'board', label: 'Class 12 board', icon: 'account_balance', binary: true },
+    { id: 'activities', label: 'Extracurricular', icon: 'sports_soccer', binary: true },
   ];
+
+  function isBinary(id) {
+    return CRITERIA.some(function (c) { return c.id === id && c.binary; });
+  }
+
+  /** Stored history parts only keep rel (credit × 100); live parts carry v. */
+  function partMet(p) {
+    return (p.v != null ? p.v : (p.rel || 0) / 100) >= 1;
+  }
+
+  function yesNoHtml(p, cls) {
+    var met = partMet(p);
+    return '<b class="' + cls + ' ' + (met ? 'hi' : 'lo') + '">' + (met ? 'Yes' : 'No') + '</b>';
+  }
   /** Every preference uses the same bands: Matches 80+, Close 60–79, Below under 60. */
   var MATCH_MIN = 80;
   var CLOSE_MIN = 60;
@@ -172,9 +254,10 @@
       var daysAgo = Math.floor(between(2, 340));
       var createdOn = new Date(TODAY.getTime() - daysAgo * 86400000 + Math.floor(between(9, 21)) * 3600000);
       var gapMs = (daysAgo * 86400000) / (stage + 2);
-      var events = STAGES.map(function (_, k) {
+      var oldEvents = [0, 1, 2, 3, 4, 5].map(function (k) {
         return k <= stage ? new Date(createdOn.getTime() + 600000 + k * gapMs) : null;
       });
+      var funnel = toFunnel('GR-' + (24180 + i * 37), stage, oldEvents, '', createdOn);
       list.push({
         id: 'GR-' + (24180 + i * 37),
         name: first + ' ' + last,
@@ -191,11 +274,12 @@
         budget: [budgetMin, budgetMax],
         program: program.id,
         intake: spreadIntake('GR-' + (24180 + i * 37), rand() < 0.8 ? INTAKES[0] : INTAKES[1]),
-        stage: stage,
+        stage: funnel.stage,
         createdOn: createdOn,
         daysAgo: daysAgo,
-        events: events,
-        lastActive: events[stage],
+        events: funnel.events,
+        actions: funnel.actions,
+        lastActive: oldEvents[stage],
       });
     }
     return list.map(withDerived);
@@ -230,6 +314,7 @@
   }
 
   var STAGE_COLUMNS = ['recommended_at', 'opened_at', 'shortlisted_at', 'expert_at', 'applied_at', 'enrolled_at'];
+  var OLD_STAGE_IDS = ['recommended', 'opened', 'shortlisted', 'expert', 'applied', 'enrolled'];
 
   /** "2026-09-12T14:32" or "2026-09-12" → local Date, or null. */
   function parseStamp(v) {
@@ -251,9 +336,9 @@
 
   function studentFromRow(r) {
     var program = programById(r.program) ? r.program : PROGRAMS[0].id;
-    var stage = STAGES.map(function (s) { return s.id; }).indexOf(r.stage);
+    var stage = OLD_STAGE_IDS.indexOf(r.stage);
     var created = parseStamp(r.created_at || r.created_on) || TODAY;
-    var events = STAGE_COLUMNS.map(function (c) { return parseStamp(r[c]); });
+    var funnel = toFunnel(r.id, stage === -1 ? 0 : stage, STAGE_COLUMNS.map(function (c) { return parseStamp(r[c]); }), r.loan, created);
     var first = r.first_name || '';
     var last = r.last_name || '';
     return {
@@ -272,10 +357,11 @@
       budget: [Number(r.budget_min) || 0, Number(r.budget_max) || 0],
       program: program,
       intake: spreadIntake(r.id, r.intake),
-      stage: stage === -1 ? 0 : stage,
+      stage: funnel.stage,
       createdOn: created,
       daysAgo: Math.max(0, Math.floor((TODAY - created) / 86400000)),
-      events: events,
+      events: funnel.events,
+      actions: funnel.actions,
       lastActive: parseStamp(r.last_active_at),
       extra: {
         source: r.source,
@@ -432,6 +518,9 @@
           });
           localStorage.setItem(PREFS_KEY, JSON.stringify(defaults));
         }
+      } else {
+        /* Default ids are time-based, so they must be stored once for visit snapshots to match later. */
+        localStorage.setItem(PREFS_KEY, JSON.stringify(defaults));
       }
       localStorage.setItem(SEEDS_KEY, '1');
     } catch (e) {}
@@ -493,8 +582,7 @@
   function criterionScore(id, s, p) {
     switch (id) {
       case 'location':
-        if (s.km <= p.radius) return { v: 1, raw: -s.km, note: s.km + ' km away' };
-        return { v: clamp01(0.7 - (s.km - p.radius) / p.radius), raw: -s.km, note: s.km + ' km away' };
+        return { v: s.km <= p.radius ? 1 : 0, raw: -s.km, note: s.km + ' km away' };
       case 'test': {
         var best = null;
         p.tests.forEach(function (rq) {
@@ -530,7 +618,7 @@
         if (!p.values.length) return { v: 1, raw: s.activities.length, note: s.activities.join(', ') };
         var wanted = p.values.map(function (a) { return a.toLowerCase(); });
         var hit = s.activities.filter(function (a) { return wanted.indexOf(a.toLowerCase()) !== -1; }).length;
-        return { v: hit ? clamp01(0.6 + hit * 0.4) : 0.2, raw: hit + s.activities.length / 100, note: s.activities.join(', ') };
+        return { v: hit ? 1 : 0, raw: hit + s.activities.length / 100, note: s.activities.join(', ') };
       }
     }
     return { v: 0, raw: 0, note: '' };
@@ -558,9 +646,11 @@
     program: PROGRAMS[0].id,
     prefId: null,
     stage: null,
+    stageMode: 'funnel',
+    action: null,
     layout: 'board',
     query: '',
-    range: 0,
+    range: null, // { from, to, preset } as whole days, or null for all time
     intake: '2027',
     ppProgram: PROGRAMS[0].id,
     collapsed: {},
@@ -626,7 +716,7 @@
 
   /** range 0 means all time. */
   function inRange(s) {
-    return !state.range || s.daysAgo <= state.range;
+    return !state.range || (s.createdOn >= state.range.from && s.createdOn < addDays(state.range.to, 1));
   }
 
   var SAVED_KEY = 'admitright_saved_v1';
@@ -664,7 +754,8 @@
     var q = state.query.trim().toLowerCase();
     return baseSet()
       .filter(function (s) {
-        if (!savedView() && state.stage !== null && s.stage < state.stage) return false;
+        if (!savedView() && state.stage !== null && !atStage(s, state.stage)) return false;
+        if (!savedView() && state.action && !s.actions[state.action]) return false;
         if (!passesFilters(s)) return false;
         if (!q) return true;
         return (s.name + ' ' + s.id + ' ' + s.city).toLowerCase().indexOf(q) !== -1;
@@ -840,7 +931,6 @@
   var CHANGES_KEY = 'admitright_pref_changes_v2';
   var MAX_EDITS = 10;
   var CHANGES = {};
-  var VERSION_VIEW = {};
   try { CHANGES = JSON.parse(localStorage.getItem(CHANGES_KEY) || '{}') || {}; } catch (err) { CHANGES = {}; }
   try { localStorage.removeItem('admitright_pref_changes_v1'); } catch (err) { /* blocked */ }
 
@@ -930,43 +1020,8 @@
   }
 
   function cardScoreBox(s) {
-    var showingOld = savedView() && VERSION_VIEW[s.id] && changeFor(s);
-    var ch = changeFor(s);
-    var score = showingOld ? ch.was : s.score;
-    var klass = showingOld
-      ? (ch.was >= MATCH_MIN ? 'hi' : ch.was >= CLOSE_MIN ? 'mid' : 'lo')
-      : scoreClass(s);
-    return '<div class="ar-card-scorebox"><div class="ar-score-wrap">' +
-      (showingOld ? '' : scoreDeltaHtml(s)) +
-      '<div class="ar-score ' + klass + '">' + (score == null ? '—' : score + '<small>%</small>') + '</div></div></div>';
-  }
-
-  function latestVersion(s) {
-    var h = historyFor(s);
-    return h[h.length - 1] || null;
-  }
-
-  function lastScorePref(s) {
-    if (!s.pref) return null;
-    var edits = editsFor(s.pref.id);
-    var last = edits[edits.length - 1];
-    if (last && last.before) return last.before;
-    var seeds = cseSeedPrefs();
-    for (var i = 0; i < seeds.length; i++) {
-      if (seeds[i].id === s.pref.id) return seeds[i];
-    }
-    return null;
-  }
-
-  function lastScoreParts(s) {
-    var pref = lastScorePref(s);
-    if (pref) {
-      return scoreAgainst(s, pref).parts.map(function (p) {
-        return { id: p.id, label: p.label, note: p.note, rel: Math.round((p.v || 0) * 100), weight: p.weight };
-      });
-    }
-    var v = latestVersion(s);
-    return v && v.parts && v.parts.length ? v.parts : null;
+    return '<div class="ar-card-scorebox"><div class="ar-score-wrap">' + scoreDeltaHtml(s) +
+      '<div class="ar-score ' + scoreClass(s) + '">' + scoreHtml(s) + '</div></div></div>';
   }
 
   function editedHtml(prefId) {
@@ -1046,18 +1101,170 @@
     }).length;
   }
 
-  /* ——— Dashboard: funnel ——— */
+  /* ——— Changes since a preference was last opened ———
+     { programs: { programId: { ids: [...] } }, prefs: { prefId: { at, digits } } }
+     ids only ever grow, so a preference's digits (one bucket per id, 3 = not in the program) cover
+     exactly the students that existed when its dashboard was last opened. */
+  var SEEN_KEY = 'admitright_seen_v1';
+  try {
+    ['admitright_visit_snap_v1', 'admitright_visit_prev_v1', 'admitright_visit_snap_v2', 'admitright_visit_prev_v2']
+      .forEach(function (k) { localStorage.removeItem(k); });
+  } catch (err) { /* blocked */ }
 
-  /** Each funnel row shows students matching the preference out of everyone at that stage. */
+  function readSeen() {
+    var seen = null;
+    try { seen = JSON.parse(localStorage.getItem(SEEN_KEY) || 'null'); } catch (err) { seen = null; }
+    return seen && seen.programs && seen.prefs ? seen : { programs: {}, prefs: {} };
+  }
+
+  function writeSeen(seen) {
+    try { localStorage.setItem(SEEN_KEY, JSON.stringify(seen)); } catch (err) { /* storage full or blocked */ }
+  }
+
+  function markSeen(programId, pref) {
+    var seen = readSeen();
+    var prog = seen.programs[programId] || (seen.programs[programId] = { ids: [] });
+    var index = {};
+    prog.ids.forEach(function (id, i) { index[id] = i; });
+    var digits = [];
+    for (var i = 0; i < prog.ids.length; i++) digits.push('3');
+    STUDENTS.forEach(function (s) {
+      if (s.program !== programId) return;
+      if (!Object.prototype.hasOwnProperty.call(index, s.id)) {
+        index[s.id] = prog.ids.length;
+        prog.ids.push(s.id);
+        digits.push('3');
+      }
+      digits[index[s.id]] = String(bucketOf(scoreAgainst(s, pref).score));
+    });
+    seen.prefs[pref.id] = { at: Date.now(), digits: digits.join('') };
+    writeSeen(seen);
+  }
+
+  function forgetSeen(prefId) {
+    var seen = readSeen();
+    if (!seen.prefs[prefId]) return;
+    delete seen.prefs[prefId];
+    writeSeen(seen);
+  }
+
+  /** Opening a preference's dashboard counts as seeing it; marked once per preference opened. */
+  var lastSeenKey = null;
+  function noteDashboardSeen() {
+    if (document.body.classList.contains('ar-locked') || state.view !== 'dashboard' || state.program === 'all') return;
+    var pref = findPref(state.program, state.prefId);
+    if (!pref) return;
+    var key = state.program + '|' + pref.id;
+    if (key === lastSeenKey) return;
+    lastSeenKey = key;
+    markSeen(state.program, pref);
+  }
+
+  /** Bucket moves and new students since the preference was last opened; null if it never was. */
+  function visitChanges(programId, pref, seen) {
+    var entry = seen.prefs[pref.id];
+    var prog = seen.programs[programId];
+    if (!entry || !prog) return null;
+    var index = {};
+    prog.ids.forEach(function (id, i) { index[id] = i; });
+    var out = { at: entry.at, up: 0, down: 0, fresh: [0, 0, 0] };
+    STUDENTS.forEach(function (s) {
+      if (s.program !== programId) return;
+      var b = bucketOf(scoreAgainst(s, pref).score);
+      var i = index[s.id];
+      var was = i === undefined || i >= entry.digits.length ? 3 : Number(entry.digits.charAt(i));
+      if (was === 3) out.fresh[b] += 1;
+      else if (was !== b) out[b < was ? 'up' : 'down'] += 1;
+    });
+    return out;
+  }
+
+  function bucketNums(counts) {
+    return '<div class="ar-visit-nums">' + bucketDefs().map(function (d, i) {
+      return '<span class="ar-visit-num' + (counts[i] ? '' : ' zero') + '"><i style="background:' + d.color + '"></i><b>' + counts[i] + '</b> ' + ['Matches', 'Close', 'Below'][i] + '</span>';
+    }).join('') + '</div>';
+  }
+
+  function visitLabel(text, count) {
+    return '<span class="ar-visit-label">' + text + (count === undefined ? '' : ' <b>' + count + '</b>') + '</span>';
+  }
+
+  /** When any preference of the program was last opened; the program's id list dates from then. */
+  function programSeenAt(programId, seen) {
+    return prefsFor(programId).reduce(function (at, p) {
+      return seen.prefs[p.id] ? Math.max(at, seen.prefs[p.id].at) : at;
+    }, 0);
+  }
+
+  /** Shown until the preference is first opened: where its students stand today, and who is new since the course was last viewed. */
+  function visitSnapshotHtml(programId, pref, seen) {
+    var prog = seen.programs[programId];
+    var lastAt = prog ? programSeenAt(programId, seen) : 0;
+    var known = {};
+    if (lastAt) prog.ids.forEach(function (id) { known[id] = true; });
+    var now = [0, 0, 0];
+    var fresh = [0, 0, 0];
+    STUDENTS.forEach(function (s) {
+      if (s.program !== programId) return;
+      var b = bucketOf(scoreAgainst(s, pref).score);
+      now[b] += 1;
+      if (lastAt && !known[s.id]) fresh[b] += 1;
+    });
+    var newCol = lastAt
+      ? visitLabel('New since last viewed · ' + esc(timeAgo(lastAt)), fresh[0] + fresh[1] + fresh[2]) + bucketNums(fresh)
+      : visitLabel('New since last viewed') + '<span class="ar-visit-note">This course hasn’t been viewed yet.</span>';
+    return (
+      '<div class="ar-visit">' +
+      '<div class="ar-visit-head">Not opened yet · current numbers</div>' +
+      '<div class="ar-visit-grid">' +
+      '<div class="ar-visit-col">' + visitLabel('All students', now[0] + now[1] + now[2]) + bucketNums(now) + '</div>' +
+      '<div class="ar-visit-col">' + newCol + '</div>' +
+      '</div></div>'
+    );
+  }
+
+  function visitHtml(programId, pref, seen) {
+    var ch = visitChanges(programId, pref, seen);
+    if (!ch) return visitSnapshotHtml(programId, pref, seen);
+    var newTotal = ch.fresh[0] + ch.fresh[1] + ch.fresh[2];
+    return (
+      '<div class="ar-visit">' +
+      '<div class="ar-visit-head">Since you last opened it · ' + esc(timeAgo(ch.at)) + '</div>' +
+      '<div class="ar-visit-grid">' +
+      '<div class="ar-visit-col">' + visitLabel('Moved buckets') +
+      '<div class="ar-visit-nums">' +
+      '<span class="ar-visit-num up' + (ch.up ? '' : ' zero') + '">' + ico('arrow_upward') + '<b>' + ch.up + '</b> moved up</span>' +
+      '<span class="ar-visit-num down' + (ch.down ? '' : ' zero') + '">' + ico('arrow_downward') + '<b>' + ch.down + '</b> moved down</span>' +
+      '</div></div>' +
+      '<div class="ar-visit-col">' + visitLabel('New students', newTotal) +
+      bucketNums(ch.fresh) + '</div>' +
+      '</div></div>'
+    );
+  }
+
+  /* ——— Dashboard: stages ——— */
+
+  /** Funnel counts everyone who reached a step (and may have moved on); snapshot counts only those on it now. */
+  function atStage(s, i) {
+    return state.stageMode === 'snapshot' ? s.stage === i : s.stage >= i;
+  }
+
+  /** Each row shows students matching the preference out of everyone at that stage. */
   function renderFunnel() {
     var set = baseSet();
+    var snapshot = state.stageMode === 'snapshot';
     var counts = STAGES.map(function (_, i) {
-      return set.filter(function (s) { return s.stage >= i; }).length;
+      return set.filter(function (s) { return atStage(s, i); }).length;
     });
     var matched = STAGES.map(function (_, i) {
-      return set.filter(function (s) { return s.stage >= i && s.bucket === 0; }).length;
+      return set.filter(function (s) { return atStage(s, i) && s.bucket === 0; }).length;
     });
-    $('funnel-clear').hidden = state.stage === null;
+    document.querySelectorAll('[data-stage-mode]').forEach(function (b) {
+      var on = b.getAttribute('data-stage-mode') === state.stageMode;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+    $('funnel-clear').hidden = state.stage === null && !state.action;
     var shownCounts = state.program === 'all' ? counts : matched;
     $('funnel-mini').innerHTML = STAGES.map(function (st, i) {
       return '<button type="button" class="ar-mini-step' + (state.stage === i ? ' active' : '') + '" data-stage="' + i + '" title="' + esc(st.name) + '">' +
@@ -1065,18 +1272,33 @@
     }).join('');
     $('funnel-grid').innerHTML = STAGES.map(function (st, i) {
       var shown = state.program === 'all' ? counts : matched;
-      var prev = i ? shown[i - 1] : shown[0];
-      var conv = prev ? Math.round((shown[i] / prev) * 100) : 0;
+      var note;
+      if (snapshot) {
+        var total = shown.reduce(function (a, b) { return a + b; }, 0);
+        note = (total ? Math.round((shown[i] / total) * 100) : 0) + '% of students are here now';
+      } else {
+        var prev = i ? shown[i - 1] : shown[0];
+        note = i ? (prev ? Math.round((shown[i] / prev) * 100) : 0) + '% of previous' : 'Students in funnel';
+      }
       return (
         '<button type="button" class="ar-frow' + (state.stage === i ? ' active' : '') + '" data-stage="' + i + '">' +
         '<span class="ar-frow-ico">' + ico(st.icon) + '</span>' +
-        '<span class="ar-frow-name">' + esc(st.name) + '<small>' + (i ? conv + '% of previous' : 'Students in funnel') + '</small></span>' +
+        '<span class="ar-frow-name">' + esc(st.name) + '<small>' + note + '</small></span>' +
         (state.program === 'all'
           ? '<strong>' + counts[i] + '</strong>'
           : '<strong title="' + matched[i] + ' of ' + counts[i] + ' students match the preference">' + matched[i] + '</strong>') +
         '</button>'
       );
-    }).join('');
+    }).join('') +
+      '<div class="ar-factions"><span class="ar-factions-head">Additional user actions</span>' + ACTIONS.map(function (a) {
+        var did = set.filter(function (s) { return s.actions[a.id]; });
+        var n = state.program === 'all' ? did.length : did.filter(function (s) { return s.bucket === 0; }).length;
+        var of = snapshot ? shownCounts.reduce(function (a, b) { return a + b; }, 0) : shownCounts[0];
+        return (
+          '<button type="button" class="ar-faction' + (state.action === a.id ? ' active' : '') + '" data-funnel-action="' + a.id + '">' +
+          ico(a.icon) + '<span class="ar-faction-name">' + esc(a.name) + '<small>' + (of ? Math.round((n / of) * 100) : 0) + '% of students</small></span><strong>' + n + '</strong></button>'
+        );
+      }).join('') + '</div>';
   }
 
   /* ——— Dashboard: insights ——— */
@@ -1103,15 +1325,18 @@
     document.querySelector('.ar-insights').classList.toggle('single', all);
     if (all) return;
     var pref = findPref(state.program, state.prefId);
+    $('pref-panel-create').hidden = !!pref;
+    edit.hidden = $('pref-panel-dup').hidden = !pref;
     if (!pref) {
       $('pref-panel-title').textContent = 'No preference yet';
-      edit.textContent = 'Create';
       $('prefs-summary').innerHTML = '<p class="panel-lead">' + esc(programById(state.program).name) +
         ' has no preference, so its students aren’t scored. Create one to sort them into Matches, Close and Below.</p>';
       return;
     }
     $('pref-panel-title').textContent = 'Preferences';
-    edit.textContent = isDefaultPref(state.program, pref.id) ? 'Duplicate' : 'Edit';
+    var locked = isDefaultPref(state.program, pref.id);
+    edit.disabled = locked;
+    edit.setAttribute('data-tip', locked ? 'Default can’t be edited, duplicate it' : 'Edit');
     $('prefs-summary').innerHTML = '<div class="ar-pref-list">' + prefRows(pref) + '</div>';
     var on = CRITERIA.filter(function (c) { return pref.criteria[c.id].weight > 0; });
     $('prefs-mini').innerHTML = on.map(function (c) {
@@ -1129,30 +1354,54 @@
 
   /* ——— Dashboard: students ——— */
 
-  function attrChipsFromParts(parts, oldVersion) {
-    return parts
-      .filter(function (p) { return p.weight > 0; })
-      .sort(function (a, b) { return b.weight - a.weight; })
-      .map(function (p) {
-        var rel = p.rel == null ? 0 : p.rel;
-        var tone = rel >= 75 ? 'hi' : rel >= 40 ? 'mid' : 'lo';
-        var tip = p.label + ': ' + p.note + ' · level with or ahead of ' + rel + '% of applicants';
-        return '<span class="ar-attr' + (oldVersion ? ' old' : '') + '" title="' + esc(tip) + '"><b class="ar-attr-pct ' + tone + '">' + rel + '%</b>' +
-          '<i class="ar-attr-dot" aria-hidden="true"></i>' + esc(p.label) + '</span>';
-      }).join('');
+  var CHIP_ORDER = ['test', 'budget', 'academic', 'board'];
+
+  function chipRank(p) {
+    var i = CHIP_ORDER.indexOf(p.id);
+    return i === -1 ? CHIP_ORDER.length : i;
   }
 
-  function versionChip(s, showingOld) {
-    if (!savedView() || !changeFor(s) || !lastScoreParts(s)) return '';
-    return '<button type="button" class="ar-attr ar-version-chip' + (showingOld ? ' on' : '') + '" data-view-version="' + s.id + '">' +
-      (showingOld ? 'Now' : 'Last score') + '</button>';
+  /** Cards fold Class 12 and Class 10 into one academic chip, weighted the way the score weighs them. */
+  function academicPart(parts) {
+    var marks = parts.filter(function (p) { return p.id === 'class12' || p.id === 'class10'; });
+    if (!marks.length) return null;
+    var weight = 0;
+    var rel = 0;
+    marks.forEach(function (p) {
+      weight += p.weight;
+      rel += (p.rel == null ? 0 : p.rel) * p.weight;
+    });
+    return {
+      id: 'academic', label: 'Academic score', weight: weight, rel: Math.round(rel / weight),
+      tip: marks.map(function (p) { return p.label + ': ' + p.note + ', level with or ahead of ' + (p.rel || 0) + '% of applicants'; }).join(' · '),
+    };
+  }
+
+  /** Test score, fee budget and academics lead; the rest follow by weight. */
+  function attrChipsFromParts(parts) {
+    var on = parts.filter(function (p) { return p.weight > 0; });
+    var academic = academicPart(on);
+    on = on.filter(function (p) { return p.id !== 'class12' && p.id !== 'class10'; });
+    if (academic) on.push(academic);
+    return on
+      .sort(function (a, b) { return chipRank(a) - chipRank(b) || b.weight - a.weight; })
+      .map(function (p) {
+        var cls = 'ar-attr';
+        var tail = '<i class="ar-attr-dot" aria-hidden="true"></i>' + esc(p.label) + '</span>';
+        if (isBinary(p.id)) {
+          var yesTip = p.label + ': ' + p.note + ' · ' + (partMet(p) ? 'meets' : 'doesn’t meet') + ' the preference';
+          return '<span class="' + cls + '" title="' + esc(yesTip) + '">' + yesNoHtml(p, 'ar-attr-pct') + tail;
+        }
+        var rel = p.rel == null ? 0 : p.rel;
+        var tone = rel >= 75 ? 'hi' : rel >= 40 ? 'mid' : 'lo';
+        var tip = p.tip || p.label + ': ' + p.note + ' · level with or ahead of ' + rel + '% of applicants';
+        return '<span class="' + cls + '" title="' + esc(tip) + '"><b class="ar-attr-pct ' + tone + '">' + rel + '%</b>' + tail;
+      }).join('');
   }
 
   function attrChips(s) {
     if (!s.pref) return '<span class="ar-attr none">' + ico('tune') + 'No preference yet</span>';
-    var showingOld = savedView() && VERSION_VIEW[s.id];
-    var oldParts = showingOld ? lastScoreParts(s) : null;
-    return attrChipsFromParts(oldParts || s.parts, !!oldParts) + versionChip(s, !!oldParts);
+    return attrChipsFromParts(s.parts);
   }
 
   function stagePill(s) {
@@ -1171,11 +1420,17 @@
       '<div class="ar-card-top"><div class="avatar">' + esc(s.initials) + '</div>' +
       '<div class="ar-card-who"><strong>' + esc(s.name) + '</strong><small>' + esc(s.id) + '</small></div>' +
       (all ? '' : cardScoreBox(s)) +
-      cardSaveHtml(s.id) + '</div>' +
+      cardChatHtml(s.id) + cardSaveHtml(s.id) + cardMoreHtml(s.id) + '</div>' +
       '<div class="ar-attrs">' + (all ? facts : attrChips(s)) + '</div>' +
       '<div class="ar-card-meta"><span>' + esc(programById(s.program).name) + '</span>' + stagePill(s) + '</div>' +
       '</div>'
     );
+  }
+
+  function cardChatHtml(id) {
+    var on = !!(CHATS[id] && CHATS[id].messages.length);
+    return '<button type="button" class="ar-card-save ar-card-chat' + (on ? ' on' : '') + '" data-card-chat="' + id + '" aria-label="Chat" data-tip="Chat">' +
+      ico('chat') + '</button>';
   }
 
   function cardSaveHtml(id) {
@@ -1183,6 +1438,11 @@
     var tip = on ? 'Unsave' : 'Save';
     return '<button type="button" class="ar-card-save' + (on ? ' on' : '') + '" data-card-save="' + id + '" aria-pressed="' + on + '" aria-label="' + tip + '" data-tip="' + tip + '">' +
       ico('bookmark') + '</button>';
+  }
+
+  function cardMoreHtml(id) {
+    return '<button type="button" class="ar-card-save ar-card-more" data-card-more="' + id + '" aria-haspopup="menu" aria-label="More actions" data-tip="More">' +
+      ico('more_vert') + '</button>';
   }
 
   function bucketDefs() {
@@ -1252,6 +1512,7 @@
 
   document.addEventListener('scroll', function (e) {
     var el = e.target;
+    if (cardMenuFor) hideCardMenu();
     var plain = document.querySelector('.ar-col-plain');
     if (plain && plain.getBoundingClientRect().bottom < window.innerHeight + 600) growColumn(0);
     if (!el.getAttribute || !el.hasAttribute('data-col')) return;
@@ -1269,7 +1530,99 @@
   }
 
   function saveCell(s) {
-    return '<td class="ar-td-save">' + cardSaveHtml(s.id) + '</td>';
+    return '<td class="ar-td-save"><div class="ar-td-actions">' + cardChatHtml(s.id) + cardSaveHtml(s.id) + cardMoreHtml(s.id) + '</div></td>';
+  }
+
+  /* Ticked students stay ticked while filters change; bulk actions only use the ones still in view. */
+  var SELECTED = {};
+
+  function checkCell(s) {
+    return '<td class="ar-td-check"><label><input type="checkbox" data-select="' + s.id + '"' + (SELECTED[s.id] ? ' checked' : '') +
+      ' aria-label="Select ' + esc(s.name) + '" /></label></td>';
+  }
+
+  /** scope is a match bucket index, or 'all' for a single table. */
+  function checkHead(scope) {
+    return '<th class="ar-th-check"><label><input type="checkbox" data-select-all="' + scope + '" aria-label="Select all" /></label></th>';
+  }
+
+  function rowOpen(s) {
+    return '<tr data-student="' + s.id + '"' + (SELECTED[s.id] ? ' class="selected"' : '') + '>' + checkCell(s);
+  }
+
+  function scopeItems(scope, list) {
+    list = list || visibleSet();
+    return scope === 'all' ? list : list.filter(function (s) { return s.bucket === Number(scope); });
+  }
+
+  function selectedStudents() {
+    return visibleSet().filter(function (s) { return SELECTED[s.id]; });
+  }
+
+  function bulkTargets() {
+    var picked = selectedStudents();
+    return picked.length ? picked : visibleSet();
+  }
+
+  function syncSelection() {
+    var list = visibleSet();
+    var n = list.filter(function (s) { return SELECTED[s.id]; }).length;
+    $('bulk-label').textContent = n ? n + ' selected' : 'Bulk actions';
+    document.querySelectorAll('#table [data-select]').forEach(function (box) {
+      var on = !!SELECTED[box.getAttribute('data-select')];
+      box.checked = on;
+      box.closest('tr').classList.toggle('selected', on);
+    });
+    document.querySelectorAll('#table [data-select-all]').forEach(function (box) {
+      var items = scopeItems(box.getAttribute('data-select-all'), list);
+      var on = items.filter(function (s) { return SELECTED[s.id]; }).length;
+      box.checked = on > 0 && on === items.length;
+      box.indeterminate = on > 0 && on < items.length;
+    });
+  }
+
+  function renderBulkMenu() {
+    var picked = selectedStudents().length;
+    var n = bulkTargets().length;
+    var dis = n ? '' : ' disabled';
+    var saved = savedView();
+    var pickOnly = picked ? '' : ' disabled title="Tick students in the table first"';
+    function item(attrs, icon, label) {
+      return '<button type="button" class="ar-menu-item ar-card-menu-item" role="menuitem" ' + attrs + dis + '>' + ico(icon) + '<span>' + label + '</span></button>';
+    }
+    $('bulk-menu').innerHTML =
+      '<div class="ar-bulk-head"><span>' + (picked ? picked + ' student' + (picked === 1 ? '' : 's') + ' selected' : 'All ' + n + ' student' + (n === 1 ? '' : 's') + ' in this view') + '</span>' +
+      (picked ? '<button type="button" class="ar-link" data-bulk-clear>Clear</button>' : '') + '</div>' +
+      '<div class="ar-card-menu-head">Campaign</div>' +
+      CAMPAIGN_CHANNELS.map(function (c) {
+        return item('data-bulk="campaign" data-bulk-channel="' + c.id + '"', c.icon, c.name + ' campaign');
+      }).join('') +
+      '<div class="ar-bulk-sep"></div>' +
+      (saved ? item('data-bulk="unsave"' + pickOnly, 'bookmark_remove', 'Remove from saved') : item('data-bulk="shortlist"' + pickOnly, 'bookmark_add', 'Shortlist')) +
+      item('data-bulk="download"', 'download', 'Download CSV');
+  }
+
+  function runBulk(action, channel) {
+    var list = bulkTargets();
+    if (!list.length) return;
+    if (action === 'campaign') {
+      openCampaign(list.map(function (s) { return s.id; }), channel);
+      return;
+    }
+    if (action === 'download') {
+      exportCsv(list);
+      return;
+    }
+    list = selectedStudents();
+    if (!list.length) return;
+    var add = action === 'shortlist';
+    var changed = list.filter(function (s) { return isSaved(s.id) !== add; });
+    changed.forEach(function (s) { toggleSaved(s.id); });
+    if (!add) list.forEach(function (s) { delete SELECTED[s.id]; });
+    toast(add
+      ? (changed.length ? changed.length + ' student' + (changed.length === 1 ? '' : 's') + ' added to Saved students.' : 'Already in Saved students.')
+      : changed.length + ' student' + (changed.length === 1 ? '' : 's') + ' removed from Saved students.');
+    renderStudents();
   }
 
   /** A program's tables are split by match level; columns are the preference's criteria with each student's score on them. */
@@ -1277,9 +1630,9 @@
     var pref = state.program === 'all' ? null : findPref(state.program, state.prefId);
     if (!pref) {
       $('table').innerHTML = '<div class="panel ar-table-wrap">' + (list.length
-        ? '<table class="ar-table ar-table-fit"><thead><tr><th class="ar-th-student">Student</th><th>Stage</th><th>Stream</th><th>Class 12</th><th>Test</th><th>Budget</th><th>Location</th><th>Intake</th><th class="ar-th-save"></th></tr></thead><tbody>' +
+        ? '<table class="ar-table ar-table-fit"><thead><tr>' + checkHead('all') + '<th class="ar-th-student">Student</th><th>Stage</th><th>Stream</th><th>Class 12</th><th>Test</th><th>Budget</th><th>Location</th><th>Intake</th><th class="ar-th-save"></th></tr></thead><tbody>' +
           list.slice(0, TABLE_LIMIT).map(function (s) {
-            return '<tr data-student="' + s.id + '">' + studentCell(s) + '<td>' + stagePill(s) + '</td><td>' + esc(s.stream) + '</td>' +
+            return rowOpen(s) + studentCell(s) + '<td>' + stagePill(s) + '</td><td>' + esc(s.stream) + '</td>' +
               '<td>' + esc(markNote(s.mark12)) + '</td><td>' + esc(headlineTest(s)) + '</td><td>₹' + s.budget[0] + '–' + s.budget[1] + 'L</td>' +
               '<td>' + esc(s.city) + ' · ' + s.km + ' km</td><td>' + esc(s.intake) + '</td>' + saveCell(s) + '</tr>';
           }).join('') + '</tbody></table>' + tableMore(list.length)
@@ -1287,16 +1640,22 @@
       return;
     }
     var crits = CRITERIA.filter(function (c) { return c.id !== 'board' && pref.criteria[c.id].weight > 0; });
-    var head = '<tr><th class="ar-th-student">Student</th><th class="ar-th-match">Match</th>' + crits.map(function (c) {
+    var headCols = '<th class="ar-th-student">Student</th><th class="ar-th-match">Match</th>' + crits.map(function (c) {
       return '<th title="Percentile among ' + esc(programById(state.program).name) + ' applicants on ' + esc(c.label.toLowerCase()) + '">' +
         esc(c.id === 'activities' ? 'Activities' : c.label) + ' <i class="ar-th-weight">' + pref.criteria[c.id].weight + '</i></th>';
     }).join('') + '<th class="ar-th-save"></th></tr>';
+    function head(scope) {
+      return '<tr>' + checkHead(scope) + headCols;
+    }
     function rowsFor(items) {
       return items.slice(0, TABLE_LIMIT).map(function (s) {
-        return '<tr data-student="' + s.id + '">' + studentCell(s) +
+        return rowOpen(s) + studentCell(s) +
           '<td><div class="ar-score-wrap"><span class="ar-score ' + scoreClass(s) + '">' + scoreHtml(s) + '</span>' + scoreDeltaHtml(s) + '</div></td>' +
           crits.map(function (c) {
             var part = s.parts.filter(function (p) { return p.id === c.id; })[0];
+            if (c.binary) {
+              return '<td><span title="' + esc(part.note) + '">' + yesNoHtml(part, 'ar-cell-score ar-yesno') + '</span></td>';
+            }
             var tip = part.note + ' · level with or ahead of ' + part.rel + '% of ' + programById(s.program).name + ' applicants';
             return '<td><b class="ar-cell-score" title="' + esc(tip) + '">' + part.rel + '<small>%</small></b></td>';
           }).join('') + saveCell(s) + '</tr>';
@@ -1304,7 +1663,7 @@
     }
     if (savedView()) {
       $('table').innerHTML = '<section class="panel ar-table-wrap">' + (list.length
-        ? '<div class="ar-table-scroll"><table class="ar-table ar-table-fit"><thead>' + head + '</thead><tbody>' + rowsFor(list) + '</tbody></table></div>' + tableMore(list.length)
+        ? '<div class="ar-table-scroll"><table class="ar-table ar-table-fit"><thead>' + head('all') + '</thead><tbody>' + rowsFor(list) + '</tbody></table></div>' + tableMore(list.length)
         : '<div class="ar-col-empty">No students match these filters.</div>') + '</section>';
       return;
     }
@@ -1318,7 +1677,7 @@
         '<h3><i style="background:' + b.color + '"></i>' + b.name + '<b class="ar-col-count">' + items.length + '</b></h3>' +
         '<span class="ar-table-meta"><small>' + b.range + '</small>' + ico('expand_more') + '</span></button>' +
         (shut ? '' : items.length
-          ? '<div class="ar-table-scroll"><table class="ar-table ar-table-fit"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>' + tableMore(items.length)
+          ? '<div class="ar-table-scroll"><table class="ar-table ar-table-fit"><thead>' + head(i) + '</thead><tbody>' + rows + '</tbody></table></div>' + tableMore(items.length)
           : '<div class="ar-col-empty">No students here yet.</div>') +
         '</section>'
       );
@@ -1327,7 +1686,11 @@
 
   function renderFilters(list) {
     var chips = [];
-    if (!savedView() && state.stage !== null) chips.push('<button type="button" class="ar-filter-chip" data-clear="stage">Reached: ' + esc(STAGES[state.stage].name) + ico('close') + '</button>');
+    if (!savedView() && state.stage !== null) chips.push('<button type="button" class="ar-filter-chip" data-clear="stage">' + (state.stageMode === 'snapshot' ? 'Now at: ' : 'Reached: ') + esc(STAGES[state.stage].name) + ico('close') + '</button>');
+    if (!savedView() && state.action) {
+      var act = ACTIONS.filter(function (a) { return a.id === state.action; })[0];
+      chips.push('<button type="button" class="ar-filter-chip" data-clear="action">Action: ' + esc(act.name) + ico('close') + '</button>');
+    }
     if (filtersOn()) {
       var f = state.filters;
       if (f.min !== '' || f.max !== '') {
@@ -1491,9 +1854,11 @@
     $('saved-empty').hidden = !noneSaved;
     $('board').hidden = noneSaved || state.layout !== 'board';
     $('table').hidden = noneSaved || state.layout !== 'table';
-    if (noneSaved) return;
-    if (state.layout === 'board') renderBoard();
-    else renderTable(list);
+    if (!noneSaved) {
+      if (state.layout === 'board') renderBoard();
+      else renderTable(list);
+    }
+    syncSelection();
   }
 
   function renderTopMenus() {
@@ -1541,6 +1906,7 @@
     renderFunnel();
     renderPrefPanel();
     renderStudents();
+    noteDashboardSeen();
   }
 
   /* ——— Programs & preferences view ——— */
@@ -1584,15 +1950,670 @@
 
   function setView(view) {
     state.view = view;
-    $('view-dashboard').hidden = view === 'programs';
+    $('view-dashboard').hidden = view === 'programs' || view === 'chats';
     $('view-dashboard').classList.toggle('ar-saved-view', view === 'saved');
     $('view-programs').hidden = view !== 'programs';
+    $('view-chats').hidden = view !== 'chats';
     document.querySelectorAll('.ar-rail-item[data-go]').forEach(function (a) {
       a.classList.toggle('active', a.getAttribute('data-go') === view);
     });
     if (view === 'programs') renderPrograms();
+    else if (view === 'chats') renderChats();
     else renderDashboard();
     window.scrollTo(0, 0);
+  }
+
+  /* ——— Chats ———
+     In-platform messages only: the student's phone and email are never shown to the university.
+     { studentId: { messages: [{ from: 'uni' | 'student', text, at }], unread, seen } }
+     seen: the student has read the university's latest message. */
+  var CHATS_KEY = 'admitright_chats_v2';
+
+  /* Demo only: seeded threads and replies stand in for the student side until real messaging is connected.
+     Each message is [from, text, hours ago]. */
+  var DEMO_THREADS = [
+    { unread: 2, msgs: [
+      ['student', 'Hi! Does BML Munjal offer scholarships for JEE Main above 90 percentile?', 30],
+      ['student', 'Also, is hostel accommodation guaranteed for first-year students?', 29]] },
+    { seen: true, msgs: [
+      ['uni', 'Hi {first}, thanks for shortlisting {program}! Would you like to book a call with our admissions team?', 54],
+      ['student', 'Yes, that would help. Is Saturday morning possible?', 50],
+      ['uni', 'Saturday 11 AM works. We’ll share the invite here.', 49]] },
+    { unread: 1, msgs: [
+      ['uni', 'Hi {first}, we saw you opened the {program} page. Any questions we can help with?', 80],
+      ['student', 'What is the last date to apply for the August intake?', 6]] },
+    { msgs: [
+      ['student', 'Is there a campus visit day coming up?', 120],
+      ['uni', 'Yes! Our next open campus is on 24 October. Shall we reserve a spot for you?', 118],
+      ['student', 'Please do, thank you!', 117]] },
+    { seen: false, msgs: [
+      ['uni', 'Hi {first}, applications for {program} are open. Have you had a chance to start yours?', 20]] },
+    { unread: 1, msgs: [
+      ['student', 'Can I apply with my CUET score instead of JEE?', 3]] },
+    { seen: true, msgs: [
+      ['student', 'Hello, what are the placement stats for the last batch?', 200],
+      ['uni', 'Our last batch had 92% placements with a median package of ₹8.4 LPA. Happy to share the full report.', 196]] },
+    { msgs: [
+      ['uni', 'Hi {first}, congratulations on your Class 12 results! {program} could be a great fit for you.', 300],
+      ['student', 'Thank you! I’m still comparing a few options.', 290]] },
+  ];
+
+  function demoChats() {
+    var out = {};
+    var n = 0;
+    var now = Date.now();
+    PROGRAMS.forEach(function (p, pi) {
+      var pref = prefsFor(p.id)[0];
+      var perBucket = pi === 0 ? 3 : 1;
+      var byBucket = [[], [], []];
+      STUDENTS.filter(function (s) { return s.program === p.id; })
+        .sort(function (a, b) { return hashOf(a.id) - hashOf(b.id); })
+        .forEach(function (s) {
+          var b = pref ? bucketOf(scoreAgainst(s, pref).score) : 2;
+          if (byBucket[b].length < perBucket) byBucket[b].push(s);
+        });
+      byBucket.forEach(function (list) {
+        list.forEach(function (s) {
+          var t = DEMO_THREADS[n % DEMO_THREADS.length];
+          var stagger = n * 2;
+          n += 1;
+          var first = s.name.split(' ')[0];
+          var msgs = t.msgs.map(function (m) {
+            return { from: m[0], text: m[1].replace('{first}', first).replace('{program}', p.name), at: now - (m[2] + stagger) * 3600000 };
+          });
+          out[s.id] = { messages: msgs, unread: t.unread || 0, seen: !!t.seen };
+        });
+      });
+    });
+    return out;
+  }
+
+  var DEMO_REPLIES = [
+    'Thanks for getting back to me! That really helps.',
+    'Could you share more about the fee structure and scholarships?',
+    'That sounds great. When is the application deadline?',
+    'Thank you! I’ll go through the details and get back to you.',
+  ];
+
+  var CHATS = null;
+  try { CHATS = JSON.parse(localStorage.getItem(CHATS_KEY) || 'null'); } catch (err) { CHATS = null; }
+  try { localStorage.removeItem('admitright_chats_v1'); } catch (err) { /* blocked */ }
+  if (!CHATS) {
+    CHATS = demoChats();
+    saveChats();
+  }
+  Object.keys(CHATS).forEach(function (id) {
+    CHATS[id].messages = CHATS[id].messages.filter(function (m) { return !m.campaign || m.campaign === 'sms'; });
+    if (!CHATS[id].messages.length) delete CHATS[id];
+    else CHATS[id].typing = false;
+  });
+  saveChats();
+  updateChatBadge();
+
+  function saveChats() {
+    try { localStorage.setItem(CHATS_KEY, JSON.stringify(CHATS)); } catch (err) { /* storage full or blocked */ }
+  }
+
+  function studentById(id) {
+    return STUDENTS.filter(function (s) { return s.id === id; })[0] || null;
+  }
+
+  /* Campaigns go out through AdmitRight, so the university never sees the student's phone number or email. */
+  var CAMPAIGNS_KEY = 'admitright_campaigns_v1';
+  var CAMPAIGN_CHANNELS = [
+    { id: 'email', name: 'Email', icon: 'mail' },
+    { id: 'whatsapp', name: 'WhatsApp', icon: 'forum' },
+    { id: 'sms', name: 'Text', icon: 'sms' }];
+  var CAMPAIGN_TEMPLATES = [
+    { id: 'reminder', name: 'Application reminder', subject: 'Applications for {program} are open',
+      text: 'Hi {first}, applications for {program} at {university} are open. Start yours today and our admissions team will help you at every step.' },
+    { id: 'scholarship', name: 'Scholarship update', subject: 'Scholarships you may qualify for',
+      text: 'Hi {first}, based on your profile you may qualify for a merit scholarship on {program} at {university}. Apply before the deadline to be considered.' },
+    { id: 'visit', name: 'Campus visit invite', subject: 'Visit our campus',
+      text: 'Hi {first}, we would love to show you around {university}. Book a campus visit or a virtual tour to see {program} up close.' },
+    { id: 'deadline', name: 'Deadline reminder', subject: 'The {program} deadline is coming up',
+      text: 'Hi {first}, the application deadline for {program} at {university} is coming up soon. Finish your application to keep your seat in the running.' },
+    { id: 'custom', name: 'Write your own', subject: '', text: '' }];
+  var SMS_LIMIT = 160;
+
+  var CAMPAIGNS = {};
+  try { CAMPAIGNS = JSON.parse(localStorage.getItem(CAMPAIGNS_KEY) || '{}') || {}; } catch (err) { CAMPAIGNS = {}; }
+
+  function saveCampaigns() {
+    try { localStorage.setItem(CAMPAIGNS_KEY, JSON.stringify(CAMPAIGNS)); } catch (err) { /* storage full or blocked */ }
+  }
+
+  function channelById(id) {
+    return CAMPAIGN_CHANNELS.filter(function (c) { return c.id === id; })[0] || CAMPAIGN_CHANNELS[0];
+  }
+
+  function fillTemplate(text, s) {
+    return text
+      .replace(/\{first\}/g, s.name.split(' ')[0])
+      .replace(/\{program\}/g, programById(s.program).name)
+      .replace(/\{university\}/g, 'BML Munjal University');
+  }
+
+  var cardMenuFor = null;
+
+  function hideCardMenu() {
+    var menu = $('card-menu');
+    if (menu) menu.hidden = true;
+    cardMenuFor = null;
+  }
+
+  function showCardMenu(btn) {
+    var id = btn.getAttribute('data-card-more');
+    if (cardMenuFor === id) {
+      hideCardMenu();
+      return;
+    }
+    var menu = $('card-menu');
+    menu.innerHTML = '<div class="ar-card-menu-head">Campaign</div>' + CAMPAIGN_CHANNELS.map(function (c) {
+      return '<button type="button" class="ar-menu-item ar-card-menu-item" role="menuitem" data-campaign="' + c.id + '" data-campaign-student="' + id + '">' +
+        ico(c.icon) + '<span>' + c.name + ' campaign</span></button>';
+    }).join('');
+    menu.hidden = false;
+    var r = btn.getBoundingClientRect();
+    var h = menu.offsetHeight;
+    var below = r.bottom + 6 + h <= window.innerHeight - 8;
+    menu.style.top = (below ? r.bottom + 6 : Math.max(8, r.top - 6 - h)) + 'px';
+    menu.style.left = Math.max(8, r.right - menu.offsetWidth) + 'px';
+    cardMenuFor = id;
+  }
+
+  var campaign = null;
+
+  /** For a group the {first} and {program} tokens stay in the draft and are filled in per student when it's sent. */
+  function draftText(text, students) {
+    return students.length === 1 ? fillTemplate(text, students[0]) : text.replace(/\{university\}/g, 'BML Munjal University');
+  }
+
+  function openCampaign(ids, channel) {
+    var students = ids.map(studentById).filter(Boolean);
+    if (!students.length) return;
+    var tpl = CAMPAIGN_TEMPLATES[0];
+    campaign = { students: students, channel: channel, template: tpl.id, subject: draftText(tpl.subject, students), text: draftText(tpl.text, students) };
+    openDrawer('New campaign', '', '<button type="button" class="btn btn-ghost btn-sm" data-close-drawer>Cancel</button>' +
+      '<button type="button" class="btn btn-primary btn-sm btn-icon" data-campaign-send>' + ico('send') + 'Send</button>', true);
+    $('drawer').classList.add('ar-campaign-modal');
+    renderCampaign();
+  }
+
+  function readCampaign() {
+    if (!campaign || !$('cm-text')) return;
+    campaign.text = $('cm-text').value;
+    if ($('cm-subject')) campaign.subject = $('cm-subject').value;
+  }
+
+  function campaignToHtml(students) {
+    if (students.length === 1) {
+      var s = students[0];
+      return '<div class="ar-cm-to"><div class="avatar">' + esc(s.initials) + '</div>' +
+        '<div><strong>' + esc(s.name) + '</strong><small>' + esc(s.id) + ' · ' + esc(programById(s.program).name) + '</small></div></div>';
+    }
+    var names = students.slice(0, 2).map(function (x) { return x.name; }).join(', ');
+    var rest = students.length - 2;
+    return '<div class="ar-cm-to"><div class="ar-cm-stack">' + students.slice(0, 3).map(function (x) {
+      return '<div class="avatar">' + esc(x.initials) + '</div>';
+    }).join('') + '</div>' +
+      '<div><strong>' + students.length + ' students</strong><small>' + esc(names) + (rest > 0 ? ' and ' + rest + ' more' : '') + '</small></div></div>';
+  }
+
+  function renderCampaign() {
+    var students = campaign.students;
+    var single = students.length === 1;
+    var ch = channelById(campaign.channel);
+    var past = single ? (CAMPAIGNS[students[0].id] || []).slice(-1)[0] : null;
+    $('drawer-title').textContent = ch.name + ' campaign';
+    $('drawer-body').innerHTML =
+      campaignToHtml(students) +
+      '<div class="ar-cm-channels" role="tablist" aria-label="Channel">' + CAMPAIGN_CHANNELS.map(function (c) {
+        var on = c.id === ch.id;
+        return '<button type="button" class="ar-cm-channel' + (on ? ' on' : '') + '" role="tab" aria-selected="' + on + '" data-campaign-channel="' + c.id + '">' +
+          ico(c.icon) + c.name + '</button>';
+      }).join('') + '</div>' +
+      '<div class="field"><label for="cm-template">Template</label><select id="cm-template">' + CAMPAIGN_TEMPLATES.map(function (t) {
+        return '<option value="' + t.id + '"' + (t.id === campaign.template ? ' selected' : '') + '>' + esc(t.name) + '</option>';
+      }).join('') + '</select></div>' +
+      (ch.id === 'email' ? '<div class="field"><label for="cm-subject">Subject</label><input type="text" id="cm-subject" value="' + esc(campaign.subject) + '" placeholder="Subject line" /></div>' : '') +
+      '<div class="field"><label for="cm-text">Message</label><textarea id="cm-text" rows="5" placeholder="Write your message…">' + esc(campaign.text) + '</textarea>' +
+      (ch.id === 'sms' ? '<small class="ar-cm-count" id="cm-count"></small>' : '') + '</div>' +
+      (single ? '' : '<p class="ar-cm-note">' + ico('auto_fix_high') + '{first} and {program} are filled in for each student.</p>') +
+      '<p class="ar-cm-note">' + ico('lock') + 'Sent through AdmitRight. ' + (single ? 'The student\'s phone number and email stay' : 'Students\' phone numbers and emails stay') + ' private.</p>' +
+      (past ? '<p class="ar-cm-past">Last campaign: ' + esc(channelById(past.channel).name) + ', ' + esc(fmtDateTime(new Date(past.at))) + '</p>' : '');
+    updateCampaignCount();
+  }
+
+  function updateCampaignCount() {
+    var el = $('cm-count');
+    if (!el) return;
+    var n = $('cm-text').value.length;
+    var parts = Math.max(1, Math.ceil(n / SMS_LIMIT));
+    el.textContent = n + ' characters' + (parts > 1 ? ' · ' + parts + ' messages' : '');
+    el.classList.toggle('over', n > SMS_LIMIT);
+  }
+
+  function campaignLogHtml(s) {
+    var sent = (CAMPAIGNS[s.id] || []).slice().reverse();
+    if (!sent.length) return '';
+    return profileSection('campaigns', 'Campaigns sent · ' + sent.length, sent.map(function (c) {
+      var ch = channelById(c.channel);
+      return '<div class="ar-cp-extra on">' + ico(ch.icon) + '<span>' + esc(ch.name + (c.subject ? ': ' + c.subject : '')) + '</span>' +
+        '<time>' + esc(fmtDateTime(new Date(c.at))) + '</time></div>';
+    }).join(''));
+  }
+
+  function sendCampaign() {
+    readCampaign();
+    var students = campaign.students;
+    var ch = channelById(campaign.channel);
+    if (!campaign.text.trim()) {
+      $('cm-text').focus();
+      toast('Write a message first.');
+      return;
+    }
+    if (ch.id === 'email' && !campaign.subject.trim()) {
+      $('cm-subject').focus();
+      toast('Add a subject line.');
+      return;
+    }
+    var now = Date.now();
+    students.forEach(function (s) {
+      var subject = ch.id === 'email' ? fillTemplate(campaign.subject.trim(), s) : '';
+      var text = fillTemplate(campaign.text.trim(), s);
+      (CAMPAIGNS[s.id] = CAMPAIGNS[s.id] || []).push({
+        channel: ch.id, template: campaign.template, subject: subject, text: text, at: new Date(now).toISOString() });
+      if (ch.id !== 'sms') return;
+      var thread = CHATS[s.id] = CHATS[s.id] || { messages: [], unread: 0, seen: false, typing: false };
+      thread.messages.push({ from: 'uni', text: text, at: now, campaign: ch.id });
+      thread.seen = false;
+    });
+    saveCampaigns();
+    saveChats();
+    closeDrawer();
+    toast(ch.name + ' campaign sent to ' + (students.length === 1 ? students[0].name : students.length + ' students') + '.' +
+      (ch.id === 'sms' ? ' It\'s in Chats.' : ''));
+    if (state.view === 'chats') renderChats();
+    else renderStudents();
+  }
+
+  function lastMessage(thread) {
+    return thread.messages[thread.messages.length - 1] || null;
+  }
+
+  function starterOf(thread) {
+    return thread.messages.length ? thread.messages[0].from : '';
+  }
+
+  /* ——— Chat filters ——— */
+  var CF = { program: 'all', prefId: null, min: '', max: '', stages: [], extras: [], unread: false, by: '' };
+
+  function resetChatFilters() {
+    CF = { program: 'all', prefId: null, min: '', max: '', stages: [], extras: [], unread: false, by: '' };
+    $('chat-search').value = '';
+  }
+
+  function cfPref() {
+    if (CF.program === 'all' || !CF.prefId) return null;
+    return prefsFor(CF.program).filter(function (p) { return p.id === CF.prefId; })[0] || null;
+  }
+
+  function chatThreads() {
+    var pref = cfPref();
+    return Object.keys(CHATS).map(function (id) {
+      var s = studentById(id);
+      return { id: id, s: s, thread: CHATS[id], score: s && pref ? scoreAgainst(s, pref).score : null };
+    }).filter(function (c) { return c.s && c.thread.messages.length; }).sort(function (a, b) {
+      var la = lastMessage(a.thread);
+      var lb = lastMessage(b.thread);
+      return (lb ? lb.at : b.thread.created || 0) - (la ? la.at : a.thread.created || 0);
+    });
+  }
+
+  /** The student's progress in the filtered program (any program they explore), else in their main program; null if they don't explore it. */
+  function cfJourney(s) {
+    var journeys = programJourneys(s);
+    if (CF.program === 'all') return journeys[0];
+    return journeys.filter(function (j) { return j.program === CF.program; })[0] || null;
+  }
+
+  /** Everything except the quick filters, so the quick-filter chips can show what each would leave. */
+  function cfPassesBase(c) {
+    var s = c.s;
+    var journey = cfJourney(s);
+    if (!journey) return false;
+    if (c.score !== null) {
+      if (CF.min !== '' && c.score < Number(CF.min)) return false;
+      if (CF.max !== '' && c.score > Number(CF.max)) return false;
+    }
+    if (CF.stages.length && CF.stages.indexOf(journey.stage) === -1) return false;
+    if (CF.extras.length) {
+      if (!CF.extras.some(function (x) { return journey.actions[x]; })) return false;
+    }
+    var q = $('chat-search').value.trim().toLowerCase();
+    return !q || s.name.toLowerCase().indexOf(q) !== -1 || s.id.toLowerCase().indexOf(q) !== -1;
+  }
+
+  function cfPassesQuick(c) {
+    if (CF.unread && !c.thread.unread) return false;
+    return !CF.by || starterOf(c.thread) === CF.by;
+  }
+
+  function cfActive() {
+    return CF.program !== 'all' || CF.stages.length || CF.extras.length || CF.unread || CF.by || $('chat-search').value.trim();
+  }
+
+  function pickedLabel(list, names) {
+    if (!list.length) return 'Any';
+    return list.length === 1 ? names[0] : list.length + ' selected';
+  }
+
+  function renderChatFilters() {
+    var items = [{ id: 'all', name: 'All programs' }].concat(PROGRAMS);
+    $('cf-program-menu').innerHTML = items.map(function (p) {
+      return '<button type="button" class="ar-menu-item' + (CF.program === p.id ? ' active' : '') + '" data-cf-program="' + p.id + '">' + esc(p.name) + '</button>';
+    }).join('');
+    $('cf-program-label').textContent = CF.program === 'all' ? 'All programs' : programById(CF.program).name;
+
+    var prefBtn = $('cf-pref-btn');
+    prefBtn.disabled = CF.program === 'all';
+    prefBtn.title = prefBtn.disabled ? 'Pick a program to choose a preference' : '';
+    $('cf-pref-label').textContent = 'Any';
+    if (CF.program !== 'all') {
+      var pref = cfPref();
+      $('cf-pref-label').textContent = pref ? pref.name : 'Any';
+      $('cf-pref-menu').innerHTML =
+        '<button type="button" class="ar-menu-item' + (pref ? '' : ' active') + '" data-cf-pref="">Any preference</button>' +
+        prefsFor(CF.program).map(function (p) {
+          return '<button type="button" class="ar-menu-item' + (pref && pref.id === p.id ? ' active' : '') + '" data-cf-pref="' + p.id + '">' + esc(p.name) + '</button>';
+        }).join('');
+    }
+
+    var scored = !!cfPref();
+    var scoreBtn = $('cf-score-btn');
+    scoreBtn.disabled = !scored;
+    scoreBtn.title = scored ? '' : 'Pick a program and a preference to filter by match score';
+    if (scored && !$('cf-score-menu').contains(document.activeElement)) {
+      var scoreAttr = function (k) { return 'data-cf-score="' + k + '" min="0" max="100"'; };
+      $('cf-score-menu').innerHTML =
+        '<div class="ar-cf-menu-head">Match score range</div>' +
+        rangeInputs(scoreAttr, CF, '%') +
+        '<div class="ar-cf-presets">' + bucketDefs().map(function (d, i) {
+          var r = [[MATCH_MIN, 100], [CLOSE_MIN, MATCH_MIN - 1], [0, CLOSE_MIN - 1]][i];
+          return '<button type="button" class="ar-cf-preset" data-cf-preset="' + r[0] + '-' + r[1] + '"><i style="background:' + d.color + '"></i>' + esc(d.name) + '</button>';
+        }).join('') + '</div>';
+    }
+    $('cf-score-label').textContent = CF.min === '' && CF.max === '' ? 'Any' : (CF.min === '' ? 0 : CF.min) + '–' + (CF.max === '' ? 100 : CF.max) + '%';
+
+    var threads = chatThreads();
+    var base = threads.filter(cfPassesBase);
+    var count = function (fn) { return threads.filter(fn).length; };
+    $('cf-stage-menu').innerHTML = '<div class="ar-cf-menu-head">Current step in the funnel</div>' + STAGES.map(function (st, i) {
+      return '<label class="ar-cf-check"><input type="checkbox" data-cf-stage="' + i + '"' + (CF.stages.indexOf(i) !== -1 ? ' checked' : '') + '>' +
+        ico(st.icon) + '<span>' + esc(st.name) + '</span><small>' + count(function (c) { var j = cfJourney(c.s); return j && j.stage === i; }) + '</small></label>';
+    }).join('');
+    $('cf-stage-label').textContent = pickedLabel(CF.stages, CF.stages.map(function (i) { return STAGES[i].name; }));
+
+    $('cf-extra-menu').innerHTML = '<div class="ar-cf-menu-head">Done any of these</div>' + ACTIONS.map(function (a) {
+      return '<label class="ar-cf-check"><input type="checkbox" data-cf-extra="' + a.id + '"' + (CF.extras.indexOf(a.id) !== -1 ? ' checked' : '') + '>' +
+        ico(a.icon) + '<span>' + esc(a.name) + '</span><small>' + count(function (c) { var j = cfJourney(c.s); return j && j.actions[a.id]; }) + '</small></label>';
+    }).join('');
+    $('cf-extra-label').textContent = pickedLabel(CF.extras, CF.extras.map(function (id) {
+      return ACTIONS.filter(function (a) { return a.id === id; })[0].name;
+    }));
+
+    $('cf-clear').hidden = !cfActive();
+
+    var quick = [
+      ['all', 'All', base.length, !CF.unread && !CF.by],
+      ['unread', 'Unread', base.filter(function (c) { return c.thread.unread; }).length, CF.unread],
+      ['student', 'Initiated by student', base.filter(function (c) { return starterOf(c.thread) === 'student'; }).length, CF.by === 'student'],
+      ['uni', 'Initiated by you', base.filter(function (c) { return starterOf(c.thread) === 'uni'; }).length, CF.by === 'uni'],
+    ];
+    $('cf-quick').innerHTML = quick.map(function (q) {
+      return '<button type="button" class="ar-cf-chip' + (q[3] ? ' on' : '') + '" data-cf-quick="' + q[0] + '" aria-pressed="' + q[3] + '">' +
+        esc(q[1]) + '<b>' + q[2] + '</b></button>';
+    }).join('');
+  }
+
+  function updateChatBadge() {
+    var unread = Object.keys(CHATS).reduce(function (n, id) { return n + (CHATS[id].unread || 0); }, 0);
+    $('chat-badge').hidden = !unread;
+    $('chat-badge').textContent = unread > 9 ? '9+' : unread;
+  }
+
+  /** "4:05 PM" today, then "Yesterday", a weekday within the week, else "12 Oct". */
+  function chatTime(ts) {
+    var d = new Date(ts);
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var days = Math.floor((today - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+    if (days <= 0) return fmtTime(d);
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+    return fmtDate(d).replace(' ' + today.getFullYear(), '');
+  }
+
+  /** Starting a chat from a card clears the chat filters so the new thread is in the list. */
+  function openChat(id) {
+    if (!studentById(id)) return;
+    if (!CHATS[id]) CHATS[id] = { messages: [], unread: 0, seen: false, created: Date.now() };
+    resetChatFilters();
+    selectChat(id);
+    closeDrawer();
+    setView('chats');
+    var input = $('chat-input');
+    if (input) input.focus();
+  }
+
+  /** A chat opened from a student card stays out of the list until a message is sent. */
+  function selectChat(id) {
+    var prev = state.chatId;
+    if (prev && prev !== id && CHATS[prev] && !CHATS[prev].messages.length) delete CHATS[prev];
+    state.chatId = id;
+    if (CHATS[id] && CHATS[id].unread) {
+      CHATS[id].unread = 0;
+      saveChats();
+    }
+  }
+
+  function renderChats() {
+    if (state.chatId && !CHATS[state.chatId]) state.chatId = null;
+    updateChatBadge();
+    renderChatFilters();
+    renderChatList();
+    renderChatThread();
+    renderChatProfile();
+  }
+
+  function chatCardHtml(c) {
+    var t = c.thread;
+    var last = lastMessage(t);
+    var mine = last && last.from === 'uni';
+    var tick = mine
+      ? '<span class="ar-chat-tick' + (t.seen ? ' seen' : '') + '" title="' + (t.seen ? 'Read' : 'Sent') + '">' + ico(t.seen ? 'done_all' : 'done') + '</span>'
+      : '';
+    return (
+      '<button type="button" class="ar-chat-card' + (c.id === state.chatId ? ' active' : '') + (t.unread ? ' unread' : '') + '" data-chat-open="' + c.id + '">' +
+      '<span class="avatar">' + esc(c.s.initials) + '</span>' +
+      '<span class="ar-chat-card-main">' +
+      '<span class="ar-chat-card-top"><strong>' + esc(c.s.name) + '</strong>' + (last ? '<time>' + esc(chatTime(last.at)) + '</time>' : '') + '</span>' +
+      '<span class="ar-chat-card-sub">' + tick +
+      '<span class="ar-chat-preview">' + (last ? (mine ? 'You: ' : '') + (last.campaign ? esc(channelById(last.campaign).name) + ' campaign · ' : '') + esc(last.text) : '<em>No messages yet</em>') + '</span>' +
+      (t.unread ? '<b class="ar-chat-unread" aria-label="' + t.unread + ' unread">' + t.unread + '</b>' : '') +
+      '</span></span></button>'
+    );
+  }
+
+  /** With a program and preference picked, chats are grouped into the same cohorts as the dashboard board. */
+  function renderChatList() {
+    var threads = chatThreads();
+    var shown = threads.filter(function (c) { return cfPassesBase(c) && cfPassesQuick(c); });
+    $('chat-count').textContent = shown.length === threads.length ? threads.length : shown.length + ' of ' + threads.length;
+    if (!shown.length) {
+      $('chat-list').innerHTML = '<div class="ar-chat-none">' + (threads.length
+        ? 'No chats match these filters.<br><button type="button" class="ar-link" data-cf-clear>Clear filters</button>'
+        : 'No conversations yet. Use the chat button on a student card to start one.') + '</div>';
+      return;
+    }
+    if (!cfPref()) {
+      $('chat-list').innerHTML = shown.map(chatCardHtml).join('');
+      return;
+    }
+    var groups = [[], [], []];
+    shown.forEach(function (c) { groups[bucketOf(c.score)].push(c); });
+    $('chat-list').innerHTML = bucketDefs().map(function (d, i) {
+      if (!groups[i].length) return '';
+      return (
+        '<div class="ar-chat-group">' +
+        '<div class="ar-chat-group-head"><i style="background:' + d.color + '"></i><strong>' + esc(d.name) + '</strong>' +
+        '<span>' + esc(d.range) + '</span><b>' + groups[i].length + '</b></div>' +
+        groups[i].map(chatCardHtml).join('') + '</div>'
+      );
+    }).join('');
+  }
+
+  /** Chat panel and profile drawer share the student's picked program; fallback is the program filtered on. */
+  function pickedJourney(s, fallback) {
+    var journeys = programJourneys(s);
+    var chosen = state.cpProgram && state.cpProgram[s.id];
+    function find(id) { return journeys.filter(function (j) { return j.program === id; })[0]; }
+    return { journeys: journeys, journey: find(chosen) || find(fallback) || journeys[0] };
+  }
+
+  function journeyPicker(s, picked) {
+    if (picked.journeys.length < 2) return '<small>' + esc(programById(picked.journey.program).name) + '</small>';
+    return '<select class="ar-fselect ar-cp-select" data-cp-program="' + s.id + '" aria-label="Program">' +
+      picked.journeys.map(function (j) {
+        return '<option value="' + j.program + '"' + (j === picked.journey ? ' selected' : '') + '>' + esc(programById(j.program).name) + '</option>';
+      }).join('') + '</select>';
+  }
+
+  function renderChatProfile() {
+    var s = state.chatId && studentById(state.chatId);
+    if (!s) {
+      $('chat-profile').innerHTML = '<div class="ar-chat-empty sm">' + ico('person') + '<p>The student’s profile shows here.</p></div>';
+      return;
+    }
+    var program = programById(s.program);
+    var pref = cfPref() || s.pref || null;
+    var result = pref ? scoreAgainst(s, pref) : null;
+    var score = result ? result.score : null;
+    var color = score === null ? 'var(--line)' : score >= MATCH_MIN ? 'var(--green-500)' : score >= CLOSE_MIN ? 'var(--yellow-500)' : 'var(--red-500)';
+    var picked = pickedJourney(s, CF.program);
+    var journey = picked.journey;
+    var have = ACTIONS.filter(function (a) { return journey.actions[a.id]; });
+    var steps = STAGES.map(function (st, i) {
+      var cls = i > journey.stage ? ' todo' : i === journey.stage ? ' done current' : ' done';
+      var when = i <= journey.stage ? journey.events[i] : null;
+      return '<div class="ar-step' + cls + '"><i>' + (i <= journey.stage ? ico('check') : '') + '</i>' +
+        '<span class="ar-step-label">' + esc(st.name) + '</span>' +
+        '<time>' + (when ? esc(fmtDate(when)) : i <= journey.stage ? '' : 'Not yet') + '</time></div>';
+    }).join('');
+    var extras = ACTIONS.map(function (a) {
+      var at = journey.actions[a.id];
+      return '<div class="ar-cp-extra' + (at ? ' on' : '') + '">' + ico(a.icon) + '<span>' + esc(a.name) + '</span>' +
+        (at ? '<time>' + esc(fmtDate(at)) + '</time>' : '') + ico(at ? 'check_circle' : 'radio_button_unchecked') + '</div>';
+    }).join('');
+    var sent = (CAMPAIGNS[s.id] || []).slice().reverse();
+    var campaigns = sent.map(function (c) {
+      var ch = channelById(c.channel);
+      return '<div class="ar-cp-extra on">' + ico(ch.icon) + '<span>' + esc(ch.name + (c.subject ? ': ' + c.subject : '')) + '</span>' +
+        '<time>' + esc(fmtDate(new Date(c.at))) + '</time></div>';
+    }).join('');
+    var box = $('chat-profile');
+    var keepScroll = box.getAttribute('data-sid') === s.id ? box.scrollTop : 0;
+    box.setAttribute('data-sid', s.id);
+    box.innerHTML =
+      '<div class="ar-cp-hero"><div class="avatar lg">' + esc(s.initials) + '</div>' +
+      '<h3>' + esc(s.name) + '</h3><p>' + esc(s.id + ' · ' + program.name) + '</p>' + stagePill(s) + '</div>' +
+      (pref
+        ? '<div class="ar-cp-score"><div class="ar-ring" style="--p:' + (score || 0) + ';--c:' + color + '"><span>' + score + '%</span></div>' +
+          '<div class="ar-cp-score-text"><span>Match score</span><strong>' + esc(pref.name) + '</strong></div></div>'
+        : '') +
+      '<div class="ar-cp-sec ar-cp-ai"><h4><span>' + ico('auto_awesome') + 'AI summary</span></h4><p>' + aiSummary(s) + '</p></div>' +
+      '<div class="ar-cp-sec ar-cp-match"><h4>Preference match' + (pref ? ' <small>' + esc(pref.name) + '</small>' : '') + '</h4>' +
+      matchHtml(s, pref, result) + '</div>' +
+      '<div class="ar-cp-sec"><h4>Profile</h4>' + profileFactsHtml(s) +
+      '<div class="ar-cp-group"><h5>Test scores</h5>' + testsHtml(s, pref) +
+      '<h5>Extracurricular</h5>' + activitiesHtml(s) + '</div></div>' +
+      '<div class="ar-cp-sec"><h4>Other details</h4>' + factsHtml(otherDetails(s)) + '</div>' +
+      '<div class="ar-cp-sec"><h4>Program' + (picked.journeys.length > 1 ? ' <small>' + picked.journeys.length + ' programs</small>' : '') + '</h4>' +
+      '<div class="ar-cp-program">' + journeyPicker(s, picked) + '</div>' +
+      '<div class="ar-cp-group">' +
+      '<h5>Snapshot steps</h5><div class="ar-journey">' + steps + '</div>' +
+      '<h5>Additional user actions <small>' + have.length + ' of ' + ACTIONS.length + '</small></h5>' + extras + '</div></div>' +
+      (campaigns ? '<div class="ar-cp-sec"><h4>Campaigns sent <small>' + sent.length + '</small></h4>' + campaigns + '</div>' : '');
+    box.scrollTop = keepScroll;
+  }
+
+  function renderChatThread() {
+    var id = state.chatId;
+    var s = id && studentById(id);
+    if (!s) {
+      $('chat-thread').innerHTML = '<div class="ar-chat-empty">' + ico('forum') + '<h3>Pick a conversation</h3>' +
+        '<p>Choose a chat from the list, or start one from any student card on the dashboard.</p></div>';
+      return;
+    }
+    var thread = CHATS[id];
+    var oldInput = $('chat-input');
+    var draft = oldInput && oldInput.getAttribute('data-chat') === id ? oldInput.value : '';
+    var first = s.name.split(' ')[0];
+    var programName = programById(s.program).name;
+    var quick = [
+      'Hi ' + first + ', thanks for your interest in ' + programName + ' at BML Munjal University!',
+      'Would you like to schedule a call with our admissions team?',
+      'Have you had a chance to start your application?',
+    ];
+    var msgs = thread.messages.length ? thread.messages.map(function (m) {
+      var ch = m.campaign ? channelById(m.campaign) : null;
+      return '<div class="ar-msg ' + (m.from === 'uni' ? 'out' : 'in') + (ch ? ' campaign' : '') + '">' +
+        (ch ? '<span class="ar-msg-tag">' + ico(ch.icon) + esc(ch.name) + ' campaign</span>' : '') +
+        '<p>' + (m.subject ? '<b>' + esc(m.subject) + '</b>' : '') + esc(m.text) + '</p>' +
+        '<time>' + esc(chatTime(m.at)) + '</time></div>';
+    }).join('') : '<div class="ar-chat-start">Say hello to ' + esc(first) + '. Messages stay on the platform; contact details are never shared.</div>';
+    $('chat-thread').innerHTML =
+      '<div class="ar-chat-head">' +
+      '<span class="avatar">' + esc(s.initials) + '</span>' +
+      '<div class="ar-chat-who"><strong>' + esc(s.name) + '</strong><small>' + esc(s.id + ' · ' + programName) + '</small></div>' +
+      (starterOf(thread) ? '<span class="ar-chat-starter">' + (starterOf(thread) === 'student' ? 'Initiated by student' : 'Initiated by you') + '</span>' : '') +
+      '</div>' +
+      '<div class="ar-chat-msgs gr-scroll" id="chat-msgs">' + msgs +
+      (thread.typing ? '<div class="ar-msg in typing"><p><i></i><i></i><i></i></p></div>' : '') + '</div>' +
+      (thread.messages.length ? '' : '<div class="ar-chat-quick">' + quick.map(function (q) {
+        return '<button type="button" class="ar-chat-chip" data-chat-quick="' + esc(q) + '">' + esc(q) + '</button>';
+      }).join('') + '</div>') +
+      '<form class="ar-chat-compose" id="chat-form">' +
+      '<textarea id="chat-input" rows="1" data-chat="' + id + '" placeholder="Message ' + esc(first) + '…">' + esc(draft) + '</textarea>' +
+      '<button type="submit" class="btn btn-primary btn-sm btn-icon">' + ico('send') + 'Send</button>' +
+      '</form>';
+    var box = $('chat-msgs');
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function sendChat(text) {
+    var id = state.chatId;
+    text = (text || '').trim();
+    if (!id || !text || !CHATS[id]) return;
+    var thread = CHATS[id];
+    thread.messages.push({ from: 'uni', text: text, at: Date.now() });
+    thread.seen = false;
+    $('chat-input').value = '';
+    var reply = DEMO_REPLIES[thread.messages.filter(function (m) { return m.from === 'student'; }).length % DEMO_REPLIES.length];
+    thread.typing = true;
+    saveChats();
+    renderChats();
+    window.setTimeout(function () {
+      if (!CHATS[id]) return;
+      CHATS[id].typing = false;
+      CHATS[id].seen = true;
+      CHATS[id].messages.push({ from: 'student', text: reply, at: Date.now() });
+      if (!(state.view === 'chats' && state.chatId === id)) CHATS[id].unread = (CHATS[id].unread || 0) + 1;
+      saveChats();
+      updateChatBadge();
+      if (state.view === 'chats') renderChats();
+    }, 1600);
   }
 
   /* ——— Drawer ——— */
@@ -1600,7 +2621,7 @@
   /** modal shows a centred popup instead of the side panel. */
   function openDrawer(title, body, foot, modal) {
     $('drawer').classList.toggle('modal', !!modal);
-    $('drawer').classList.remove('ar-confirm-modal');
+    $('drawer').classList.remove('ar-confirm-modal', 'ar-campaign-modal');
     $('drawer-title').textContent = title;
     $('drawer-body').innerHTML = body;
     $('drawer-foot').innerHTML = foot || '';
@@ -1612,6 +2633,7 @@
   function closeDrawer() {
     $('drawer').hidden = true;
     editing = null;
+    campaign = null;
   }
 
   function aiSummary(s) {
@@ -1619,11 +2641,14 @@
     var strengths = s.parts.filter(function (p) { return p.weight > 0 && p.v >= 0.99; }).map(function (p) { return p.label.toLowerCase(); });
     var gaps = s.parts.filter(function (p) { return p.weight > 0 && p.v < 0.5; }).map(function (p) { return p.label.toLowerCase(); });
     var next = [
-      'Send a personalised program brochure to get them to open the program page.',
-      'Share placement stats and a campus video. They are browsing but have not shortlisted.',
-      'Offer a 1:1 expert call while the program is on their shortlist.',
-      'Nudge them to start the application with a fee waiver or deadline reminder.',
+      'Send a personalised program brochure to get them to open the program detail page.',
+      s.actions.callback ? 'They asked for a call back. Call them and nudge them to start the application.'
+        : 'Share placement stats and a campus video, then nudge them to start the application with a fee waiver or deadline reminder.',
       'Help them finish the application and follow up on missing documents.',
+      'Review the application and share the admit decision timeline.',
+      s.actions.loan ? 'Admit offered. They have explored loans, so share loan partners and the fee payment steps.'
+        : 'Admit offered. Share the fee payment steps and scholarship options.',
+      'Fee paid. Share the enrolment checklist and orientation dates.',
       'Enrolled. Invite them to the incoming batch community.',
     ][s.stage];
     return (
@@ -1637,7 +2662,7 @@
     );
   }
 
-  var profileCollapsed = { match: true, profile: true, other: true, log: true };
+  var profileCollapsed = { match: true, profile: true, other: true, log: true, campaigns: true };
 
   function profileSection(key, title, html, cls) {
     return (
@@ -1673,10 +2698,68 @@
       ['Languages', x.languages || pickBy(['English, Hindi', 'English, Hindi, Punjabi', 'English, Hindi, Bengali', 'English'], 5)],
       ['Needs hostel', x.hostel || (s.km > 60 ? 'Yes' : pickBy(['No', 'Maybe'], 7))],
       ['Scholarship interest', x.scholarship || pickBy(['Yes', 'No', 'Merit only'], 9)],
-      ['Education loan', x.loan || pickBy(['Interested', 'Not needed', 'Exploring'], 11)],
+      ['Education loan', x.loan || (s.actions.loan ? 'Explored loan options' : pickBy(['Not needed', 'Not yet explored'], 11))],
       ['Profile created', fmtDateTime(s.createdOn)],
       ['Last active', s.lastActive ? fmtDateTime(s.lastActive) : 'Not yet'],
     ];
+  }
+
+  /** result is scoreAgainst(s, pref); the drawer passes the dashboard score already on the student. */
+  function matchHtml(s, pref, result) {
+    if (!pref) {
+      return '<p class="ar-muted">' + esc(programById(s.program).name) + ' has no preference, so there’s nothing to match against.</p>' +
+        '<button type="button" class="btn btn-secondary btn-sm ar-block-btn" data-create-pref="' + s.program + '">' + ico('add') + 'Create preference</button>';
+    }
+    var scored = result.parts.filter(function (p) { return p.weight > 0; });
+    if (!scored.length) return '';
+    var tone = result.score >= MATCH_MIN ? 'hi' : result.score >= CLOSE_MIN ? 'mid' : 'lo';
+    return scored.map(function (p) {
+      var pct = Math.round(p.v * 100);
+      var rowTone = pct >= 99 ? 'hi' : pct >= 50 ? 'mid' : 'lo';
+      return (
+        '<div class="ar-match-row">' +
+        '<span class="ar-match-label">' + esc(p.label) + '</span>' +
+        '<em>' + esc(p.note) + '</em>' +
+        (isBinary(p.id) ? yesNoHtml(p, 'ar-match-score') : '<b class="ar-match-score ' + rowTone + '">' + pct + '%</b>') +
+        '</div>'
+      );
+    }).join('') +
+      '<div class="ar-match-total"><span>Match score</span><span></span>' +
+      '<b class="ar-match-score ' + tone + '">' + result.score + '%</b></div>';
+  }
+
+  function factsHtml(list) {
+    return '<div class="ar-facts">' + list.map(function (f) {
+      return '<div><span>' + f[0] + '</span><strong>' + esc(f[1]) + '</strong></div>';
+    }).join('') + '</div>';
+  }
+
+  function profileFactsHtml(s) {
+    return factsHtml([
+      ['Location', s.city + ' · ' + s.km + ' km'], ['Stream', s.stream],
+      ['Class 10', markNote(s.mark10)], ['Class 12', markNote(s.mark12)],
+      ['Fee budget', '₹' + s.budget[0] + '–' + s.budget[1] + 'L'], ['Program (AOI)', programById(s.program).name],
+      ['Intake', s.intake], ['GR ID', s.id],
+    ]);
+  }
+
+  function testsHtml(s, pref) {
+    if (!s.tests.length) return '<p class="ar-muted">No tests added.</p>';
+    var accepted = pref ? (pref.criteria.test.tests || []).map(function (rq) { return rq.name.toLowerCase(); }) : null;
+    return s.tests.map(function (t) {
+      var ok = !!accepted && accepted.indexOf(t.name.toLowerCase()) !== -1;
+      return '<div class="ar-test-row"><span>' + esc(t.name) +
+        (t.custom ? '<i class="ar-tag">Custom</i>' : '') + '</span>' +
+        '<strong>' + esc(testNote(t).slice(t.name.length + 1)) + '</strong>' +
+        (accepted ? '<em class="' + (ok ? 'ok' : '') + '">' + (ok ? 'Accepted' : 'Not in preference') + '</em>' : '<em></em>') + '</div>';
+    }).join('');
+  }
+
+  function activitiesHtml(s) {
+    return '<div class="ar-tags">' + s.activities.map(function (a) {
+      var custom = ACTIVITIES.map(function (x) { return x.toLowerCase(); }).indexOf(a.toLowerCase()) === -1;
+      return '<span class="pill">' + esc(a) + (custom ? ' · custom' : '') + '</span>';
+    }).join('') + '</div>';
   }
 
   function openStudent(id) {
@@ -1684,94 +2767,55 @@
     if (!s) return;
     var program = programById(s.program);
 
-    var events = s.events || [];
-
-    function logRow(cls, icon, label, when, note) {
-      return (
-        '<div class="ar-step' + cls + '"><i>' + (icon ? ico(icon) : '') + '</i>' +
-        '<span class="ar-step-label">' + esc(label) + (note ? '<em>' + esc(note) + '</em>' : '') + '</span>' +
-        '<time>' + (when ? esc(fmtDateTime(when)) : 'Not yet') + '</time></div>'
-      );
-    }
-
-    var journey =
-      logRow(' done', 'person_add', 'Profile created on GradRight', s.createdOn) +
-      STAGES.map(function (st, i) {
-        if (i > s.stage) return logRow(' todo', '', st.name, null);
-        return logRow(i === s.stage ? ' done current' : ' done', 'check', st.name, events[i], i === s.stage ? 'Current stage' : '');
-      }).join('');
-
-    var scored = s.parts.filter(function (p) { return p.weight > 0; });
-    var matches = scored.map(function (p) {
-      var pct = Math.round(p.v * 100);
-      var tone = pct >= 99 ? 'hi' : pct >= 50 ? 'mid' : 'lo';
-      return (
-        '<div class="ar-match-row">' +
-        '<span class="ar-match-label">' + esc(p.label) + '</span>' +
-        '<em>' + esc(p.note) + '</em>' +
-        '<b class="ar-match-score ' + tone + '">' + pct + '%</b>' +
-        '</div>'
-      );
-    }).join('');
-    if (scored.length) {
-      matches += '<div class="ar-match-total"><span>Match score</span>' +
-        '<span></span>' +
-        '<b class="ar-match-score ' + scoreClass(s) + '">' + s.score + '%</b></div>';
-    }
-
-    var other = '<div class="ar-facts">' + otherDetails(s).map(function (f) {
-      return '<div><span>' + f[0] + '</span><strong>' + esc(f[1]) + '</strong></div>';
-    }).join('') + '</div>';
-
-    var facts = [
-      ['Location', s.city + ' · ' + s.km + ' km'], ['Stream', s.stream],
-      ['Class 10', markNote(s.mark10)], ['Class 12', markNote(s.mark12)],
-      ['Fee budget', '₹' + s.budget[0] + '–' + s.budget[1] + 'L'], ['Program (AOI)', program.name],
-      ['Intake', s.intake], ['GR ID', s.id],
-    ].map(function (f) {
-      return '<div><span>' + f[0] + '</span><strong>' + esc(f[1]) + '</strong></div>';
-    }).join('');
-
-    var accepted = s.pref ? (s.pref.criteria.test.tests || []).map(function (rq) { return rq.name.toLowerCase(); }) : null;
-    var tests = s.tests.length
-      ? s.tests.map(function (t) {
-        var ok = !!accepted && accepted.indexOf(t.name.toLowerCase()) !== -1;
-        return '<div class="ar-test-row"><span>' + esc(t.name) +
-          (t.custom ? '<i class="ar-tag">Custom</i>' : '') + '</span>' +
-          '<strong>' + esc(testNote(t).slice(t.name.length + 1)) + '</strong>' +
-          (accepted ? '<em class="' + (ok ? 'ok' : '') + '">' + (ok ? 'Accepted' : 'Not in preference') + '</em>' : '<em></em>') + '</div>';
-      }).join('')
-      : '<p class="ar-muted">No tests added.</p>';
-
-    var activities = s.activities.map(function (a) {
-      var custom = ACTIVITIES.map(function (x) { return x.toLowerCase(); }).indexOf(a.toLowerCase()) === -1;
-      return '<span class="pill">' + esc(a) + (custom ? ' · custom' : '') + '</span>';
-    }).join('');
-
-    if (!s.pref) {
-      matches = '<p class="ar-muted">' + esc(program.name) + ' has no preference, so there’s nothing to match against.</p>' +
-        '<button type="button" class="btn btn-secondary btn-sm ar-block-btn" data-create-pref="' + s.program + '">' + ico('add') + 'Create preference</button>';
-    }
-
     var body =
       '<div class="ar-hero"><div class="avatar lg">' + esc(s.initials) + '</div>' +
       '<div class="ar-hero-who"><h3>' + esc(s.name) + '</h3><p>' + esc(s.id) + ' · ' + esc(program.name) + '</p>' +
       '<p style="margin-top:0.35rem">' + stagePill(s) + '</p></div>' +
       '<div class="ar-ring" style="--p:' + (s.score || 0) + ';--c:' + scoreColor(s) + '"><span>' + (s.score === null ? '—' : s.score + '%') + '</span></div></div>' +
       profileSection('ai', ico('auto_awesome') + 'AI summary', aiSummary(s), 'ar-ai') +
-      profileSection('match', 'Preference match', matches) +
-      profileSection('profile', 'Profile', '<div class="ar-facts">' + facts + '</div>' +
-        '<div class="ar-subsec"><span class="ar-sublabel">Test scores</span>' + tests + '</div>' +
-        '<div class="ar-subsec"><span class="ar-sublabel">Extracurricular</span><div class="ar-tags">' + activities + '</div></div>') +
-      profileSection('other', 'Other details', other) +
-      profileSection('log', 'Activity log', '<div class="ar-journey">' + journey + '</div>');
+      profileSection('match', 'Preference match', matchHtml(s, s.pref, { score: s.score, parts: s.parts })) +
+      profileSection('profile', 'Profile', profileFactsHtml(s) +
+        '<div class="ar-subsec"><span class="ar-sublabel">Test scores</span>' + testsHtml(s, s.pref) + '</div>' +
+        '<div class="ar-subsec"><span class="ar-sublabel">Extracurricular</span>' + activitiesHtml(s) + '</div>') +
+      profileSection('other', 'Other details', factsHtml(otherDetails(s))) +
+      profileSection('log', 'Activity log', '<div id="log-body">' + activityLogHtml(s) + '</div>') +
+      campaignLogHtml(s);
 
     openDrawer(
       'Student profile',
       body,
       saveBtnHtml(s.id) +
-      '<button type="button" class="btn btn-primary btn-sm" data-action="reach">Reach out</button>'
+      '<button type="button" class="btn btn-primary btn-sm btn-icon" data-card-chat="' + s.id + '">' + ico('chat') + 'Chat</button>'
     );
+  }
+
+  function logRow(cls, icon, label, when, note) {
+    return (
+      '<div class="ar-step' + cls + '"><i>' + (icon ? ico(icon) : '') + '</i>' +
+      '<span class="ar-step-label">' + esc(label) + (note ? '<em>' + esc(note) + '</em>' : '') + '</span>' +
+      '<time>' + (when ? esc(fmtDateTime(when)) : 'Not yet') + '</time></div>'
+    );
+  }
+
+  /** Steps and actions follow the picked program; the GradRight sign-up applies to every program. */
+  function activityLogHtml(s) {
+    var picked = pickedJourney(s, state.program);
+    var j = picked.journey;
+    var steps =
+      logRow(' done', 'person_add', 'Profile created on GradRight', s.createdOn) +
+      STAGES.map(function (st, i) {
+        if (i > j.stage) return logRow(' todo', '', st.name, null);
+        return logRow(i === j.stage ? ' done current' : ' done', 'check', st.name, j.events[i], i === j.stage ? 'Current stage' : '');
+      }).join('');
+    var done = ACTIONS.filter(function (a) { return j.actions[a.id]; }).length;
+    return '<div class="ar-log-program"><span class="ar-sublabel">Program' + (picked.journeys.length > 1 ? ' · ' + picked.journeys.length + ' programs' : '') + '</span>' +
+      journeyPicker(s, picked) + '</div>' +
+      '<div class="ar-journey">' + steps + '</div>' +
+      '<div class="ar-subsec"><span class="ar-sublabel">Additional user actions · ' + done + ' of ' + ACTIONS.length + '</span>' + ACTIONS.map(function (a) {
+        var at = j.actions[a.id];
+        return '<div class="ar-cp-extra' + (at ? ' on' : '') + '">' + ico(a.icon) + '<span>' + esc(a.name) + '</span>' +
+          '<time>' + (at ? esc(fmtDateTime(at)) : 'Not yet') + '</time></div>';
+      }).join('') + '</div>';
   }
 
   function saveBtnHtml(id) {
@@ -2081,6 +3125,7 @@
       PREFS[editing.programId] = list.concat(d);
     }
     savePrefs();
+    lastSeenKey = null;
     var created = !editing.prefId;
     var programId = editing.programId;
     var prefId = d.id;
@@ -2115,6 +3160,7 @@
     PREFS[programId] = list.filter(function (p) { return p.id !== prefId; });
     if (state.prefId === prefId) state.prefId = null;
     savePrefs();
+    forgetSeen(prefId);
     if (CHANGES[prefId]) {
       delete CHANGES[prefId];
       saveChanges();
@@ -2126,9 +3172,139 @@
 
   /* ——— Events ——— */
 
-  var MENUS = [['program-btn', 'program-menu'], ['pref-btn', 'pref-menu'], ['range-btn', 'range-menu'], ['intake-btn', 'intake-menu'], ['filter-btn', 'filter-menu']];
+  var MENUS = [['program-btn', 'program-menu'], ['pref-btn', 'pref-menu'], ['range-btn', 'range-menu'], ['intake-btn', 'intake-menu'], ['filter-btn', 'filter-menu'], ['bulk-btn', 'bulk-menu'],
+    ['cf-program-btn', 'cf-program-menu'], ['cf-pref-btn', 'cf-pref-menu'], ['cf-score-btn', 'cf-score-menu'], ['cf-stage-btn', 'cf-stage-menu'], ['cf-extra-btn', 'cf-extra-menu']];
 
   /** The toolbar menu and the Filters row both drive the same intake year. */
+  /* ——— Date range picker ——— */
+
+  function dayStart(d) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  function addDays(d, n) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  }
+
+  function addMonths(d, n) {
+    return new Date(d.getFullYear(), d.getMonth() + n, 1);
+  }
+
+  var RANGE_PRESETS = [
+    { id: 'all', name: 'All time' },
+    { id: 'today', name: 'Today', days: [0, 0] },
+    { id: 'yesterday', name: 'Yesterday', days: [1, 1] },
+    { id: '7', name: 'Last 7 days', days: [6, 0] },
+    { id: '30', name: 'Last 30 days', days: [29, 0] },
+    { id: '90', name: 'Last 90 days', days: [89, 0] },
+    { id: 'mtd', name: 'Month to date' },
+    { id: 'year', name: 'Last 1 year', days: [364, 0] },
+  ];
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  /** The draft while the picker is open; month is the left calendar. Nothing changes until Apply. */
+  var rp = { from: null, to: null, preset: 'all', month: null };
+
+  function presetRange(id) {
+    var today = dayStart(TODAY);
+    var p = RANGE_PRESETS.filter(function (x) { return x.id === id; })[0];
+    if (id === 'mtd') return { from: new Date(today.getFullYear(), today.getMonth(), 1), to: today };
+    if (!p || !p.days) return null;
+    return { from: addDays(today, -p.days[0]), to: addDays(today, -p.days[1]) };
+  }
+
+  function setRangePreset(id) {
+    var r = presetRange(id);
+    rp.preset = id;
+    rp.from = r ? r.from : null;
+    rp.to = r ? r.to : null;
+    rp.month = addMonths(r ? r.to : TODAY, -1);
+  }
+
+  function openRangePicker() {
+    if (state.range) {
+      rp = { from: state.range.from, to: state.range.to, preset: state.range.preset, month: addMonths(state.range.to, -1) };
+    } else {
+      setRangePreset('all');
+    }
+    renderRangePicker();
+  }
+
+  function pickRangeDay(d) {
+    rp.preset = 'custom';
+    if (!rp.from || rp.to) {
+      rp.from = d;
+      rp.to = null;
+    } else if (d < rp.from) {
+      rp.from = d;
+    } else {
+      rp.to = d;
+    }
+  }
+
+  function fmtShort(d, withYear) {
+    var m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+    return d.getDate() + ' ' + m[d.getMonth()] + (withYear ? ' ' + d.getFullYear() : '');
+  }
+
+  function rangeText(from, to) {
+    if (!from) return 'All time';
+    to = to || from;
+    var sameYear = from.getFullYear() === to.getFullYear();
+    var otherYear = to.getFullYear() !== TODAY.getFullYear();
+    if (from.getTime() === to.getTime()) return fmtShort(from, otherYear);
+    return fmtShort(from, !sameYear || otherYear) + ' – ' + fmtShort(to, !sameYear || otherYear);
+  }
+
+  function monthHtml(month, nav) {
+    var today = dayStart(TODAY);
+    var lead = (month.getDay() + 6) % 7;
+    var count = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+    var end = rp.to || rp.from;
+    var cells = '';
+    for (var b = 0; b < lead; b++) cells += '<span></span>';
+    for (var d = 1; d <= count; d++) {
+      var day = new Date(month.getFullYear(), month.getMonth(), d);
+      var cls = 'ar-rp-day';
+      if (rp.from && day >= rp.from && day <= end) cls += ' in';
+      if (rp.from && day.getTime() === rp.from.getTime()) cls += ' start';
+      if (end && day.getTime() === end.getTime()) cls += ' end';
+      if (day.getTime() === today.getTime()) cls += ' today';
+      cells += day > today
+        ? '<span class="' + cls + ' off">' + d + '</span>'
+        : '<button type="button" class="' + cls + '" data-rp-day="' + day.getTime() + '">' + d + '</button>';
+    }
+    var atEnd = addMonths(month, 1) > today;
+    return '<div class="ar-rp-month"><div class="ar-rp-head">' +
+      (nav < 0 ? '<button type="button" class="ar-rp-nav" data-rp-nav="-1" aria-label="Previous month">' + ico('chevron_left') + '</button>' : '<span></span>') +
+      '<strong>' + MONTHS[month.getMonth()] + ' ' + month.getFullYear() + '</strong>' +
+      (nav > 0 ? '<button type="button" class="ar-rp-nav" data-rp-nav="1" aria-label="Next month"' + (atEnd ? ' disabled' : '') + '>' + ico('chevron_right') + '</button>' : '<span></span>') +
+      '</div><div class="ar-rp-grid">' + ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(function (w) { return '<i>' + w + '</i>'; }).join('') + cells + '</div></div>';
+  }
+
+  function renderRangePicker() {
+    var right = addMonths(rp.month, 1);
+    var days = rp.from ? Math.round(((rp.to || rp.from) - rp.from) / 86400000) + 1 : 0;
+    $('range-menu').innerHTML =
+      '<div class="ar-rp-body"><div class="ar-rp-presets">' + RANGE_PRESETS.map(function (p) {
+        return '<button type="button" class="ar-rp-preset' + (rp.preset === p.id ? ' active' : '') + '" data-rp-preset="' + p.id + '">' + p.name + '</button>';
+      }).join('') + '</div>' +
+      '<div class="ar-rp-months">' + monthHtml(rp.month, -1) + monthHtml(right, 1) + '</div></div>' +
+      '<div class="ar-rp-foot"><span>' + esc(rangeText(rp.from, rp.to)) + (days ? ' · ' + days + ' day' + (days === 1 ? '' : 's') : '') + '</span>' +
+      '<button type="button" class="btn btn-primary btn-sm" data-rp-apply>Apply</button></div>';
+  }
+
+  function applyRange() {
+    if (!rp.from) {
+      state.range = null;
+      $('range-label').textContent = 'All time';
+      return;
+    }
+    var to = rp.to || rp.from;
+    state.range = { from: rp.from, to: to, preset: rp.preset };
+    $('range-label').textContent = rangeText(rp.from, to);
+  }
+
   function setIntake(year) {
     state.intake = year;
     document.querySelectorAll('[data-intake]').forEach(function (b) {
@@ -2140,6 +3316,7 @@
   }
 
   function closeMenus(except) {
+    hideCardMenu();
     MENUS.forEach(function (m) {
       if (m[1] === except) return;
       $(m[1]).hidden = true;
@@ -2175,6 +3352,8 @@
     for (var i = 0; i < MENUS.length; i++) {
       if (t.closest('#' + MENUS[i][0])) {
         if (MENUS[i][1] === 'filter-menu') renderFilterMenu();
+        if (MENUS[i][1] === 'bulk-menu') renderBulkMenu();
+        if (MENUS[i][1] === 'range-menu') openRangePicker();
         toggleMenu(MENUS[i][0], MENUS[i][1]);
         return;
       }
@@ -2204,15 +3383,6 @@
       saveChanges();
       renderPrograms();
       toast('Score history cleared.');
-      return;
-    }
-
-    var version = t.closest('[data-view-version]');
-    if (version) {
-      e.preventDefault();
-      var sid = version.getAttribute('data-view-version');
-      VERSION_VIEW[sid] = !VERSION_VIEW[sid];
-      renderStudents();
       return;
     }
 
@@ -2292,25 +3462,72 @@
       return;
     }
 
-    var rangeItem = t.closest('[data-range]');
-    if (rangeItem) {
-      state.range = Number(rangeItem.getAttribute('data-range'));
-      document.querySelectorAll('[data-range]').forEach(function (b) { b.classList.toggle('active', b === rangeItem); });
-      $('range-label').textContent = rangeItem.textContent;
+    var rpPreset = t.closest('[data-rp-preset]');
+    if (rpPreset) {
+      setRangePreset(rpPreset.getAttribute('data-rp-preset'));
+      renderRangePicker();
+      return;
+    }
+
+    var rpDay = t.closest('[data-rp-day]');
+    if (rpDay) {
+      pickRangeDay(new Date(Number(rpDay.getAttribute('data-rp-day'))));
+      renderRangePicker();
+      return;
+    }
+
+    var rpNav = t.closest('[data-rp-nav]');
+    if (rpNav) {
+      rp.month = addMonths(rp.month, Number(rpNav.getAttribute('data-rp-nav')));
+      renderRangePicker();
+      return;
+    }
+
+    if (t.closest('[data-rp-apply]')) {
+      applyRange();
       closeMenus();
       renderDashboard();
       return;
     }
 
-    if (!t.closest('.ar-menu')) closeMenus();
+    if (!t.closest('.ar-menu') && !t.closest('[data-card-more]')) closeMenus();
 
-    if (t.closest('#pref-panel-edit')) {
-      if (state.program === 'all') setView('programs');
-      else {
-        var current = findPref(state.program, state.prefId);
-        if (current && isDefaultPref(state.program, current.id)) openEditor(state.program, null, current);
-        else openEditor(state.program, current && current.id);
-      }
+    if (t.closest('.ar-td-check, .ar-th-check')) return;
+
+    var bulk = t.closest('[data-bulk]');
+    if (bulk) {
+      closeMenus();
+      runBulk(bulk.getAttribute('data-bulk'), bulk.getAttribute('data-bulk-channel'));
+      return;
+    }
+
+    if (t.closest('[data-bulk-clear]')) {
+      SELECTED = {};
+      closeMenus();
+      syncSelection();
+      return;
+    }
+
+    if (t.closest('#pref-panel-create')) {
+      openEditor(state.program);
+      return;
+    }
+
+    var prefAct = t.closest('#pref-panel-edit, #pref-panel-dup');
+    if (prefAct && !prefAct.disabled) {
+      var current = findPref(state.program, state.prefId);
+      if (!current) return;
+      if (prefAct.id === 'pref-panel-dup') openEditor(state.program, null, current);
+      else openEditor(state.program, current.id);
+      return;
+    }
+
+    var funnelAction = t.closest('[data-funnel-action]');
+    if (funnelAction) {
+      var fa = funnelAction.getAttribute('data-funnel-action');
+      state.action = state.action === fa ? null : fa;
+      renderFunnel();
+      renderStudents();
       return;
     }
 
@@ -2318,6 +3535,14 @@
     if (stage) {
       var si = Number(stage.getAttribute('data-stage'));
       state.stage = state.stage === si ? null : si;
+      renderFunnel();
+      renderStudents();
+      return;
+    }
+
+    var stageMode = t.closest('[data-stage-mode]');
+    if (stageMode) {
+      state.stageMode = stageMode.getAttribute('data-stage-mode');
       renderFunnel();
       renderStudents();
       return;
@@ -2345,8 +3570,105 @@
         return;
       }
       if (what === 'stage') state.stage = null;
+      else if (what === 'action') state.action = null;
+      else if (what === 'funnel') state.stage = state.action = null;
       else setProgram('all');
       renderDashboard();
+      return;
+    }
+
+    var cardMore = t.closest('[data-card-more]');
+    if (cardMore) {
+      var reopen = cardMenuFor !== cardMore.getAttribute('data-card-more');
+      closeMenus();
+      if (reopen) showCardMenu(cardMore);
+      return;
+    }
+
+    var campaignItem = t.closest('[data-campaign]');
+    if (campaignItem) {
+      closeMenus();
+      openCampaign([campaignItem.getAttribute('data-campaign-student')], campaignItem.getAttribute('data-campaign'));
+      return;
+    }
+
+    var campaignChannel = t.closest('[data-campaign-channel]');
+    if (campaignChannel && campaign) {
+      readCampaign();
+      campaign.channel = campaignChannel.getAttribute('data-campaign-channel');
+      renderCampaign();
+      return;
+    }
+
+    if (t.closest('[data-campaign-send]') && campaign) {
+      sendCampaign();
+      return;
+    }
+
+    var cardChat = t.closest('[data-card-chat]');
+    if (cardChat) {
+      openChat(cardChat.getAttribute('data-card-chat'));
+      return;
+    }
+
+    var chatOpen = t.closest('[data-chat-open]');
+    if (chatOpen) {
+      selectChat(chatOpen.getAttribute('data-chat-open'));
+      renderChats();
+      return;
+    }
+
+    var cfProgram = t.closest('[data-cf-program]');
+    if (cfProgram) {
+      CF.program = cfProgram.getAttribute('data-cf-program');
+      CF.prefId = null;
+      CF.min = CF.max = '';
+      closeMenus();
+      renderChats();
+      return;
+    }
+
+    var cfPrefItem = t.closest('[data-cf-pref]');
+    if (cfPrefItem) {
+      CF.prefId = cfPrefItem.getAttribute('data-cf-pref') || null;
+      CF.min = CF.max = '';
+      closeMenus();
+      renderChats();
+      return;
+    }
+
+    var cfPreset = t.closest('[data-cf-preset]');
+    if (cfPreset) {
+      var bounds = cfPreset.getAttribute('data-cf-preset').split('-');
+      CF.min = bounds[0];
+      CF.max = bounds[1];
+      closeMenus();
+      renderChats();
+      return;
+    }
+
+    var cfQuick = t.closest('[data-cf-quick]');
+    if (cfQuick) {
+      var qk = cfQuick.getAttribute('data-cf-quick');
+      if (qk === 'all') {
+        CF.unread = false;
+        CF.by = '';
+      } else if (qk === 'unread') CF.unread = !CF.unread;
+      else CF.by = CF.by === qk ? '' : qk;
+      renderChats();
+      return;
+    }
+
+    if (t.closest('#cf-clear') || t.closest('[data-cf-clear]')) {
+      resetChatFilters();
+      renderChats();
+      return;
+    }
+
+    var chatQuick = t.closest('[data-chat-quick]');
+    if (chatQuick) {
+      $('chat-input').value = chatQuick.getAttribute('data-chat-quick');
+      $('chat-input').focus();
       return;
     }
 
@@ -2399,7 +3721,7 @@
     if (usePref) {
       state.program = state.ppProgram;
       state.prefId = usePref.getAttribute('data-use-pref');
-      state.stage = null;
+      state.stage = state.action = null;
       resetFilters();
       setView('dashboard');
       $('students').scrollIntoView({ behavior: 'smooth' });
@@ -2446,14 +3768,70 @@
         toast(nowSaved ? 'Saved to your list.' : 'Removed from your list.');
         renderStudents();
       }
-      else if (act === 'reach') toast('Outreach queued for this student.');
     }
   });
 
-  $('drawer-body').addEventListener('input', function () {
+  document.addEventListener('submit', function (e) {
+    if (e.target.id !== 'chat-form') return;
+    e.preventDefault();
+    sendChat($('chat-input').value);
+  });
+
+  $('chat-search').addEventListener('input', function () {
+    renderChatFilters();
+    renderChatList();
+  });
+
+  $('view-chats').addEventListener('change', function (e) {
+    var cpStudent = e.target.getAttribute('data-cp-program');
+    if (cpStudent) {
+      state.cpProgram = state.cpProgram || {};
+      state.cpProgram[cpStudent] = e.target.value;
+      renderChatProfile();
+      return;
+    }
+    var stage = e.target.getAttribute('data-cf-stage');
+    var extra = e.target.getAttribute('data-cf-extra');
+    if (stage === null && extra === null) return;
+    var list = stage !== null ? CF.stages : CF.extras;
+    var key = stage !== null ? Number(stage) : extra;
+    var at = list.indexOf(key);
+    if (e.target.checked && at === -1) list.push(key);
+    if (!e.target.checked && at !== -1) list.splice(at, 1);
+    renderChatFilters();
+    renderChatList();
+  });
+
+  $('view-chats').addEventListener('input', function (e) {
+    var k = e.target.getAttribute('data-cf-score');
+    if (!k) return;
+    var v = e.target.value === '' ? '' : Math.max(0, Math.min(100, Number(e.target.value)));
+    CF[k] = v;
+    renderChatFilters();
+    renderChatList();
+  });
+
+  $('drawer-body').addEventListener('input', function (e) {
     if (editing) updatePreview();
+    if (e.target.id === 'cm-text') updateCampaignCount();
   });
   $('drawer-body').addEventListener('change', function (e) {
+    var logStudent = e.target.getAttribute('data-cp-program');
+    if (logStudent && $('log-body')) {
+      state.cpProgram = state.cpProgram || {};
+      state.cpProgram[logStudent] = e.target.value;
+      $('log-body').innerHTML = activityLogHtml(studentById(logStudent));
+      if (state.view === 'chats') renderChatProfile();
+      return;
+    }
+    if (e.target.id === 'cm-template' && campaign) {
+      var tpl = CAMPAIGN_TEMPLATES.filter(function (x) { return x.id === e.target.value; })[0];
+      campaign.template = tpl.id;
+      campaign.subject = draftText(tpl.subject, campaign.students);
+      campaign.text = draftText(tpl.text, campaign.students);
+      renderCampaign();
+      return;
+    }
     if (e.target.id === 'pc-program') {
       $('pc-pref').innerHTML = prefOptions(e.target.value);
       return;
@@ -2514,6 +3892,11 @@
       closeMenus();
       if (!$('drawer').hidden) closeDrawer();
     }
+    if (e.key === 'Enter' && !e.shiftKey && e.target.id === 'chat-input') {
+      e.preventDefault();
+      sendChat(e.target.value);
+      return;
+    }
     if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('ar-pick')) e.target.click();
     if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('ar-card')) {
       e.preventDefault();
@@ -2563,16 +3946,27 @@
     renderStudents();
   });
 
-  $('campaign-btn').addEventListener('click', function () {
-    var n = visibleSet().length;
-    toast(n ? 'Campaign drafted for ' + n + ' student' + (n === 1 ? '' : 's') + '.' : 'No students in this view.');
+  $('table').addEventListener('change', function (e) {
+    var id = e.target.getAttribute('data-select');
+    var scope = e.target.getAttribute('data-select-all');
+    if (id) {
+      if (e.target.checked) SELECTED[id] = true;
+      else delete SELECTED[id];
+    } else if (scope !== null) {
+      var on = e.target.checked;
+      scopeItems(scope).forEach(function (s) {
+        if (on) SELECTED[s.id] = true;
+        else delete SELECTED[s.id];
+      });
+    } else return;
+    syncSelection();
   });
 
-  $('export-btn').addEventListener('click', function () {
-    var list = visibleSet();
-    var rows = [['GR ID', 'Name', 'Program', 'Preference', 'Match %', 'Stage', 'Class 10', 'Class 12', 'Tests', 'Budget (L)', 'City', 'Km', 'Intake']].concat(
+  function exportCsv(list) {
+    var rows = [['GR ID', 'Name', 'Program', 'Preference', 'Match %', 'Stage', 'Additional user actions', 'Class 10', 'Class 12', 'Tests', 'Budget (L)', 'City', 'Km', 'Intake']].concat(
       list.map(function (s) {
-        return [s.id, s.name, programById(s.program).name, s.pref ? s.pref.name : 'No preference', s.score === null ? '' : s.score, STAGES[s.stage].name, markNote(s.mark10), markNote(s.mark12),
+        var did = ACTIONS.filter(function (a) { return s.actions[a.id]; }).map(function (a) { return a.name; }).join('; ');
+        return [s.id, s.name, programById(s.program).name, s.pref ? s.pref.name : 'No preference', s.score === null ? '' : s.score, STAGES[s.stage].name, did, markNote(s.mark10), markNote(s.mark12),
           s.tests.map(testNote).join('; '), s.budget[0] + '-' + s.budget[1], s.city, s.km, s.intake];
       })
     );
@@ -2584,8 +3978,8 @@
     a.download = 'admitright-students.csv';
     a.click();
     URL.revokeObjectURL(a.href);
-    toast('Exported ' + list.length + ' students.');
-  });
+    toast('Downloaded ' + list.length + ' student' + (list.length === 1 ? '' : 's') + '.');
+  }
 
   setIntake(state.intake);
 
@@ -2608,7 +4002,7 @@
   function startWith(programId, prefId, keepFilters) {
     state.program = programId;
     state.prefId = prefId;
-    state.stage = null;
+    state.stage = state.action = null;
     if (!keepFilters) applySavedFilters();
     unlock();
     setView('dashboard');
@@ -2629,6 +4023,7 @@
         '<button type="button" class="btn btn-primary btn-sm" data-setup-pref="">Open dashboard</button></article>';
       return;
     }
+    var seen = readSeen();
     $('setup-cards').innerHTML = prefs.map(function (pref, i) {
       var chips = CRITERIA.filter(function (c) { return pref.criteria[c.id].weight > 0; }).map(function (c) {
         return '<span class="ar-crit">' + ico(c.icon) + esc(criterionLine(c.id, pref.criteria[c.id])) + '</span>';
@@ -2638,6 +4033,7 @@
         '<div class="ar-pp-card-head"><h3>' + esc(pref.name) + '</h3>' +
         (i === 0 ? '<span class="ar-default">Default</span>' : '') + '</div>' +
         '<div class="ar-crits">' + chips + '</div>' +
+        visitHtml(setupProgram, pref, seen) +
         '<div class="ar-pp-card-foot">' +
         '<button type="button" class="btn btn-primary btn-sm ar-setup-go" data-setup-pref="' + pref.id + '">Open dashboard' + ico('arrow_forward') + '</button></div>' +
         '</article>'
@@ -2689,6 +4085,7 @@
       sessionStorage.removeItem(SESSION_KEY);
       sessionStorage.removeItem(VIEW_KEY);
     } catch (er) { /* blocked */ }
+    lastSeenKey = null;
     closeDrawer();
     closeMenus();
     showGate('gate-login');
