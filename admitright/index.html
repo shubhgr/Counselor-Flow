@@ -9,7 +9,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=notif8" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar159" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar176" />
 </head>
 <body class="ar ar-locked">
   <section class="ar-gate" id="gate-login" hidden>
@@ -56,20 +56,23 @@
 
   <div class="app">
     <aside class="ar-rail" aria-label="Main navigation">
-      <a class="ar-rail-mark" href="#" data-go="dashboard" aria-label="AdmitRight">
+      <a class="ar-rail-mark" href="#/dashboard" data-go="dashboard" aria-label="AdmitRight">
         <img src="assets/gradright-logo-dark.png" alt="" />
       </a>
       <nav class="ar-rail-nav">
-        <a class="ar-rail-item active" href="#" data-go="dashboard" title="Dashboard" aria-label="Dashboard">
+        <a class="ar-rail-item active" href="#/dashboard" data-go="dashboard" title="Dashboard" aria-label="Dashboard">
           <span class="material-symbols-rounded" aria-hidden="true">space_dashboard</span>
         </a>
-        <a class="ar-rail-item" href="#" data-go="programs" title="Programs &amp; preferences" aria-label="Programs and preferences">
+        <a class="ar-rail-item" href="#/programs" data-go="programs" title="Programs &amp; preferences" aria-label="Programs and preferences">
           <span class="material-symbols-rounded" aria-hidden="true">school</span>
         </a>
-        <a class="ar-rail-item" href="#" data-go="saved" title="Saved students" aria-label="Saved students">
+        <a class="ar-rail-item" href="#/saved" data-go="saved" title="Saved students" aria-label="Saved students">
           <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
         </a>
-        <a class="ar-rail-item" href="#" data-go="chats" title="Chats" aria-label="Chats">
+        <a class="ar-rail-item" href="#/events" data-go="events" title="Events" aria-label="Events">
+          <span class="material-symbols-rounded" aria-hidden="true">event</span>
+        </a>
+        <a class="ar-rail-item" href="#/chats" data-go="chats" title="Chats" aria-label="Chats">
           <span class="material-symbols-rounded" aria-hidden="true">chat</span>
           <span class="ar-rail-badge" id="chat-badge" hidden></span>
         </a>
@@ -244,6 +247,98 @@
         </div>
       </div>
 
+      <!-- Events -->
+      <div id="view-events" hidden>
+        <header class="topbar" id="events-list-head">
+          <div class="ar-title">
+            <h1>BML Munjal University</h1>
+            <span class="ar-sub">Events</span>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-primary btn-sm btn-icon" id="ev-create">
+              <span class="material-symbols-rounded" aria-hidden="true">add</span>
+              Create event
+            </button>
+          </div>
+        </header>
+
+        <div class="content ar-content" id="events-list-content">
+          <section class="ar-ev-insights" id="ev-insights"></section>
+
+          <section class="ar-section">
+            <div class="ar-section-head">
+              <h2 class="ar-students-head"><span>Events</span><span class="ar-head-count" id="ev-count"></span></h2>
+              <div class="ar-tools">
+                <label class="ar-search">
+                  <span class="material-symbols-rounded" aria-hidden="true">search</span>
+                  <input type="search" id="ev-search" placeholder="Search event, type, host or venue" autocomplete="off" />
+                </label>
+                <div class="ar-menu-wrap">
+                  <button type="button" class="chip-btn ar-picker" id="ev-program-btn" aria-expanded="false">
+                    <span class="ar-picker-text"><small>Program</small><span id="ev-program-label">All programs</span></span>
+                    <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+                  </button>
+                  <div class="ar-menu" id="ev-program-menu" hidden></div>
+                </div>
+                <div class="ar-menu-wrap">
+                  <button type="button" class="chip-btn ar-picker" id="ev-pref-btn" aria-expanded="false">
+                    <span class="ar-picker-text"><small>Preference</small><span id="ev-pref-label">Any</span></span>
+                    <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+                  </button>
+                  <div class="ar-menu" id="ev-pref-menu" hidden></div>
+                </div>
+                <div class="ar-menu-wrap">
+                  <button type="button" class="chip-btn ar-picker" id="ev-cohort-btn" aria-expanded="false">
+                    <span class="ar-picker-text"><small>Cohort</small><span id="ev-cohort-label">All cohorts</span></span>
+                    <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+                  </button>
+                  <div class="ar-menu" id="ev-cohort-menu" hidden></div>
+                </div>
+                <div class="ar-menu-wrap">
+                  <button type="button" class="btn btn-secondary btn-sm btn-icon" id="ev-filter-btn" aria-expanded="false">
+                    <span class="material-symbols-rounded" aria-hidden="true">filter_list</span>
+                    Filters
+                    <span class="ar-count" id="ev-filter-count" hidden></span>
+                  </button>
+                  <div class="ar-menu ar-filter-menu ar-ev-filter-menu" id="ev-filter-menu" hidden></div>
+                </div>
+              </div>
+            </div>
+            <div class="ar-filters" id="ev-active-filters" hidden></div>
+            <div class="ar-board ar-ev-board" id="ev-board"></div>
+          </section>
+        </div>
+
+        <div id="events-create-page" hidden>
+          <header class="topbar ar-subpage-head">
+            <div class="ar-title">
+              <button type="button" class="ar-link ar-back-link" data-events-back><span class="material-symbols-rounded" aria-hidden="true">arrow_back</span> Events</button>
+              <h1>Create event</h1>
+              <span class="ar-sub">Build and publish an event</span>
+            </div>
+          </header>
+          <div class="content ar-content ar-event-page">
+            <section class="panel ar-event-page-card">
+              <div id="ev-create-body"></div>
+              <div class="ar-event-page-foot" id="ev-create-foot"></div>
+            </section>
+          </div>
+        </div>
+
+        <div id="events-detail-page" hidden>
+          <header class="topbar ar-subpage-head">
+            <div class="ar-title">
+              <button type="button" class="ar-link ar-back-link" data-events-back><span class="material-symbols-rounded" aria-hidden="true">arrow_back</span> Events</button>
+              <h1 id="ev-detail-page-title">Event details</h1>
+              <span class="ar-sub" id="ev-detail-page-sub">Event performance and audience</span>
+            </div>
+          </header>
+          <div class="content ar-content ar-event-page">
+            <div id="ev-detail-body"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Chats -->
       <div id="view-chats" hidden>
         <header class="topbar">
@@ -337,7 +432,7 @@
 
   <div class="ar-toast" id="toast" hidden></div>
 
-  <script src="data/students-data.js?v=ar159"></script>
-  <script src="js/admitright.js?v=ar159"></script>
+  <script src="data/students-data.js?v=ar176"></script>
+  <script src="js/admitright.js?v=ar176"></script>
 </body>
 </html>

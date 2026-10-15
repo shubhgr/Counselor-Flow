@@ -655,6 +655,7 @@
     ppProgram: PROGRAMS[0].id,
     collapsed: {},
     filters: { min: '', max: '', vals: {} },
+    chatId: null,
   };
 
   function programById(id) {
@@ -1948,19 +1949,111 @@
     }).join('');
   }
 
-  function setView(view) {
+  function setView(view, fromRoute) {
     state.view = view;
-    $('view-dashboard').hidden = view === 'programs' || view === 'chats';
+    $('view-dashboard').hidden = view === 'programs' || view === 'chats' || view === 'events';
     $('view-dashboard').classList.toggle('ar-saved-view', view === 'saved');
     $('view-programs').hidden = view !== 'programs';
     $('view-chats').hidden = view !== 'chats';
+    $('view-events').hidden = view !== 'events';
     document.querySelectorAll('.ar-rail-item[data-go]').forEach(function (a) {
       a.classList.toggle('active', a.getAttribute('data-go') === view);
     });
     if (view === 'programs') renderPrograms();
     else if (view === 'chats') renderChats();
+    else if (view === 'events') renderEvents();
     else renderDashboard();
     window.scrollTo(0, 0);
+    if (!fromRoute) goTo(viewPath(view));
+  }
+
+  function viewPath(view) {
+    if (view === 'events') {
+      if (evCreate) return 'events/create';
+      if (currentEventId) return 'events/' + encodeURIComponent(currentEventId);
+      return 'events';
+    }
+    if (view === 'chats' && state.chatId) return 'chats/' + encodeURIComponent(state.chatId);
+    return view || 'dashboard';
+  }
+
+  function parseRoute() {
+    var raw = (location.hash || '').replace(/^#\/?/, '');
+    var parts = raw.split('/').filter(Boolean).map(function (p) {
+      try { return decodeURIComponent(p); } catch (err) { return p; }
+    });
+    var view = parts[0] || 'dashboard';
+    if (['dashboard', 'programs', 'saved', 'events', 'chats'].indexOf(view) < 0) view = 'dashboard';
+    var page = 'list';
+    var id = null;
+    if (view === 'events') {
+      if (parts[1] === 'create') page = 'create';
+      else if (parts[1]) { page = 'detail'; id = parts[1]; }
+    }
+    if (view === 'chats' && parts[1]) id = parts[1];
+    return { view: view, page: page, id: id };
+  }
+
+  function routeHref(r) {
+    if (r.view === 'events' && r.page === 'create') return '#/events/create';
+    if (r.view === 'events' && r.page === 'detail' && r.id) return '#/events/' + encodeURIComponent(r.id);
+    if (r.view === 'chats' && r.id) return '#/chats/' + encodeURIComponent(r.id);
+    return '#/' + r.view;
+  }
+
+  function currentHash() {
+    return location.hash || '#';
+  }
+
+  function goTo(path, replace) {
+    var href = '#/' + String(path || 'dashboard').replace(/^#\/?/, '');
+    if (currentHash() === href) {
+      applyRoute();
+      return;
+    }
+    if (replace) {
+      history.replaceState(null, '', href);
+      applyRoute();
+      return;
+    }
+    location.hash = href;
+  }
+
+  function applyRoute() {
+    var r = parseRoute();
+    var href = routeHref(r);
+    if (currentHash() !== href) history.replaceState(null, '', href);
+    setView(r.view, true);
+    if (r.view === 'events') {
+      if (r.page === 'create') openEventCreate(true);
+      else if (r.page === 'detail') {
+        if (eventById(r.id)) openEvent(r.id, true);
+        else {
+          evCreate = null;
+          currentEventId = null;
+          showEventsPage('list');
+          history.replaceState(null, '', '#/events');
+        }
+      } else {
+        evCreate = null;
+        currentEventId = null;
+        showEventsPage('list');
+      }
+    } else {
+      evCreate = null;
+      currentEventId = null;
+    }
+    if (r.view === 'chats') {
+      if (r.id && studentById(r.id)) {
+        if (!CHATS[r.id]) CHATS[r.id] = { messages: [], unread: 0, seen: false, created: Date.now() };
+        selectChat(r.id);
+        renderChats();
+      } else if (r.id) {
+        state.chatId = null;
+        history.replaceState(null, '', '#/chats');
+        renderChats();
+      }
+    }
   }
 
   /* ——— Chats ———
@@ -2402,7 +2495,7 @@
     resetChatFilters();
     selectChat(id);
     closeDrawer();
-    setView('chats');
+    goTo('chats/' + encodeURIComponent(id));
     var input = $('chat-input');
     if (input) input.focus();
   }
@@ -2621,7 +2714,7 @@
   /** modal shows a centred popup instead of the side panel. */
   function openDrawer(title, body, foot, modal) {
     $('drawer').classList.toggle('modal', !!modal);
-    $('drawer').classList.remove('ar-confirm-modal', 'ar-campaign-modal');
+    $('drawer').classList.remove('ar-confirm-modal', 'ar-campaign-modal', 'ar-event-create-modal', 'ar-event-detail-modal');
     $('drawer-title').textContent = title;
     $('drawer-body').innerHTML = body;
     $('drawer-foot').innerHTML = foot || '';
@@ -2634,6 +2727,8 @@
     $('drawer').hidden = true;
     editing = null;
     campaign = null;
+    evEditor = null;
+    evCreate = null;
   }
 
   function aiSummary(s) {
@@ -3172,8 +3267,855 @@
 
   /* ——— Events ——— */
 
+  var EVENT_KINDS = [
+    { id: 'webinar', name: 'Webinar', icon: 'videocam' },
+    { id: 'ama', name: 'AMA', icon: 'forum' },
+    { id: 'coffee', name: 'Coffee chat', icon: 'local_cafe' },
+    { id: 'expert', name: 'Ask the expert', icon: 'psychology' },
+  ];
+  var EVENT_FORMATS = [
+    { id: 'online', name: 'Online', icon: 'language' },
+    { id: 'offline', name: 'Offline', icon: 'location_on' },
+    { id: 'hybrid', name: 'Hybrid', icon: 'devices' },
+  ];
+  var EVENT_BUCKETS = [
+    { id: 'live', name: 'Live', note: 'Published and upcoming', color: 'var(--green-500)' },
+    { id: 'completed', name: 'Completed', note: 'Already happened', color: 'var(--gray-400, #9ca3af)' },
+    { id: 'draft', name: 'Draft', note: 'Not published yet', color: 'var(--yellow-500)' },
+  ];
+  var COHORTS = ['2026', '2027', '2028', '2029'];
+  var PLATFORM_LINKS = {
+    'Zoom': function (n) { return 'https://zoom.us/j/8' + String(n * 7919 + 104729).slice(0, 9); },
+    'Google Meet': function (n) { var c = 'abcdefghijkmnpqrstuvwxyz'; var s = ''; for (var i = 0; i < 10; i++) s += c[(n * 31 + i * 17) % c.length]; return 'https://meet.google.com/' + s.slice(0, 3) + '-' + s.slice(3, 7) + '-' + s.slice(7); },
+    'Microsoft Teams': function (n) { return 'https://teams.microsoft.com/l/meetup-join/bmu-' + (n * 4099 + 31337); },
+  };
+  var CAMPUS = { city: 'Gurugram', venue: 'BML Munjal University campus, Sidhrawali' };
+
+  /* Demo only: events are placed relative to now so the countdown and the Live and Completed buckets stay meaningful.
+     [title, kind, format, program, preference index or null, cohort, hours from now, minutes long, city, venue, platform, clicks, registrations, draft, host] */
+  var EVENT_SEEDS = [
+    ['JEE Main 2027: the last 90 days', 'webinar', 'online', 'btech-cse', 0, '2027', 3.5, 60, '', '', 'Zoom', 1840, 412, false, 'Prof. Anil Mehta, Dean of Engineering'],
+    ['Inside our AI & robotics lab', 'webinar', 'hybrid', 'btech-ai', 0, '2027', -0.5, 90, CAMPUS.city, CAMPUS.venue, 'Zoom', 1510, 366, false, 'Dr. Ritu Sharma, AI Lab lead'],
+    ['Coffee chat with B.Tech alumni', 'coffee', 'offline', 'btech-cse', null, '2027', 20, 90, 'New Delhi', 'Third Wave Coffee, Connaught Place', '', 620, 84, false, 'Alumni from Google and Zomato'],
+    ['AMA: Life in the BMU hostels', 'ama', 'online', 'btech-ai', null, '2027', 46, 45, '', '', 'Google Meet', 960, 203, false, 'Student council'],
+    ['Ask the expert: Scholarships and loans', 'expert', 'hybrid', 'bba', 0, '2027', 74, 60, CAMPUS.city, CAMPUS.venue, 'Zoom', 1320, 288, false, 'Neha Kapoor, Financial aid office'],
+    ['Design portfolio review', 'expert', 'offline', 'bdes', 0, '2027', 122, 120, 'Jaipur', 'Hotel Clarks Amer, JLN Marg', '', 410, 62, false, 'Faculty of Design'],
+    ['Data science careers: what recruiters want', 'webinar', 'online', 'bsc-ds', 0, '2027', 170, 60, '', '', 'Microsoft Teams', 780, 150, false, 'Karan Malhotra, Analytics lead at Deloitte'],
+    ['Coffee chat for BBA aspirants', 'coffee', 'offline', 'bba', null, '2028', 218, 90, 'Chandigarh', 'Elante Mall, Industrial Area', '', 300, 41, false, 'BBA student ambassadors'],
+    ['AMA with the admissions director', 'ama', 'online', 'btech-cse', null, '2027', 290, 60, '', '', 'Zoom', 2200, 540, false, 'Dr. Sanjay Gupta, Director of Admissions'],
+    ['Coffee chat in Lucknow', 'coffee', 'offline', 'btech-cse', null, '2027', -72, 90, 'Lucknow', 'Cafe Repertwahr, Qaiserbagh', '', 540, 77, false, 'Admissions team'],
+    ['Choosing between CSE and AI & ML', 'webinar', 'online', 'btech-ai', 0, '2027', -146, 60, '', '', 'Zoom', 2650, 690, false, 'Heads of CSE and AI & ML'],
+    ['Ask the expert: Internships at BMU', 'expert', 'hybrid', 'bba', null, '2027', -240, 60, 'New Delhi', 'India Habitat Centre, Lodhi Road', 'Google Meet', 880, 190, false, 'Placement cell'],
+    ['B.Des studio walkthrough', 'webinar', 'online', 'bdes', null, '2026', -336, 45, '', '', 'Google Meet', 640, 130, false, 'Faculty of Design'],
+    ['AMA: CUET for B.Sc Data Science', 'ama', 'online', 'bsc-ds', 0, '2026', -480, 60, '', '', 'Zoom', 1120, 260, false, 'B.Sc Data Science faculty'],
+    ['Coffee chat in Noida', 'coffee', 'offline', 'btech-ai', null, '2027', -600, 90, 'Noida', 'Starbucks, DLF Mall of India', '', 380, 55, false, 'Admissions team'],
+    ['Parents’ evening: fees and hostels', 'expert', 'offline', 'btech-cse', null, '2027', -720, 120, CAMPUS.city, CAMPUS.venue, '', 720, 160, false, 'Admissions and hostel office'],
+    ['JEE Advanced rank holders meet-up', 'coffee', 'offline', 'btech-cse', 1, '2027', 430, 120, 'New Delhi', 'The Leela Ambience, Gurugram Road', '', 0, 0, true, 'Admissions team'],
+    ['Product design careers', 'webinar', 'online', 'bdes', null, '2028', 500, 60, '', '', 'Zoom', 0, 0, true, 'Alumni designers'],
+    ['AMA: BBA placements 2026', 'ama', 'hybrid', 'bba', 0, '2027', 600, 60, CAMPUS.city, CAMPUS.venue, 'Microsoft Teams', 0, 0, true, 'Placement cell'],
+    ['Ask the expert: Maths prep for data science', 'expert', 'online', 'bsc-ds', null, '2028', 670, 45, '', '', 'Google Meet', 0, 0, true, 'B.Sc Data Science faculty'],
+  ];
+
+  var EVENTS = (function () {
+    var base = new Date();
+    base.setMinutes(0, 0, 0);
+    return EVENT_SEEDS.map(function (r, i) {
+      var start = new Date(base.getTime() + r[6] * 3600000);
+      return {
+        id: 'EV-' + (101 + i), name: r[0], kind: r[1], format: r[2], program: r[3], prefIndex: r[4], cohort: r[5],
+        start: start, end: new Date(start.getTime() + r[7] * 60000), minutes: r[7],
+        city: r[8], venue: r[9], platform: r[10], link: r[10] ? PLATFORM_LINKS[r[10]](i + 1) : '',
+        clicks: r[11], registrations: r[12], draft: r[13], host: r[14], image: '',
+      };
+    });
+  })();
+
+  function eventById(id) {
+    return EVENTS.filter(function (e) { return e.id === id; })[0];
+  }
+
+  function kindById(id) {
+    return EVENT_KINDS.filter(function (k) { return k.id === id; })[0];
+  }
+
+  function formatById(id) {
+    return EVENT_FORMATS.filter(function (f) { return f.id === id; })[0];
+  }
+
+  function eventStatus(e, now) {
+    if (e.draft) return 'draft';
+    return (now || Date.now()) >= e.end.getTime() ? 'completed' : 'live';
+  }
+
+  /** Audience preference, looked up by position so it follows the program's current preferences. */
+  function eventPref(e) {
+    return e.prefIndex === null ? null : prefsFor(e.program)[e.prefIndex] || null;
+  }
+
+  function eventPlaces(e) {
+    return e.format === 'online' ? [] : [e.city];
+  }
+
+  /* Messages a registrant gets straight after signing up. { eventId: { email: { on, subject, text }, whatsapp: { on, text } } } */
+  var FOLLOWUPS_KEY = 'admitright_event_followups_v1';
+  var FOLLOWUPS = {};
+  try { FOLLOWUPS = JSON.parse(localStorage.getItem(FOLLOWUPS_KEY) || '{}') || {}; } catch (err) { FOLLOWUPS = {}; }
+
+  function saveFollowups() {
+    try { localStorage.setItem(FOLLOWUPS_KEY, JSON.stringify(FOLLOWUPS)); } catch (err) { /* storage full or blocked */ }
+  }
+
+  var FOLLOWUP_CHANNELS = [
+    { id: 'email', name: 'Email', icon: 'mail' },
+    { id: 'whatsapp', name: 'WhatsApp', icon: 'forum' },
+  ];
+
+  function defaultFollowups(e) {
+    return {
+      email: { on: !e.draft, subject: 'You’re registered: {event}',
+        text: 'Hi {first},\n\nThanks for registering for {event} on {date} at {time}.\n{where}\n\nWe’ll send you a reminder before it starts. See you there!\n\nAdmissions team, BML Munjal University' },
+      whatsapp: { on: !e.draft && e.kind !== 'expert',
+        text: 'Hi {first}! You’re in for {event} on {date}, {time}. {where} Reply here if you have any questions.' },
+    };
+  }
+
+  function followupsFor(e) {
+    return FOLLOWUPS[e.id] || defaultFollowups(e);
+  }
+
+  function whereLine(e) {
+    var place = e.venue + ', ' + e.city;
+    if (e.format === 'online') return 'Join on ' + e.platform + ': ' + e.link;
+    if (e.format === 'offline') return 'Venue: ' + place + '.';
+    return 'Join us at ' + place + ', or online on ' + e.platform + ': ' + e.link;
+  }
+
+  function fillEventTemplate(text, e, first) {
+    return text
+      .replace(/\{first\}/g, first || 'there')
+      .replace(/\{event\}/g, e.name)
+      .replace(/\{date\}/g, fmtDate(e.start))
+      .replace(/\{time\}/g, fmtTime(e.start))
+      .replace(/\{where\}/g, whereLine(e));
+  }
+
+  /* ——— Events: filters ——— */
+
+  var EF = { program: 'all', prefId: null, cohort: '', formats: [], kinds: [], cities: [], platforms: [], q: '' };
+
+  function efPref() {
+    return EF.program === 'all' || !EF.prefId ? null : findPref(EF.program, EF.prefId);
+  }
+
+  /** skip leaves one facet out, so each insight counts what picking it would show. */
+  function eventPasses(e, skip) {
+    if (skip !== 'program' && EF.program !== 'all' && e.program !== EF.program) return false;
+    var pref = efPref();
+    if (pref && skip !== 'program') {
+      var target = eventPref(e);
+      if (!target || target.id !== pref.id) return false;
+    }
+    if (EF.cohort && e.cohort !== EF.cohort) return false;
+    if (skip !== 'formats' && EF.formats.length && EF.formats.indexOf(e.format) === -1) return false;
+    if (skip !== 'kinds' && EF.kinds.length && EF.kinds.indexOf(e.kind) === -1) return false;
+    if (skip !== 'cities' && EF.cities.length && !eventPlaces(e).some(function (c) { return EF.cities.indexOf(c) !== -1; })) return false;
+    if (EF.platforms.length && EF.platforms.indexOf(e.platform) === -1) return false;
+    var q = EF.q.trim().toLowerCase();
+    return !q || (e.name + ' ' + kindById(e.kind).name + ' ' + e.host + ' ' + e.city + ' ' + e.venue).toLowerCase().indexOf(q) !== -1;
+  }
+
+  function efFacetCount() {
+    return EF.formats.length + EF.kinds.length + EF.cities.length + EF.platforms.length;
+  }
+
+  function toggleIn(list, v) {
+    var i = list.indexOf(v);
+    if (i === -1) list.push(v);
+    else list.splice(i, 1);
+  }
+
+  function eventCities() {
+    var seen = {};
+    EVENTS.forEach(function (e) { eventPlaces(e).forEach(function (c) { seen[c] = true; }); });
+    return Object.keys(seen).sort();
+  }
+
+  function renderEventPickers() {
+    $('ev-program-menu').innerHTML = [{ id: 'all', name: 'All programs' }].concat(PROGRAMS).map(function (p) {
+      var n = EVENTS.filter(function (e) { return p.id === 'all' || e.program === p.id; }).length;
+      return '<button type="button" class="ar-menu-item' + (EF.program === p.id ? ' active' : '') + '" data-ev-program="' + p.id + '">' +
+        esc(p.name) + '<small>' + n + '</small></button>';
+    }).join('');
+    $('ev-program-label').textContent = EF.program === 'all' ? 'All programs' : programById(EF.program).name;
+
+    var prefBtn = $('ev-pref-btn');
+    prefBtn.disabled = EF.program === 'all';
+    prefBtn.title = prefBtn.disabled ? 'Pick a program to choose a preference' : '';
+    var pref = efPref();
+    $('ev-pref-label').textContent = pref ? pref.name : 'Any';
+    $('ev-pref-menu').innerHTML = EF.program === 'all' ? '' :
+      '<button type="button" class="ar-menu-item' + (pref ? '' : ' active') + '" data-ev-pref="">Any preference</button>' +
+      prefsFor(EF.program).map(function (p) {
+        return '<button type="button" class="ar-menu-item' + (pref && pref.id === p.id ? ' active' : '') + '" data-ev-pref="' + p.id + '">' + esc(p.name) + '</button>';
+      }).join('');
+
+    $('ev-cohort-label').textContent = EF.cohort || 'All cohorts';
+    $('ev-cohort-menu').innerHTML = [''].concat(COHORTS).map(function (c) {
+      return '<button type="button" class="ar-menu-item' + (EF.cohort === c ? ' active' : '') + '" data-ev-cohort="' + c + '">' + (c ? c + ' intake' : 'All cohorts') + '</button>';
+    }).join('');
+
+    var check = function (group, value, label, icon, n) {
+      return '<label class="ar-cf-check"><input type="checkbox" data-ev-check="' + group + ':' + esc(value) + '"' + (EF[group].indexOf(value) !== -1 ? ' checked' : '') + '>' +
+        (icon ? ico(icon) : '') + '<span>' + esc(label) + '</span><small>' + n + '</small></label>';
+    };
+    var count = function (fn) { return EVENTS.filter(fn).length; };
+    $('ev-filter-menu').innerHTML =
+      '<div class="ar-fmenu-head"><strong>Filters</strong><button type="button" class="ar-link" data-ev-clear-all>Reset</button></div>' +
+      '<div class="ar-fmenu-body gr-scroll">' +
+      '<div class="ar-cf-menu-head">Format</div>' + EVENT_FORMATS.map(function (f) {
+        return check('formats', f.id, f.name, f.icon, count(function (e) { return e.format === f.id; }));
+      }).join('') +
+      '<div class="ar-cf-menu-head">Event type</div>' + EVENT_KINDS.map(function (k) {
+        return check('kinds', k.id, k.name, k.icon, count(function (e) { return e.kind === k.id; }));
+      }).join('') +
+      '<div class="ar-cf-menu-head">City</div>' + eventCities().map(function (c) {
+        return check('cities', c, c, 'location_city', count(function (e) { return eventPlaces(e).indexOf(c) !== -1; }));
+      }).join('') +
+      '<div class="ar-cf-menu-head">Meeting platform</div>' + Object.keys(PLATFORM_LINKS).map(function (p) {
+        return check('platforms', p, p, 'videocam', count(function (e) { return e.platform === p; }));
+      }).join('') + '</div>';
+    var n = efFacetCount();
+    $('ev-filter-count').hidden = !n;
+    $('ev-filter-count').textContent = n;
+    $('ev-filter-btn').classList.toggle('active', !!n);
+  }
+
+  function renderEventChips() {
+    var names = {
+      formats: function (v) { return formatById(v).name; },
+      kinds: function (v) { return kindById(v).name; },
+      cities: function (v) { return v; },
+      platforms: function (v) { return v; },
+    };
+    var chips = [];
+    ['formats', 'kinds', 'cities', 'platforms'].forEach(function (g) {
+      EF[g].forEach(function (v) {
+        chips.push('<button type="button" class="ar-filter-chip" data-ev-clear="' + g + ':' + esc(v) + '">' + esc(names[g](v)) + ico('close') + '</button>');
+      });
+    });
+    if (chips.length > 1) chips.push('<button type="button" class="ar-link" data-ev-clear-all>Clear all</button>');
+    $('ev-active-filters').innerHTML = chips.join('');
+    $('ev-active-filters').hidden = !chips.length;
+  }
+
+  /* ——— Events: insights ——— */
+
+  function insightRows(rows, group, max) {
+    if (!rows.length) return '<p class="ar-muted ar-ev-none">No events here with these filters.</p>';
+    return rows.map(function (r) {
+      var on = group === 'program' ? EF.program === r.id : EF[group].indexOf(r.id) !== -1;
+      return '<button type="button" class="ar-ev-row' + (on ? ' active' : '') + '" data-ev-facet="' + group + ':' + esc(r.id) + '" aria-pressed="' + on + '">' +
+        '<span class="ar-frow-ico">' + ico(r.icon) + '</span>' +
+        '<span class="ar-ev-row-name">' + esc(r.name) + '<small>' + r.regs.toLocaleString('en-IN') + ' registrations</small></span>' +
+        '<span class="ar-ev-bar"><i style="width:' + (max ? Math.max(4, Math.round((r.n / max) * 100)) : 0) + '%"></i></span>' +
+        '<strong>' + r.n + '</strong></button>';
+    }).join('');
+  }
+
+  function tally(list, groups, keyOf) {
+    return groups.map(function (g) {
+      var hit = list.filter(function (e) { return keyOf(e).indexOf(g.id) !== -1; });
+      return { id: g.id, name: g.name, icon: g.icon, n: hit.length, regs: hit.reduce(function (a, e) { return a + e.registrations; }, 0) };
+    });
+  }
+
+  function maxN(rows) {
+    return rows.reduce(function (m, r) { return Math.max(m, r.n); }, 0);
+  }
+
+  function renderEventInsights() {
+    var formats = tally(EVENTS.filter(function (e) { return eventPasses(e, 'formats'); }), EVENT_FORMATS, function (e) { return [e.format]; });
+    var kinds = tally(EVENTS.filter(function (e) { return eventPasses(e, 'kinds'); }), EVENT_KINDS, function (e) { return [e.kind]; });
+    var programs = tally(EVENTS.filter(function (e) { return eventPasses(e, 'program'); }),
+      PROGRAMS.map(function (p) { return { id: p.id, name: p.name, icon: 'school' }; }), function (e) { return [e.program]; })
+      .filter(function (r) { return r.n; });
+    var cityList = EVENTS.filter(function (e) { return eventPasses(e, 'cities'); });
+    var cities = tally(cityList, eventCities().map(function (c) { return { id: c, name: c, icon: 'location_on' }; }), eventPlaces)
+      .filter(function (r) { return r.n; })
+      .sort(function (a, b) { return b.n - a.n || a.name.localeCompare(b.name); });
+    var typeMax = Math.max(maxN(formats), maxN(kinds));
+
+    $('ev-insights').innerHTML =
+      '<div class="ar-ev-panels">' +
+      '<div class="panel ar-ev-panel"><div class="panel-head"><h2>Event type</h2></div>' +
+      '<span class="ar-factions-head">Format</span>' + insightRows(formats, 'formats', typeMax) +
+      '<span class="ar-factions-head ar-ev-sub">Kind of event</span>' + insightRows(kinds, 'kinds', typeMax) + '</div>' +
+      '<div class="panel ar-ev-panel"><div class="panel-head"><h2>Events by program</h2></div>' + insightRows(programs, 'program', maxN(programs)) + '</div>' +
+      '<div class="panel ar-ev-panel"><div class="panel-head"><h2>Offline locations</h2><span class="ar-meta">Offline and hybrid</span></div>' +
+      insightRows(cities, 'cities', maxN(cities)) + '</div>' +
+      '</div>';
+  }
+
+  /* ——— Events: board ——— */
+
+  function countdownText(ms) {
+    var s = Math.max(0, Math.floor(ms / 1000));
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var sec = s % 60;
+    return (h ? h + 'h ' : '') + (h || m ? m + 'm ' : '') + String(sec).padStart(2, '0') + 's';
+  }
+
+  /** Within a day of the start the time turns into a live countdown. */
+  function eventWhen(e, now) {
+    var start = e.start.getTime();
+    var day = fmtShort(e.start, e.start.getFullYear() !== new Date(now).getFullYear());
+    if (e.draft) return { cls: 'draft', icon: 'edit_calendar', text: day + ', ' + fmtTime(e.start) };
+    if (now >= e.end.getTime()) return { cls: 'past', icon: 'event_available', text: day + ', ' + fmtTime(e.start) };
+    if (now >= start) return { cls: 'now', icon: '', text: 'Live now' };
+    if (start - now <= 86400000) return { cls: 'soon', icon: 'timer', text: 'Starts in ' + countdownText(start - now) };
+    return { cls: '', icon: 'schedule', text: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][e.start.getDay()] + ' ' + day + ', ' + fmtTime(e.start) };
+  }
+
+  function whenHtml(e, now) {
+    var w = eventWhen(e, now);
+    return '<span class="ar-ev-when ' + w.cls + '" data-ev-when="' + e.id + '">' + (w.cls === 'now' ? '<i></i>' : ico(w.icon)) + '<span>' + esc(w.text) + '</span></span>';
+  }
+
+  function coverHtml(e, now, big) {
+    var k = kindById(e.kind);
+    return '<div class="ar-ev-cover k-' + e.kind + (big ? ' big' : '') + '"' + (e.image ? ' style="background-image:url(' + esc(e.image) + ')"' : '') + '>' +
+      (e.image ? '' : '<span class="ar-ev-cover-art" aria-hidden="true">' + ico(k.icon) + '</span>') +
+      '<span class="ar-ev-kind">' + ico(k.icon) + esc(k.name) + '</span>' + whenHtml(e, now) + '</div>';
+  }
+
+  function placeHtml(e) {
+    var f = formatById(e.format);
+    var html = '<span class="ar-ev-format f-' + e.format + '">' + ico(f.icon) + f.name + '</span>';
+    if (e.format !== 'online') {
+      html += '<span class="ar-ev-place" title="' + esc(e.venue + ', ' + e.city) + '">' + ico('location_on') + '<span>' + esc(e.city) + ' · ' + esc(e.venue) + '</span></span>';
+    }
+    if (e.format !== 'offline') {
+      html += '<a class="ar-ev-link" href="' + esc(e.link) + '" target="_blank" rel="noopener" title="' + esc(e.link) + '">' + ico('videocam') + '<span>' + esc(e.platform) + '</span>' + ico('open_in_new') + '</a>';
+    }
+    return html;
+  }
+
+  function metricsHtml(e) {
+    var none = e.draft;
+    var rate = e.clicks ? Math.round((e.registrations / e.clicks) * 100) : 0;
+    return '<div class="ar-ev-metrics">' +
+      '<div><span>' + ico('ads_click') + 'Clicks</span><strong>' + (none ? '—' : e.clicks.toLocaleString('en-IN')) + '</strong></div>' +
+      '<div><span>' + ico('how_to_reg') + 'Registrations</span><strong>' + (none ? '—' : e.registrations.toLocaleString('en-IN')) +
+      (none ? '' : '<small>' + rate + '% of clicks</small>') + '</strong></div></div>';
+  }
+
+  function followupChips(e) {
+    var f = followupsFor(e);
+    return '<div class="ar-ev-follow"><span>After registration</span>' + FOLLOWUP_CHANNELS.map(function (c) {
+      var on = f[c.id].on;
+      return '<button type="button" class="ar-ev-follow-chip' + (on ? ' on' : '') + '" data-ev-followup="' + e.id + ':' + c.id + '" title="' +
+        (on ? c.name + ' goes out when someone registers. Click to edit.' : c.name + ' is off. Click to set it up.') + '">' +
+        ico(c.icon) + c.name + ico(on ? 'check_circle' : 'add_circle') + '</button>';
+    }).join('') + '</div>';
+  }
+
+  function eventCardHtml(e, now) {
+    var pref = eventPref(e);
+    return '<div class="ar-ev-card" role="button" tabindex="0" data-event="' + e.id + '">' + coverHtml(e, now) +
+      '<div class="ar-ev-body">' +
+      '<div class="ar-ev-title"><strong>' + esc(e.name) + '</strong>' +
+      '<small>' + esc(programById(e.program).name) + ' · ' + e.cohort + ' intake' + (pref ? ' · ' + esc(pref.name) : '') + '</small></div>' +
+      metricsHtml(e) +
+      '<div class="ar-ev-type">' + placeHtml(e) + '</div>' +
+      followupChips(e) + '</div></div>';
+  }
+
+  var evStatuses = {};
+
+  function renderEventBoard() {
+    var now = Date.now();
+    var list = EVENTS.filter(function (e) { return eventPasses(e); });
+    evStatuses = {};
+    list.forEach(function (e) { evStatuses[e.id] = eventStatus(e, now); });
+    var sorters = {
+      live: function (a, b) { return a.start - b.start; },
+      completed: function (a, b) { return b.start - a.start; },
+      draft: function (a, b) { return a.start - b.start; },
+    };
+    $('ev-count').textContent = list.length;
+    $('ev-board').innerHTML = EVENT_BUCKETS.map(function (b) {
+      var items = list.filter(function (e) { return evStatuses[e.id] === b.id; }).sort(sorters[b.id]);
+      return '<div class="ar-col"><div class="ar-col-head"><h3><i style="background:' + b.color + '"></i>' + b.name +
+        '<b class="ar-col-count">' + items.length + '</b></h3><small>' + b.note + '</small></div>' +
+        '<div class="ar-col-list gr-scroll">' + (items.length ? items.map(function (e) { return eventCardHtml(e, now); }).join('')
+          : '<div class="ar-col-empty">No ' + b.name.toLowerCase() + ' events with these filters.</div>') + '</div></div>';
+    }).join('');
+  }
+
+  function renderEvents() {
+    renderEventPickers();
+    renderEventChips();
+    renderEventInsights();
+    renderEventBoard();
+  }
+
+  /** Ticks the countdowns; an event that starts or ends moves to its new bucket. */
+  window.setInterval(function () {
+    if (state.view !== 'events') return;
+    var now = Date.now();
+    var moved = Object.keys(evStatuses).some(function (id) { return eventStatus(eventById(id), now) !== evStatuses[id]; });
+    if (moved) {
+      renderEventInsights();
+      renderEventBoard();
+    }
+    document.querySelectorAll('[data-ev-when]').forEach(function (el) {
+      var w = eventWhen(eventById(el.getAttribute('data-ev-when')), now);
+      if (w.cls !== 'soon' && w.cls !== 'now') return;
+      el.className = 'ar-ev-when ' + w.cls;
+      el.lastChild.textContent = w.text;
+    });
+  }, 1000);
+
+  /* ——— Events: detail and after-registration messages ——— */
+
+  function openEvent(id, fromRoute) {
+    var e = eventById(id);
+    if (!e) return;
+    var now = Date.now();
+    var pref = eventPref(e);
+    var f = followupsFor(e);
+    var follow = FOLLOWUP_CHANNELS.map(function (c) {
+      var m = f[c.id];
+      return '<div class="ar-ev-msg' + (m.on ? ' on' : '') + '"><div class="ar-ev-msg-head">' + ico(c.icon) + '<strong>' + c.name + '</strong>' +
+        '<em>' + (m.on ? 'On' : 'Off') + '</em>' +
+        '<button type="button" class="ar-link" data-ev-followup="' + e.id + ':' + c.id + '">' + ico('edit') + 'Edit</button></div>' +
+        (m.on ? '<p>' + (m.subject ? '<b>' + esc(fillEventTemplate(m.subject, e, 'Aarav')) + '</b>' : '') + esc(fillEventTemplate(m.text, e, 'Aarav')) + '</p>' : '') + '</div>';
+    }).join('');
+    var impressions = eventImpressions(e);
+    var ctr = impressions ? Math.round((e.clicks / impressions) * 100) : 0;
+    var regRate = e.clicks ? Math.round((e.registrations / e.clicks) * 100) : 0;
+    var detailHtml = '<div class="ar-ev-detail">' +
+      '<div class="ar-ev-detail-top">' +
+      '<div>' + coverHtml(e, now, true) + '</div>' +
+      '<div class="ar-ev-detail-side"><div class="ar-ev-dhead"><h3>' + esc(e.name) + '</h3><p>' + esc(formatById(e.format).name) + ' · ' + esc(kindById(e.kind).name) + ' · ' + esc(e.id) + '</p></div>' +
+      '<div class="ar-ev-date-row"><span>Start date: <b>' + esc(fmtDate(e.start)) + '</b></span><span>Start time: <b>' + esc(fmtTime(e.start)) + '</b></span></div>' +
+      '<div class="ar-ev-detail-metrics">' +
+      eventMetricTile('Impressions', impressions) + eventMetricTile('Total clicks', e.clicks) + eventMetricTile('Registrations', e.registrations) +
+      eventMetricTile('Click-through rate', ctr + '%', 'Clicked / Impressions') + eventMetricTile('Registration rate', regRate + '%', 'Registered / Clicked') +
+      '</div></div></div>' +
+      '<div class="ar-ev-detail-section"><h4>Event details</h4><div class="ar-ev-detail-grid">' +
+      detailKV('Name', e.name) + detailKV('Duration', e.minutes >= 60 ? (e.minutes / 60) + ' hours' : e.minutes + ' minutes') +
+      detailKV('Type', formatById(e.format).name) + detailKV('Category', e.category || kindById(e.kind).name) +
+      detailKV('Program', programById(e.program).name) + detailKV('Audience', pref ? pref.name : 'Everyone in the program') +
+      '</div></div>' +
+      '<div class="ar-ev-detail-section"><div class="ar-ev-detail-cols">' +
+      '<div><h4>Registration details</h4>' + factsHtml([['Form', 'AdmitRight event form'], ['Deadline', 'Open until event starts'], ['After registration', FOLLOWUP_CHANNELS.filter(function (c) { return f[c.id].on; }).map(function (c) { return c.name; }).join(', ') || 'None']]) + '</div>' +
+      '<div><h4>Date & time</h4>' + factsHtml([['Start date', fmtDate(e.start)], ['Start time', fmtTime(e.start)], ['End date', fmtDate(e.end)], ['End time', fmtTime(e.end)]]) + '</div>' +
+      '<div><h4>Venue details</h4><div class="ar-ev-type ar-ev-dtype">' + placeHtml(e) + '</div></div>' +
+      '</div></div>' +
+      '<div class="ar-ev-detail-section"><h4>Description</h4><p class="ar-ev-detail-desc">' + esc(eventDescription(e)) + '</p></div>' +
+      '<div class="ar-ev-detail-section"><h4>After registration</h4><p class="ar-muted">Sent automatically to each student who registers. Shown here with a sample name.</p>' + follow + '</div>' +
+      '<div class="ar-ev-detail-section"><div class="ar-ev-table-head"><h4>' + e.registrations + ' Registered users</h4><span class="ar-meta">' + impressions + ' impressions</span></div>' +
+      '<div class="ar-seg ar-ev-detail-tabs"><button type="button" class="ar-seg-btn active">Registered users</button><button type="button" class="ar-seg-btn">Impressions</button></div>' +
+      eventPeopleTable(e, 'registered') + eventPeopleTable(e, 'impressions') + '</div>' +
+      '</div>';
+    $('ev-detail-page-title').textContent = e.name;
+    $('ev-detail-page-sub').textContent = formatById(e.format).name + ' · ' + kindById(e.kind).name + ' · ' + e.id;
+    $('ev-detail-body').innerHTML = detailHtml;
+    currentEventId = e.id;
+    showEventsPage('detail');
+    if (!fromRoute) goTo('events/' + encodeURIComponent(e.id));
+  }
+
+  function eventMetricTile(label, value, note) {
+    return '<div><span>' + esc(label) + '</span><strong>' + esc(String(value)) + '</strong>' + (note ? '<small>' + esc(note) + '</small>' : '') + '</div>';
+  }
+
+  function detailKV(k, v) {
+    return '<div><span>' + esc(k) + '</span><strong>' + esc(String(v || '—')) + '</strong></div>';
+  }
+
+  function eventImpressions(e) {
+    return Math.max(e.clicks + e.registrations * 2, Math.round(e.clicks * 1.35), e.registrations, e.draft ? 0 : 3);
+  }
+
+  function eventDescription(e) {
+    return e.description || (e.name + ' helps ' + programById(e.program).name + ' prospects understand the program, admissions expectations, next steps, and what makes the experience valuable for the selected audience.');
+  }
+
+  function eventAudienceStudents(e) {
+    var pref = eventPref(e);
+    return STUDENTS.filter(function (s) {
+      if (s.program !== e.program) return false;
+      return !pref || scoreAgainst(s, pref).score >= CLOSE_MIN;
+    }).sort(byScore);
+  }
+
+  function eventPeopleTable(e, mode) {
+    var all = eventAudienceStudents(e);
+    var n = mode === 'registered' ? e.registrations : eventImpressions(e);
+    var rows = all.slice(mode === 'registered' ? 0 : 2, Math.min(all.length, (mode === 'registered' ? 0 : 2) + Math.min(n, 5)));
+    return '<div class="ar-ev-detail-table' + (mode === 'impressions' ? ' muted' : '') + '">' +
+      '<table><thead><tr><th>User ID</th><th>Name</th><th>Viewed</th><th>Opened</th><th>Registered</th></tr></thead><tbody>' +
+      (rows.length ? rows.map(function (s, i) {
+        var reg = mode === 'registered';
+        return '<tr><td>' + esc(s.id.replace(/^(.{4}).+(.{4})$/, '$1…$2')) + '</td><td>' + esc(s.name) + '</td>' +
+          '<td>' + ico('check') + '</td><td>' + (i % 3 ? ico('close') : ico('check')) + '</td><td>' + (reg ? ico('check') : ico('close')) + '</td></tr>';
+      }).join('') : '<tr><td colspan="5">No ' + (mode === 'registered' ? 'registrations' : 'impressions') + ' found.</td></tr>') +
+      '</tbody></table></div>';
+  }
+
+  var evEditor = null; // { id, channel, draft }
+
+  function openFollowupEditor(id, channel) {
+    var e = eventById(id);
+    if (!e) return;
+    evEditor = { id: id, channel: channel, draft: clone(followupsFor(e)) };
+    openDrawer('After registration', '', '<button type="button" class="btn btn-ghost btn-sm" data-close-drawer>Cancel</button>' +
+      '<button type="button" class="btn btn-primary btn-sm" data-evm-save>Save</button>', true);
+    $('drawer').classList.add('ar-campaign-modal');
+    renderFollowupEditor();
+  }
+
+  function readFollowupEditor() {
+    if (!evEditor || !$('evm-text')) return;
+    var m = evEditor.draft[evEditor.channel];
+    m.on = $('evm-on').checked;
+    m.text = $('evm-text').value;
+    if ($('evm-subject')) m.subject = $('evm-subject').value;
+  }
+
+  function renderFollowupEditor() {
+    var e = eventById(evEditor.id);
+    var ch = evEditor.channel;
+    var m = evEditor.draft[ch];
+    var name = FOLLOWUP_CHANNELS.filter(function (c) { return c.id === ch; })[0].name;
+    $('drawer-body').innerHTML =
+      '<div class="ar-cm-to"><span class="ar-ev-thumb k-' + e.kind + '">' + ico(kindById(e.kind).icon) + '</span>' +
+      '<div><strong>' + esc(e.name) + '</strong><small>' + esc(fmtDateTime(e.start)) + ' · ' + esc(formatById(e.format).name) + '</small></div></div>' +
+      '<div class="ar-cm-channels ar-evm-channels" role="tablist" aria-label="Channel">' + FOLLOWUP_CHANNELS.map(function (c) {
+        var on = c.id === ch;
+        return '<button type="button" class="ar-cm-channel' + (on ? ' on' : '') + '" role="tab" aria-selected="' + on + '" data-evm-channel="' + c.id + '">' +
+          ico(c.icon) + c.name + (evEditor.draft[c.id].on ? '' : ' <small>Off</small>') + '</button>';
+      }).join('') + '</div>' +
+      '<label class="ar-evm-toggle"><input type="checkbox" id="evm-on"' + (m.on ? ' checked' : '') + '><span class="ar-evm-switch" aria-hidden="true"></span>' +
+      '<span>Send this ' + name + ' when a student registers</span></label>' +
+      (ch === 'email' ? '<div class="field"><label for="evm-subject">Subject</label><input type="text" id="evm-subject" value="' + esc(m.subject) + '" /></div>' : '') +
+      '<div class="field"><label for="evm-text">Message</label><textarea id="evm-text" rows="7">' + esc(m.text) + '</textarea></div>' +
+      '<p class="ar-cm-note">' + ico('auto_fix_high') + '{first}, {event}, {date}, {time} and {where} are filled in for each registrant.</p>' +
+      '<p class="ar-cm-note">' + ico('lock') + 'Sent through AdmitRight. Students’ phone numbers and emails stay private.</p>';
+  }
+
+  function saveFollowupEditor() {
+    readFollowupEditor();
+    var e = eventById(evEditor.id);
+    var bad = FOLLOWUP_CHANNELS.filter(function (c) { return evEditor.draft[c.id].on && !evEditor.draft[c.id].text.trim(); })[0];
+    if (bad) {
+      evEditor.channel = bad.id;
+      renderFollowupEditor();
+      $('evm-text').focus();
+      toast('Write the ' + bad.name + ' message, or turn it off.');
+      return;
+    }
+    FOLLOWUPS[e.id] = evEditor.draft;
+    saveFollowups();
+    var on = FOLLOWUP_CHANNELS.filter(function (c) { return evEditor.draft[c.id].on; }).map(function (c) { return c.name; });
+    closeDrawer();
+    toast(on.length ? on.join(' and ') + ' will go out after each registration.' : 'After-registration messages are off for this event.');
+    renderEvents();
+  }
+
+  /* ——— Events: create wizard ——— */
+
+  var EVENT_CATEGORIES = ['Open House', 'Webinar', 'Workshop', 'Career Fair', 'Scholarship Session', 'Meet the experts', 'Alumni Meetup', 'Other'];
+  var EVENT_CATEGORY_KIND = {
+    'Open House': 'webinar',
+    'Webinar': 'webinar',
+    'Workshop': 'expert',
+    'Career Fair': 'expert',
+    'Scholarship Session': 'ama',
+    'Meet the experts': 'expert',
+    'Alumni Meetup': 'coffee',
+    'Other': 'ama',
+  };
+  var evCreate = null; // { step, draft }
+  var currentEventId = null;
+
+  function showEventsPage(mode) {
+    var list = mode === 'list';
+    $('events-list-head').hidden = !list;
+    $('events-list-content').hidden = !list;
+    $('events-create-page').hidden = mode !== 'create';
+    $('events-detail-page').hidden = mode !== 'detail';
+    window.scrollTo(0, 0);
+  }
+
+  function savedFilterInfo(programId) {
+    try {
+      var saved = JSON.parse(localStorage.getItem(FILTERS_KEY) || 'null');
+      if (!saved || !saved.filters) return null;
+      return {
+        program: saved.program,
+        prefId: saved.prefId,
+        label: (saved.program === 'all' ? 'All programs' : programById(saved.program).name) +
+          (saved.prefId ? ' · ' + findPref(saved.program, saved.prefId).name : '') +
+          (saved.intake ? ' · ' + saved.intake + ' intake' : ''),
+        disabled: programId !== 'all' && saved.program !== programId,
+      };
+    } catch (err) { return null; }
+  }
+
+  function newEventDraft() {
+    return {
+      format: 'online', kind: 'webinar', name: '', category: 'Open House',
+      program: PROGRAMS[0].id, prefId: '', savedFilter: '', matchScore: '0',
+      description: '', coverImage: '', galleryImages: [],
+      hasMeetingLink: false, startDate: '', startTime: '', time24: false, timezone: 'IST (GMT +05:30)',
+      endMode: 'duration', days: '00', hours: '01', minutes: '00',
+      registration: 'link', formLink: '', keepOpen: false, formBuilt: false,
+    };
+  }
+
+  function openEventCreate(fromRoute) {
+    if (!fromRoute || !evCreate) evCreate = { step: 0, draft: newEventDraft() };
+    showEventsPage('create');
+    renderEventCreate();
+    if (!fromRoute) goTo('events/create');
+  }
+
+  function evDraft() {
+    return evCreate && evCreate.draft;
+  }
+
+  function readEventCreate() {
+    var d = evDraft();
+    if (!d) return;
+    ['name', 'category', 'kind', 'program', 'prefId', 'savedFilter', 'matchScore', 'description', 'startDate', 'startTime', 'timezone',
+      'days', 'hours', 'minutes', 'registration', 'formLink'].forEach(function (k) {
+      var el = $('evc-' + k);
+      if (el) d[k] = el.value;
+    });
+    d.kind = EVENT_CATEGORY_KIND[d.category] || d.kind || 'webinar';
+    var checked = document.querySelector('[name="evc-format"]:checked');
+    if (checked) d.format = checked.value;
+    ['cover', 'gallery', 'hasMeetingLink', 'time24', 'keepOpen'].forEach(function (k) {
+      var el = $('evc-' + k);
+      if (el) d[k] = el.checked;
+    });
+  }
+
+  function stepperHtml() {
+    var names = ['Event basics', 'Venue and date', 'Registration details', 'Review & publish'];
+    return '<div class="ar-evc-stepper">' + names.map(function (n, i) {
+      var cls = i < evCreate.step ? ' done' : i === evCreate.step ? ' active' : '';
+      return '<span class="' + cls + '"><i>' + (i < evCreate.step ? ico('check') : '') + '</i><b>' + esc(n) + '</b></span>';
+    }).join('') + '</div>';
+  }
+
+  function fieldWrap(label, html, req) {
+    return '<label class="ar-evc-field"><span>' + esc(label) + (req ? '<em>*</em>' : '') + '</span>' + html + '</label>';
+  }
+
+  function textInput(id, value, ph) {
+    return '<input type="text" id="' + id + '" value="' + esc(value) + '" placeholder="' + esc(ph || '') + '">';
+  }
+
+  function selectHtml(id, value, options) {
+    return '<select id="' + id + '">' + options.map(function (o) {
+      var val = typeof o === 'string' ? o : o[0];
+      var label = typeof o === 'string' ? o : o[1];
+      var disabled = typeof o !== 'string' && o[2];
+      return '<option value="' + esc(val) + '"' + (value === val ? ' selected' : '') + (disabled ? ' disabled' : '') + '>' + esc(label) + '</option>';
+    }).join('') + '</select>';
+  }
+
+  function toggleField(id, checked, label, note) {
+    return '<label class="ar-evm-toggle ar-evc-toggle"><input type="checkbox" id="' + id + '"' + (checked ? ' checked' : '') + '>' +
+      '<span class="ar-evm-switch" aria-hidden="true"></span><span><b>' + esc(label) + '</b><small>' + esc(note || '') + '</small></span></label>';
+  }
+
+  function audienceTargetCount(d) {
+    var pref = d.prefId ? findPref(d.program, d.prefId) : null;
+    var min = Number(d.matchScore) || 0;
+    return STUDENTS.filter(function (s) {
+      if (s.program !== d.program) return false;
+      if (!pref) return true;
+      return scoreAgainst(s, pref).score >= min;
+    }).length;
+  }
+
+  function createBasicsHtml() {
+    var d = evDraft();
+    var saved = savedFilterInfo(d.program);
+    var prefOpts = [['', 'All students in the selected program']].concat(prefsFor(d.program).map(function (p) { return [p.id, p.name]; }));
+    var filterOpts = [['', 'No saved filter']];
+    if (saved) filterOpts.push(['saved', saved.label + (saved.disabled ? ' (pick matching program first)' : ''), saved.disabled]);
+    var leads = audienceTargetCount(d);
+    var scoreOpts = [['0', d.prefId ? 'Any match score' : 'Select preference to score leads'], ['80', '80% and above'], ['70', '70% and above'], ['60', '60% and above'], ['50', '50% and above']];
+    d.kind = EVENT_CATEGORY_KIND[d.category] || d.kind || 'webinar';
+    return '<section class="ar-evc-section"><h3>Event basics</h3>' +
+      '<div class="ar-evc-row ar-evc-top-row">' +
+      fieldWrap('Event name', textInput('evc-name', d.name, 'Name your event'), false) +
+      fieldWrap('Event category', selectHtml('evc-category', d.category, EVENT_CATEGORIES), true) + '</div>' +
+      '<div class="ar-evc-formats">' + EVENT_FORMATS.map(function (f) {
+        return '<label class="' + (d.format === f.id ? ' on' : '') + '"><input type="radio" name="evc-format" value="' + f.id + '"' + (d.format === f.id ? ' checked' : '') + '>' +
+          ico(f.icon) + '<span>' + esc(f.name) + ' event</span></label>';
+      }).join('') + '</div>' +
+      '<div class="ar-evc-group"><h4>Audience</h4><p>Choose who this event is for. Program, preference and saved filters are grouped here.</p>' +
+      fieldWrap('Program', selectHtml('evc-program', d.program, PROGRAMS.map(function (p) { return [p.id, p.name]; })), true) +
+      fieldWrap('Target audience preference', selectHtml('evc-prefId', d.prefId, prefOpts), false) +
+      fieldWrap('Match score', selectHtml('evc-matchScore', d.matchScore, scoreOpts), false) +
+      fieldWrap('Saved filter', selectHtml('evc-savedFilter', d.savedFilter, filterOpts), false) +
+      '<div class="ar-evc-target"><span>Total targeted lead</span><strong>' + leads.toLocaleString() + '</strong><small>' +
+      esc((d.prefId ? 'Based on selected preference and match score.' : 'Based on selected program.') + (d.savedFilter ? ' Saved filter will narrow this audience.' : '')) +
+      '</small></div></div>' +
+      fieldWrap('Description', '<textarea id="evc-description" rows="6" placeholder="Describe why students should attend">' + esc(d.description) + '</textarea>', true) +
+      '<div class="ar-evc-media"><span>Cover image*</span><div class="ar-evc-cover k-' + d.kind + '">' +
+      (d.coverImage ? '<img src="' + esc(d.coverImage) + '" alt="Event cover preview">' : ico(kindById(d.kind).icon)) +
+      '<button type="button" data-evc-remove-cover aria-label="Remove image">×</button></div>' +
+      '<input type="file" id="evc-coverFile" accept="image/*" hidden>' +
+      '<label class="ar-link" for="evc-coverFile">Change image</label></div>' +
+      '<div class="ar-evc-gallery"><span>Gallery images</span><small>Add photos from past events or extra details to attract the right students.</small>' +
+      '<div class="ar-evc-gallery-grid">' + d.galleryImages.map(function (src, i) {
+        return '<div><img src="' + esc(src) + '" alt="Gallery preview"><button type="button" data-evc-remove-gallery="' + i + '" aria-label="Remove gallery image">×</button></div>';
+      }).join('') + '</div>' +
+      '<input type="file" id="evc-galleryFiles" accept="image/*" multiple hidden>' +
+      '<label class="ar-link" for="evc-galleryFiles">' + ico('add') + 'Add more images</label></div>' +
+      '</section>';
+  }
+
+  function createVenueHtml() {
+    var d = evDraft();
+    var online = d.format !== 'offline';
+    return '<section class="ar-evc-section"><h3>Venue details</h3><p>' + (online ? 'Meeting credentials will be shared with attendees by email after registration.' : 'Venue details will be shown on the event page.') + '</p>' +
+      (online ? toggleField('evc-hasMeetingLink', d.hasMeetingLink, 'Do you have the meeting link?', 'Turn this on if attendees should see the meeting link after registration.') : '') +
+      '<h3>Start Details</h3>' +
+      '<div class="ar-evc-time-row">' + fieldWrap('Start date', '<input type="date" id="evc-startDate" value="' + esc(d.startDate) + '">', false) +
+      fieldWrap('Start time', '<input type="time" id="evc-startTime" value="' + esc(d.startTime) + '">', true) +
+      toggleField('evc-time24', d.time24, '24 hour format', '') +
+      fieldWrap('Timezone', selectHtml('evc-timezone', d.timezone, ['IST (GMT +05:30)', 'GMT', 'EST (GMT -05:00)', 'PST (GMT -08:00)']), true) + '</div>' +
+      '<h3>End details</h3><div class="ar-evc-radio-row"><label><input type="radio" name="evc-end" checked> Event duration</label><label><input type="radio" name="evc-end"> Event end time</label></div>' +
+      '<div class="ar-evc-row">' + fieldWrap('Days', selectHtml('evc-days', d.days, ['00', '01', '02'])) +
+      fieldWrap('Hours', selectHtml('evc-hours', d.hours, ['00', '01', '02', '03', '04'])) +
+      fieldWrap('Minutes', selectHtml('evc-minutes', d.minutes, ['00', '15', '30', '45'])) + '</div></section>';
+  }
+
+  function createRegistrationHtml() {
+    var d = evDraft();
+    var option = function (id, title, body) {
+      return '<label class="ar-evc-reg ' + (d.registration === id ? 'on' : '') + '" data-evc-registration="' + id + '"><input type="radio" name="evc-registration" value="' + id + '"' + (d.registration === id ? ' checked' : '') + '>' +
+        '<span><b>' + title + '</b>' + (body || '') + '</span></label>';
+    };
+    return '<section class="ar-evc-section"><h3>Registration details</h3>' +
+      option('link', 'Add your registration form link', d.registration === 'link' ? fieldWrap('Registration form link', textInput('evc-formLink', d.formLink, 'https://'), true) : '') +
+      option('new', 'Create a new form', d.formBuilt ? '<small>A form already exists. You can edit it.</small><button type="button" class="btn btn-secondary btn-sm" data-ev-form-builder>' + ico('edit') + 'Edit</button>' : '<small>Click Next step to open form builder.</small>') +
+      option('template', 'Choose a template', d.registration === 'template' ? '<div class="ar-evc-template">Default Registration Template</div><button type="button" class="btn btn-primary btn-sm" data-ev-apply-template>Apply template to continue</button>' : '') +
+      '<h3>Set registration deadline</h3><p class="ar-evc-note">Complete one registration method above to finalize and validate this deadline.</p>' +
+      '<div class="ar-evc-time-row">' + fieldWrap('End date', '<input type="date">', false) +
+      fieldWrap('End time', '<input type="time">', true) +
+      toggleField('evc-time24', d.time24, '24 hour format', '') +
+      fieldWrap('Timezone', selectHtml('evc-timezone', d.timezone, ['IST (GMT +05:30)', 'GMT']), true) + '</div>' +
+      '<label class="ar-check"><input type="checkbox" id="evc-keepOpen"' + (d.keepOpen ? ' checked' : '') + '> Keep registrations open until event starts</label>' +
+      '</section>';
+  }
+
+  function createReviewHtml() {
+    var d = evDraft();
+    var program = programById(d.program);
+    var pref = d.prefId ? findPref(d.program, d.prefId) : null;
+    return '<section class="ar-evc-review"><div class="ar-evc-phone">' +
+      '<div class="ar-evc-mobile-card k-' + d.kind + '">' + ico(kindById(d.kind).icon) + '<span>' + esc(d.category) + '</span><h3>' + esc(d.name || 'Untitled event') + '</h3><p>' + esc(program.name) + '</p></div>' +
+      '<div class="ar-seg ar-evc-theme"><button type="button" class="ar-seg-btn active">Dark mode</button><button type="button" class="ar-seg-btn">Light mode</button></div></div>' +
+      '<div class="ar-evc-review-copy"><h3>Scroll and <span>review</span> your event in this prototype</h3><p>Choose the page you want to view</p>' +
+      '<label><input type="radio" checked> Event card</label><label><input type="radio"> Event details</label><label><input type="radio"> Registration form</label>' +
+      '<div class="ar-evc-review-actions"><button type="button" class="btn btn-secondary" data-ev-publish="draft">Save event as draft</button>' +
+      '<button type="button" class="btn btn-primary" data-ev-publish="publish">Publish event</button></div>' +
+      '<small>Built with ' + (d.registration === 'link' ? 'external form link' : d.registration === 'template' ? 'template form' : 'custom form') + '</small>' +
+      '<small>Audience: ' + esc(pref ? pref.name : 'All ' + program.name + ' students') + (d.savedFilter ? ' · saved filter' : '') + '</small></div></section>';
+  }
+
+  function renderEventCreate() {
+    var html = [createBasicsHtml, createVenueHtml, createRegistrationHtml, createReviewHtml][evCreate.step]();
+    var body = $('events-create-page') && !$('events-create-page').hidden ? $('ev-create-body') : $('drawer-body');
+    var foot = $('events-create-page') && !$('events-create-page').hidden ? $('ev-create-foot') : $('drawer-foot');
+    body.innerHTML = stepperHtml() + html;
+    foot.innerHTML = '<button type="button" class="btn btn-ghost btn-sm" data-ev-create-back>Back</button>' +
+      '<button type="button" class="btn btn-primary btn-sm btn-icon" data-ev-create-next>Next step' + ico('arrow_forward') + '</button>';
+    var back = document.querySelector('[data-ev-create-back]');
+    if (back) back.textContent = evCreate.step ? 'Previous step' : 'Cancel';
+    var next = document.querySelector('[data-ev-create-next]');
+    if (next) next.hidden = evCreate.step === 3;
+  }
+
+  function eventCreateNext() {
+    readEventCreate();
+    if (evCreate.step === 0 && !evCreate.draft.name.trim()) {
+      $('evc-name').focus();
+      toast('Add an event name.');
+      return;
+    }
+    if (evCreate.step === 2 && evCreate.draft.registration === 'new' && !evCreate.draft.formBuilt) {
+      evCreate.draft.formBuilt = true;
+      renderEventCreate();
+      toast('Form builder added a default form.');
+      return;
+    }
+    if (evCreate.step < 3) evCreate.step += 1;
+    renderEventCreate();
+  }
+
+  function publishCreatedEvent(mode) {
+    readEventCreate();
+    var d = evCreate.draft;
+    var start = new Date();
+    start.setDate(start.getDate() + 14);
+    var kind = kindById(d.kind);
+    var format = formatById(d.format);
+    var prefList = prefsFor(d.program);
+    var prefIndex = d.prefId ? prefList.map(function (p) { return p.id; }).indexOf(d.prefId) : null;
+    if (prefIndex < 0) prefIndex = null;
+    EVENTS.unshift({
+      id: 'EV-' + (1000 + EVENTS.length + 1), name: d.name.trim() || 'Untitled event', kind: d.kind, format: d.format,
+      program: d.program, prefIndex: prefIndex,
+      cohort: state.intake || '2027', start: start, end: new Date(start.getTime() + 3600000), minutes: 60,
+      city: d.format === 'online' ? '' : CAMPUS.city, venue: d.format === 'online' ? '' : CAMPUS.venue,
+      platform: d.format === 'offline' ? '' : 'Zoom', link: d.format === 'offline' ? '' : PLATFORM_LINKS.Zoom(EVENTS.length + 3),
+      clicks: 0, registrations: 0, draft: mode === 'draft', host: kind.name + ' host', image: '',
+      category: d.category, savedFilter: d.savedFilter, displayFormat: format.name,
+    });
+    evCreate = null;
+    currentEventId = null;
+    toast(mode === 'draft' ? 'Event saved as draft.' : 'Event published.');
+    goTo('events');
+  }
+
+  function readImageFiles(files, done) {
+    var list = Array.prototype.slice.call(files || []).filter(function (f) { return /^image\//.test(f.type); });
+    if (!list.length) {
+      done([]);
+      return;
+    }
+    var out = [];
+    var left = list.length;
+    list.forEach(function (file) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        out.push(reader.result);
+        left -= 1;
+        if (!left) done(out);
+      };
+      reader.onerror = function () {
+        left -= 1;
+        if (!left) done(out);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   var MENUS = [['program-btn', 'program-menu'], ['pref-btn', 'pref-menu'], ['range-btn', 'range-menu'], ['intake-btn', 'intake-menu'], ['filter-btn', 'filter-menu'], ['bulk-btn', 'bulk-menu'],
-    ['cf-program-btn', 'cf-program-menu'], ['cf-pref-btn', 'cf-pref-menu'], ['cf-score-btn', 'cf-score-menu'], ['cf-stage-btn', 'cf-stage-menu'], ['cf-extra-btn', 'cf-extra-menu']];
+    ['cf-program-btn', 'cf-program-menu'], ['cf-pref-btn', 'cf-pref-menu'], ['cf-score-btn', 'cf-score-menu'], ['cf-stage-btn', 'cf-stage-menu'], ['cf-extra-btn', 'cf-extra-menu'],
+    ['ev-program-btn', 'ev-program-menu'], ['ev-pref-btn', 'ev-pref-menu'], ['ev-cohort-btn', 'ev-cohort-menu'], ['ev-filter-btn', 'ev-filter-menu']];
 
   /** The toolbar menu and the Filters row both drive the same intake year. */
   /* ——— Date range picker ——— */
@@ -3345,7 +4287,25 @@
     if (go) {
       e.preventDefault();
       closeMenus();
-      setView(go.getAttribute('data-go'));
+      var view = go.getAttribute('data-go');
+      if (view === 'events') {
+        evCreate = null;
+        currentEventId = null;
+      }
+      if (view === 'chats') state.chatId = null;
+      goTo(view);
+      return;
+    }
+
+    if (t.closest('#ev-create')) {
+      openEventCreate();
+      return;
+    }
+
+    if (t.closest('[data-events-back]')) {
+      evCreate = null;
+      currentEventId = null;
+      goTo('events');
       return;
     }
 
@@ -3490,7 +4450,155 @@
       return;
     }
 
+    var evProgram = t.closest('[data-ev-program]');
+    if (evProgram) {
+      EF.program = evProgram.getAttribute('data-ev-program');
+      EF.prefId = null;
+      closeMenus();
+      renderEvents();
+      return;
+    }
+
+    var evPref = t.closest('[data-ev-pref]');
+    if (evPref) {
+      EF.prefId = evPref.getAttribute('data-ev-pref') || null;
+      closeMenus();
+      renderEvents();
+      return;
+    }
+
+    var evCohort = t.closest('[data-ev-cohort]');
+    if (evCohort) {
+      EF.cohort = evCohort.getAttribute('data-ev-cohort');
+      closeMenus();
+      renderEvents();
+      return;
+    }
+
+    if (t.closest('[data-ev-clear-all]')) {
+      EF.formats = [];
+      EF.kinds = [];
+      EF.cities = [];
+      EF.platforms = [];
+      renderEvents();
+      return;
+    }
+
+    var evReg = t.closest('[data-evc-registration]');
+    if (evReg && evCreate && !t.closest('[data-ev-form-builder], [data-ev-apply-template]')) {
+      readEventCreate();
+      evCreate.draft.registration = evReg.getAttribute('data-evc-registration');
+      renderEventCreate();
+      return;
+    }
+
+    if (t.closest('[data-evc-remove-cover]') && evCreate) {
+      readEventCreate();
+      evCreate.draft.coverImage = '';
+      renderEventCreate();
+      return;
+    }
+
+    var removeGallery = t.closest('[data-evc-remove-gallery]');
+    if (removeGallery && evCreate) {
+      readEventCreate();
+      evCreate.draft.galleryImages.splice(Number(removeGallery.getAttribute('data-evc-remove-gallery')), 1);
+      renderEventCreate();
+      return;
+    }
+
+    if (t.closest('[data-ev-create-next]') && evCreate) {
+      eventCreateNext();
+      return;
+    }
+
+    if (t.closest('[data-ev-create-back]') && evCreate) {
+      if (!evCreate.step) {
+        evCreate = null;
+        currentEventId = null;
+        goTo('events');
+      }
+      else {
+        readEventCreate();
+        evCreate.step -= 1;
+        renderEventCreate();
+      }
+      return;
+    }
+
+    var evPublish = t.closest('[data-ev-publish]');
+    if (evPublish && evCreate) {
+      publishCreatedEvent(evPublish.getAttribute('data-ev-publish'));
+      return;
+    }
+
+    if (t.closest('[data-ev-form-builder]') && evCreate) {
+      readEventCreate();
+      evCreate.draft.formBuilt = true;
+      renderEventCreate();
+      toast('Opened form builder with the existing form.');
+      return;
+    }
+
+    if (t.closest('[data-ev-apply-template]') && evCreate) {
+      readEventCreate();
+      evCreate.draft.registration = 'new';
+      evCreate.draft.formBuilt = true;
+      renderEventCreate();
+      toast('Template applied.');
+      return;
+    }
+
     if (!t.closest('.ar-menu') && !t.closest('[data-card-more]')) closeMenus();
+
+    var evFacet = t.closest('[data-ev-facet]');
+    if (evFacet) {
+      var facet = evFacet.getAttribute('data-ev-facet').split(':');
+      if (facet[0] === 'program') {
+        EF.program = EF.program === facet[1] ? 'all' : facet[1];
+        EF.prefId = null;
+      } else {
+        toggleIn(EF[facet[0]], facet.slice(1).join(':'));
+      }
+      renderEvents();
+      return;
+    }
+
+    var evClear = t.closest('[data-ev-clear]');
+    if (evClear) {
+      var cleared = evClear.getAttribute('data-ev-clear').split(':');
+      toggleIn(EF[cleared[0]], cleared.slice(1).join(':'));
+      renderEvents();
+      return;
+    }
+
+    var evFollow = t.closest('[data-ev-followup]');
+    if (evFollow) {
+      var fu = evFollow.getAttribute('data-ev-followup').split(':');
+      openFollowupEditor(fu[0], fu[1]);
+      return;
+    }
+
+    var evmChannel = t.closest('[data-evm-channel]');
+    if (evmChannel && evEditor) {
+      readFollowupEditor();
+      evEditor.channel = evmChannel.getAttribute('data-evm-channel');
+      renderFollowupEditor();
+      return;
+    }
+
+    if (t.closest('[data-evm-save]') && evEditor) {
+      saveFollowupEditor();
+      return;
+    }
+
+    if (t.closest('.ar-ev-link')) return;
+
+    var evCard = t.closest('[data-event]');
+    if (evCard) {
+      openEvent(evCard.getAttribute('data-event'));
+      return;
+    }
 
     if (t.closest('.ar-td-check, .ar-th-check')) return;
 
@@ -3613,8 +4721,7 @@
 
     var chatOpen = t.closest('[data-chat-open]');
     if (chatOpen) {
-      selectChat(chatOpen.getAttribute('data-chat-open'));
-      renderChats();
+      goTo('chats/' + encodeURIComponent(chatOpen.getAttribute('data-chat-open')));
       return;
     }
 
@@ -3782,6 +4889,52 @@
     renderChatList();
   });
 
+  $('ev-filter-menu').addEventListener('change', function (e) {
+    var key = e.target.getAttribute('data-ev-check');
+    if (!key) return;
+    var bits = key.split(':');
+    toggleIn(EF[bits[0]], bits.slice(1).join(':'));
+    renderEvents();
+  });
+
+  $('ev-search').addEventListener('input', function (e) {
+    EF.q = e.target.value;
+    renderEventInsights();
+    renderEventBoard();
+  });
+
+  $('drawer-body').addEventListener('change', function (e) {
+    if (!evCreate) return;
+    if (e.target.id === 'evc-coverFile') {
+      readEventCreate();
+      readImageFiles(e.target.files, function (images) {
+        if (images[0]) evCreate.draft.coverImage = images[0];
+        renderEventCreate();
+      });
+      return;
+    }
+    if (e.target.id === 'evc-galleryFiles') {
+      readEventCreate();
+      readImageFiles(e.target.files, function (images) {
+        evCreate.draft.galleryImages = evCreate.draft.galleryImages.concat(images).slice(0, 8);
+        renderEventCreate();
+      });
+      return;
+    }
+    readEventCreate();
+    if (e.target.name === 'evc-format' || e.target.name === 'evc-registration' || e.target.id === 'evc-program' ||
+        e.target.id === 'evc-kind' || e.target.id === 'evc-category' || e.target.id === 'evc-prefId' ||
+        e.target.id === 'evc-matchScore' || e.target.id === 'evc-savedFilter') {
+      if (e.target.id === 'evc-program') evCreate.draft.prefId = '';
+      renderEventCreate();
+    }
+  });
+
+  $('drawer-body').addEventListener('input', function (e) {
+    if (!evCreate) return;
+    if (e.target.id === 'evc-name' || e.target.id === 'evc-description') readEventCreate();
+  });
+
   $('view-chats').addEventListener('change', function (e) {
     var cpStudent = e.target.getAttribute('data-cp-program');
     if (cpStudent) {
@@ -3902,6 +5055,10 @@
       e.preventDefault();
       openStudent(e.target.getAttribute('data-student'));
     }
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('ar-ev-card')) {
+      e.preventDefault();
+      openEvent(e.target.getAttribute('data-event'));
+    }
   });
 
   $('student-search').addEventListener('input', function (e) {
@@ -4005,7 +5162,7 @@
     state.stage = state.action = null;
     if (!keepFilters) applySavedFilters();
     unlock();
-    setView('dashboard');
+    applyRoute();
   }
 
   var setupProgram = PROGRAMS[0].id;
@@ -4089,6 +5246,11 @@
     closeDrawer();
     closeMenus();
     showGate('gate-login');
+  });
+
+  window.addEventListener('hashchange', function () {
+    if (document.body.classList.contains('ar-locked')) return;
+    applyRoute();
   });
 
   var signedIn = null;
