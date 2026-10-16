@@ -1815,7 +1815,7 @@
 
   function cardSaveHtml(id) {
     var on = isSaved(id);
-    var tip = on ? 'Unsave' : 'Save';
+    var tip = on ? 'Remove from shortlist' : 'Shortlist';
     return '<button type="button" class="ar-card-save' + (on ? ' on' : '') + '" data-card-save="' + id + '" aria-pressed="' + on + '" aria-label="' + tip + '" data-tip="' + tip + '">' +
       ico('bookmark') + '</button>';
   }
@@ -1845,7 +1845,7 @@
       boardCols = [{ items: list, shown: 0 }];
       $('board').innerHTML =
         '<div class="ar-col-list ar-col-grid ar-col-plain gr-scroll" data-col="0">' +
-        (list.length ? '' : '<div class="ar-col-empty">No students match these filters.</div>') + '</div>';
+        (list.length ? '' : '<div class="ar-col-empty">' + (savedView() ? 'No leads match these filters.' : 'No students match these filters.') + '</div>') + '</div>';
       growColumn(0);
       return;
     }
@@ -1978,7 +1978,7 @@
         return item('data-bulk="campaign" data-bulk-channel="' + c.id + '"', c.icon, c.name + ' campaign');
       }).join('') +
       '<div class="ar-bulk-sep"></div>' +
-      (saved ? item('data-bulk="unsave"' + pickOnly, 'bookmark_remove', 'Remove from saved') : item('data-bulk="shortlist"' + pickOnly, 'bookmark_add', 'Shortlist')) +
+      (saved ? item('data-bulk="unsave"' + pickOnly, 'bookmark_remove', 'Remove from shortlist') : item('data-bulk="shortlist"' + pickOnly, 'bookmark_add', 'Shortlist')) +
       item('data-bulk="download"', 'download', 'Download CSV');
   }
 
@@ -2000,8 +2000,8 @@
     changed.forEach(function (s) { toggleSaved(s.id); });
     if (!add) list.forEach(function (s) { delete SELECTED[s.id]; });
     toast(add
-      ? (changed.length ? changed.length + ' student' + (changed.length === 1 ? '' : 's') + ' added to Saved students.' : 'Already in Saved students.')
-      : changed.length + ' student' + (changed.length === 1 ? '' : 's') + ' removed from Saved students.');
+      ? (changed.length ? changed.length + ' lead' + (changed.length === 1 ? '' : 's') + ' shortlisted.' : 'Already shortlisted.')
+      : changed.length + ' lead' + (changed.length === 1 ? '' : 's') + ' removed from the shortlist.');
     renderStudents();
   }
 
@@ -2044,7 +2044,7 @@
     if (savedView()) {
       $('table').innerHTML = '<section class="panel ar-table-wrap">' + (list.length
         ? '<div class="ar-table-scroll"><table class="ar-table ar-table-fit"><thead>' + head('all') + '</thead><tbody>' + rowsFor(list) + '</tbody></table></div>' + tableMore(list.length)
-        : '<div class="ar-col-empty">No students match these filters.</div>') + '</section>';
+        : '<div class="ar-col-empty">No leads match these filters.</div>') + '</section>';
       return;
     }
     $('table').innerHTML = bucketDefs().map(function (b, i) {
@@ -2088,7 +2088,8 @@
 
     $('students-count').textContent = list.length;
     if ($('filter-show-count')) $('filter-show-count').textContent = list.length;
-    $('students-title').textContent = savedView() ? 'Saved students' : state.program === 'all' ? 'All students' : 'Students by match';
+    $('students-title').textContent = savedView() ? 'Leads' : state.program === 'all' ? 'All students' : 'Students by match';
+    if ($('dash-sub')) $('dash-sub').textContent = savedView() ? 'Shortlisted Lead' : 'Admissions dashboard';
   }
 
   function renderFilterBtn() {
@@ -3784,7 +3785,7 @@
   function saveBtnHtml(id) {
     var on = isSaved(id);
     return '<button type="button" class="btn btn-secondary btn-sm btn-icon ar-save-btn' + (on ? ' on' : '') + '" data-action="shortlist" data-id="' + id + '">' +
-      ico(on ? 'bookmark_added' : 'bookmark_add') + (on ? 'Saved' : 'Save to list') + '</button>';
+      ico(on ? 'bookmark_added' : 'bookmark_add') + (on ? 'Shortlisted' : 'Shortlist') + '</button>';
   }
 
   /* ——— Preference editor ——— */
@@ -5192,7 +5193,7 @@
   var ACCESS_AREAS = [
     { id: 'dashboard', name: 'Dashboard', hint: 'See students, funnel and match scores' },
     { id: 'programs', name: 'Programs & preferences', hint: 'Create and edit preferences' },
-    { id: 'saved', name: 'Saved students', hint: 'Open the saved student list' },
+    { id: 'saved', name: 'Leads', hint: 'Open the leads list' },
     { id: 'events', name: 'Events', hint: 'View events and registrations' },
     { id: 'events_manage', name: 'Create events', hint: 'Create, draft and publish events' },
     { id: 'chats', name: 'Chats', hint: 'Message students in-platform' },
@@ -7404,7 +7405,7 @@
     var cardSave = t.closest('[data-card-save]');
     if (cardSave) {
       var savedNow = toggleSaved(cardSave.getAttribute('data-card-save'));
-      toast(savedNow ? 'Saved to your list.' : 'Removed from your list.');
+      toast(savedNow ? 'Lead shortlisted.' : 'Removed from the shortlist.');
       renderStudents();
       return;
     }
@@ -7518,7 +7519,7 @@
         var sid = action.getAttribute('data-id');
         var nowSaved = toggleSaved(sid);
         action.outerHTML = saveBtnHtml(sid);
-        toast(nowSaved ? 'Saved to your list.' : 'Removed from your list.');
+        toast(nowSaved ? 'Lead shortlisted.' : 'Removed from the shortlist.');
         renderStudents();
       }
     }
