@@ -6469,6 +6469,29 @@ label.ar-editor-program:focus-within {
 }
 
 /* Campaigns */
+.ar-cg-insights {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--panel-gap);
+  margin-bottom: var(--space-4);
+}
+
+.ar-cg-insights .panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ar-cg-insights .ar-trend-chart {
+  flex: 1;
+  margin-top: var(--space-3);
+}
+
+.ar-cg-insights .ar-achart-plot {
+  height: 150px;
+  cursor: default;
+}
+
 .ar-cg-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
@@ -7249,6 +7272,7 @@ label.ar-editor-program:focus-within {
 }
 
 @media (max-width: 1280px) {
+  .ar-cg-insights,
   .ar-cg-layout {
     grid-template-columns: 1fr;
   }

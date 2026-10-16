@@ -6,7 +6,7 @@
  */
 (function () {
   var PREFS_KEY = 'admitright_prefs_v5';
-  var TODAY = new Date(2026, 9, 6);
+  var TODAY = new Date(2026, 9, 16);
 
   var STAGES = [
     { id: 'recommended', name: 'Recommendation', icon: 'auto_awesome', hint: 'AI recommended your program' },
@@ -1440,15 +1440,12 @@
     return state.stageMode === 'snapshot' ? s.stage === i : s.stage >= i;
   }
 
-  /** Each row shows students matching the preference out of everyone at that stage. */
+  /** Stage counts include every lead in the current program, not only preference matches. */
   function renderFunnel() {
     var set = baseSet();
     var snapshot = state.stageMode === 'snapshot';
     var counts = STAGES.map(function (_, i) {
       return set.filter(function (s) { return atStage(s, i); }).length;
-    });
-    var matched = STAGES.map(function (_, i) {
-      return set.filter(function (s) { return atStage(s, i) && s.bucket === 0; }).length;
     });
     document.querySelectorAll('[data-stage-mode]').forEach(function (b) {
       var on = b.getAttribute('data-stage-mode') === state.stageMode;
@@ -1456,41 +1453,37 @@
       b.setAttribute('aria-selected', String(on));
     });
     $('funnel-clear').hidden = state.stage === null && !state.action;
-    var shownCounts = state.program === 'all' ? counts : matched;
     $('funnel-mini').innerHTML = STAGES.map(function (st, i) {
       return '<button type="button" class="ar-mini-step' + (state.stage === i ? ' active' : '') + '" data-stage="' + i + '" title="' + esc(st.name) + '">' +
-        '<span class="ar-mini-top">' + ico(st.icon) + '<b>' + shownCounts[i] + '</b></span><small>' + esc(st.name) + '</small></button>';
+        '<span class="ar-mini-top">' + ico(st.icon) + '<b>' + counts[i] + '</b></span><small>' + esc(st.name) + '</small></button>';
     }).join('');
-    var shownTotal = shownCounts.reduce(function (a, b) { return a + b; }, 0);
-    var trend = stageSeries(set.filter(function (s) { return state.program === 'all' || s.bucket === 0; }), snapshot);
+    var shownTotal = counts.reduce(function (a, b) { return a + b; }, 0);
+    var trend = stageSeries(set, snapshot);
     $('funnel-grid').innerHTML = '<div class="ar-fstages">' + STAGES.map(function (st, i) {
-      var shown = shownCounts;
       var note;
-      var base = snapshot ? shownTotal : shown[0];
-      var fill = base ? (shown[i] / base) * 100 : 0;
+      var base = snapshot ? shownTotal : counts[0];
+      var fill = base ? (counts[i] / base) * 100 : 0;
       if (snapshot) {
         note = Math.round(fill) + '%';
       } else {
-        var prev = i ? shown[i - 1] : shown[0];
-        note = i ? (prev ? Math.round((shown[i] / prev) * 100) : 0) + '%' : '';
+        var prev = i ? counts[i - 1] : counts[0];
+        note = i ? (prev ? Math.round((counts[i] / prev) * 100) : 0) + '%' : '';
       }
       return (
-        '<button type="button" class="ar-frow' + (state.stage === i ? ' active' : '') + (shown[i] ? '' : ' zero') + '" data-stage="' + i + '" style="--st:' + CHART_COLORS[i] + '">' +
+        '<button type="button" class="ar-frow' + (state.stage === i ? ' active' : '') + (counts[i] ? '' : ' zero') + '" data-stage="' + i + '" style="--st:' + CHART_COLORS[i] + '">' +
         '<span class="ar-frow-name"><i class="ar-frow-dot" aria-hidden="true"></i>' + esc(st.name) + '</span>' +
         '<span class="ar-frow-val">' +
-        (state.program === 'all'
-          ? '<strong>' + counts[i] + '</strong>'
-          : '<strong title="' + matched[i] + ' of ' + counts[i] + ' students match the preference">' + matched[i] + '</strong>') +
+        '<strong>' + counts[i] + '</strong>' +
         (note ? '<small title="' + (snapshot ? 'Share of students at this stage now' : 'Conversion from the previous stage') + '">' + note + '</small>' : '') +
         '</span></button>'
       );
     }).join('') + '</div>';
-    $('trend-chart').innerHTML = snapshot ? stageChartHtml(trend) : stageBarsHtml(state.program === 'all' ? counts : matched);
+    $('trend-chart').innerHTML = snapshot ? stageChartHtml(trend) : stageBarsHtml(counts);
     $('trend-actions').innerHTML =
       '<div class="ar-factions">' + ACTIONS.map(function (a) {
         var did = set.filter(function (s) { return s.actions[a.id]; });
-        var n = state.program === 'all' ? did.length : did.filter(function (s) { return s.bucket === 0; }).length;
-        var of = snapshot ? shownCounts.reduce(function (sum, b) { return sum + b; }, 0) : shownCounts[0];
+        var n = did.length;
+        var of = snapshot ? shownTotal : counts[0];
         var pct = of ? Math.round((n / of) * 100) : 0;
         return (
           '<button type="button" class="ar-faction' + (state.action === a.id ? ' active' : '') + (n ? '' : ' zero') + '" data-funnel-action="' + a.id + '" style="--share:' + pct + '">' +
@@ -4304,8 +4297,7 @@
     if (evPieFocus && rows.some(function (r) { return r.id === evPieFocus; })) return evPieFocus;
     var picked = rows.filter(function (r) { return EF.formats.indexOf(r.id) !== -1; });
     if (picked.length === 1) return picked[0].id;
-    var top = rows.slice().sort(function (a, b) { return b.n - a.n || b.regs - a.regs; })[0];
-    return top ? top.id : '';
+    return '';
   }
 
   function donutPath(cx, cy, r0, r1, a0, a1) {
@@ -4331,8 +4323,8 @@
       return '<div class="panel-head"><h2>Event format</h2></div><p class="ar-muted ar-ev-none">No events here with these filters.</p>';
     }
     var active = pieActiveId(rows);
-    var current = rows.filter(function (r) { return r.id === active; })[0] || alive[0];
     var total = alive.reduce(function (sum, r) { return sum + r.n; }, 0);
+    var current = rows.filter(function (r) { return r.id === active; })[0] || { id: '', name: 'All', n: total };
     var cx = 120;
     var cy = 120;
     var gap = alive.length > 1 ? 0.05 : 0;
@@ -4353,7 +4345,7 @@
       }).join('') : '';
       return '<g class="ar-ev-slice' + (on ? ' on' : '') + '" data-ev-facet="formats:' + esc(r.id) + '" role="button" tabindex="0" aria-pressed="' + (EF.formats.indexOf(r.id) !== -1) + '" aria-label="' + esc(r.name) + ', ' + r.n + ' events">' + body + ring + '</g>';
     }).join('');
-    var options = rows.map(function (r) {
+    var options = '<option value=""' + (current.id ? '' : ' selected') + '>All</option>' + rows.map(function (r) {
       return '<option value="' + esc(r.id) + '"' + (r.id === current.id ? ' selected' : '') + '>' + esc(r.name) + '</option>';
     }).join('');
     return '<div class="panel-head"><h2>Event format</h2>' +
@@ -5382,6 +5374,23 @@
       ['cg-deadline-ds', 'launched', 'Final call: Data Science deadline', 'Remind students who started an application but haven’t submitted.', 'sms', 'deadline', 'bsc-ds', -1, '0', '2', '', 14],
       ['cg-bdes-portfolio', 'launched', 'Portfolio review for B.Des', 'Offer portfolio feedback to creative applicants.', 'whatsapp', 'custom', 'bdes', 0, '60', '', '', 21],
       ['cg-bcom-toppers', 'launched', 'Commerce toppers early admit', 'Early admit invite for strong commerce profiles.', 'email', 'scholarship', 'bcom', 0, '80', '', '2027', 33],
+      ['cg-may-jee', 'launched', 'JEE results are out', 'Share what a strong JEE score means for B.Tech CSE.', 'email', 'reminder', 'btech-cse', 0, '70', '', '', 168],
+      ['cg-may-open', 'launched', 'Applications open for 2027', 'Tell every program that applications are open.', 'whatsapp', 'reminder', 'bba', -1, '0', '', '2027', 154],
+      ['cg-may-visit', 'launched', 'May campus walk-in', 'Invite nearby students to a weekday campus visit.', 'sms', 'visit', 'bdes', 0, '0', '', '', 141],
+      ['cg-jun-scholar', 'launched', 'June scholarship window', 'Merit aid for high-match AI & ML applicants.', 'email', 'scholarship', 'btech-ai', 0, '70', '', '', 132],
+      ['cg-jun-deadline', 'launched', 'Form fee reminder', 'Nudge students who opened the application but have not paid.', 'whatsapp', 'deadline', 'bsc-ds', -1, '0', '2', '', 123],
+      ['cg-jun-bcom', 'launched', 'Commerce early decision', 'Early decision note for B.Com applicants.', 'sms', 'scholarship', 'bcom', 0, '60', '', '2027', 110],
+      ['cg-jul-coding', 'launched', 'Coding challenge invite', 'Invite matched CSE students to a weekend challenge.', 'email', 'visit', 'btech-cse', 0, '80', '1', '', 105],
+      ['cg-jul-parents', 'launched', 'Parent open house', 'WhatsApp parents about the July open house.', 'whatsapp', 'visit', 'bba', 0, '0', '', '', 96],
+      ['cg-jul-portfolio', 'launched', 'Portfolio checklist', 'Send the B.Des portfolio checklist before reviews.', 'email', 'custom', 'bdes', 0, '50', '', '', 84],
+      ['cg-aug-ai', 'launched', 'AI lab tour', 'Offer a lab tour to students who opened the AI page.', 'whatsapp', 'visit', 'btech-ai', 0, '60', '1', '', 73],
+      ['cg-aug-fee', 'launched', 'Fee deadline, 15 August', 'Last call for students who started an application.', 'sms', 'deadline', 'btech-cse', -1, '0', '2', '', 61],
+      ['cg-aug-hostel', 'launched', 'Hostel and scholarship FAQ', 'Answer the questions August applicants ask most.', 'email', 'scholarship', 'bsc-ds', 0, '70', '', '2027', 49],
+      ['cg-sep-shortlist', 'launched', 'September shortlist', 'Tell shortlisted students what happens next.', 'email', 'reminder', 'btech-cse', 0, '80', '3', '', 41],
+      ['cg-sep-wa', 'launched', 'WhatsApp application nudge', 'A short nudge for AI applicants still on the fence.', 'whatsapp', 'reminder', 'btech-ai', 0, '70', '1', '2027', 28],
+      ['cg-sep-bba', 'launched', 'BBA interview slots', 'Share interview slots with BBA applicants.', 'sms', 'deadline', 'bba', 0, '60', '2', '', 19],
+      ['cg-oct-reopen', 'launched', 'October round reopens', 'Tell matched students the October round is open.', 'email', 'reminder', 'bcom', 0, '70', '', '2027', 13],
+      ['cg-oct-visit', 'launched', 'Weekend visit, 10 October', 'Invite students who have not visited campus yet.', 'whatsapp', 'visit', 'bdes', -1, '0', '1', '', 6],
       ['cg-draft-open-house', 'draft', 'Open house follow-up', 'Thank attendees and share next steps.', 'email', 'visit', 'btech-cse', 0, '70', '', '', 1],
       ['cg-draft-ai-wa', 'draft', 'AI & ML application nudge', '', 'whatsapp', 'reminder', 'btech-ai', -1, '0', '1', '2028', 4],
     ];
@@ -5405,6 +5414,15 @@
   function saveCampaignList() {
     try { localStorage.setItem(CG_KEY, JSON.stringify(CAMPAIGN_LIST)); } catch (err) { /* storage full or blocked */ }
   }
+
+  (function addSeededCampaigns() {
+    var have = {};
+    CAMPAIGN_LIST.forEach(function (c) { have[c.id] = true; });
+    var missing = seedCampaignList().filter(function (c) { return !have[c.id]; });
+    if (!missing.length) return;
+    CAMPAIGN_LIST = missing.concat(CAMPAIGN_LIST);
+    saveCampaignList();
+  })();
 
   function campaignById(id) {
     return CAMPAIGN_LIST.filter(function (c) { return c.id === id; })[0] || null;
@@ -5510,9 +5528,96 @@
     else if (cgPage.page === 'detail') renderCampaignDetail();
     else {
       showCampaignsPage('list');
+      renderCampaignInsights();
       renderCampaignList();
       renderCampaignSide();
     }
+  }
+
+  var cgCharts = {};
+
+  /** Last six months, oldest first, so the charts read left to right like the dashboard. */
+  function cgMonthSeries() {
+    var end = new Date(TODAY.getFullYear(), TODAY.getMonth(), 1);
+    var months = [];
+    var index = {};
+    for (var i = 5; i >= 0; i--) {
+      var m = new Date(end.getFullYear(), end.getMonth() - i, 1);
+      index[m.getFullYear() + '-' + m.getMonth()] = months.length;
+      months.push(m);
+    }
+    var campaigns = months.map(function () { return 0; });
+    var reached = months.map(function () { return 0; });
+    var slot = function (at) {
+      var d = new Date(at);
+      return index[d.getFullYear() + '-' + d.getMonth()];
+    };
+    CAMPAIGN_LIST.forEach(function (c) {
+      if (c.status !== 'launched' || !c.sentAt) return;
+      var i = slot(c.sentAt);
+      if (i == null) return;
+      campaigns[i] += 1;
+      reached[i] += cgMetrics(c).sent;
+    });
+    individualRows().forEach(function (r) {
+      var i = slot(r.at);
+      if (i == null) return;
+      reached[i] += 1;
+    });
+    return { months: months, campaigns: campaigns, reached: reached };
+  }
+
+  function cgAreaChart(id, values, months, color, noun) {
+    cgCharts[id] = { values: values, months: months, noun: noun };
+    var n = values.length;
+    var W = 600;
+    var H = 200;
+    var max = Math.max.apply(null, values.concat([1])) * 1.15;
+    var x = function (k) { return n === 1 ? W / 2 : (k / (n - 1)) * W; };
+    var y = function (v) { return H - (v / max) * (H - 8); };
+    var line = smoothPath(values.map(function (v, k) { return [x(k), y(v)]; }), H);
+    var ticks = months.map(function (d) { return d.toLocaleDateString('en-GB', { month: 'short' }); });
+    return '<div class="ar-achart" data-cg-chart="' + id + '"><div class="ar-achart-plot">' +
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs>' +
+      '<linearGradient id="ar-cg-fill-' + id + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="5%" stop-color="' + color + '" stop-opacity="0.18"/>' +
+      '<stop offset="95%" stop-color="' + color + '" stop-opacity="0.02"/></linearGradient></defs>' +
+      [0.25, 0.5, 0.75].map(function (f) {
+        return '<line x1="0" x2="' + W + '" y1="' + H * f + '" y2="' + H * f + '" stroke="#ece9f5" vector-effect="non-scaling-stroke"/>';
+      }).join('') +
+      '<path d="' + line + 'L' + W + ',' + H + 'L0,' + H + 'Z" fill="url(#ar-cg-fill-' + id + ')"/>' +
+      '<path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>' +
+      '<span class="ar-achart-cursor" hidden></span><div class="ar-achart-tip" hidden></div></div>' +
+      '<div class="ar-achart-ticks">' + ticks.map(function (t) { return '<span>' + esc(t) + '</span>'; }).join('') + '</div></div>';
+  }
+
+  function renderCampaignInsights() {
+    var series = cgMonthSeries();
+    var root = getComputedStyle(document.documentElement);
+    var brand = root.getPropertyValue('--brand').trim() || '#782bff';
+    var second = root.getPropertyValue('--stage-2').trim() || '#5b4dff';
+    $('cg-chart-campaigns').innerHTML = cgAreaChart('campaigns', series.campaigns, series.months, brand, 'campaign');
+    $('cg-chart-reached').innerHTML = cgAreaChart('reached', series.reached, series.months, second, 'user');
+  }
+
+  function moveCgChartTip(e) {
+    var plot = e.target.closest('.ar-achart-plot');
+    var chart = plot && plot.closest('[data-cg-chart]');
+    var data = chart && cgCharts[chart.getAttribute('data-cg-chart')];
+    if (!data) return;
+    var box = plot.getBoundingClientRect();
+    var n = data.values.length;
+    var k = Math.max(0, Math.min(n - 1, Math.round(((e.clientX - box.left) / box.width) * (n - 1))));
+    var left = n === 1 ? box.width / 2 : (k / (n - 1)) * box.width;
+    var cursor = plot.querySelector('.ar-achart-cursor');
+    var tip = plot.querySelector('.ar-achart-tip');
+    var nVal = data.values[k];
+    var month = data.months[k].toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    cursor.hidden = false;
+    cursor.style.left = left + 'px';
+    tip.hidden = false;
+    tip.innerHTML = '<b>' + esc(month) + '</b><span><strong>' + nVal.toLocaleString() + '</strong> ' + data.noun + (nVal === 1 ? '' : 's') + '</span>';
+    tip.style.left = Math.min(Math.max(left, 90), box.width - 90) + 'px';
   }
 
   /* ——— Campaigns: list ——— */
@@ -7303,6 +7408,11 @@
     if (pop.hidden || e.composedPath().indexOf($('cf-wrap')) !== -1) return;
     pop.hidden = true;
     $('cf-toggle').setAttribute('aria-expanded', 'false');
+  });
+
+  $('cg-insights').addEventListener('mousemove', moveCgChartTip);
+  $('cg-insights').addEventListener('mouseleave', function () {
+    $('cg-insights').querySelectorAll('.ar-achart-cursor, .ar-achart-tip').forEach(function (el) { el.hidden = true; });
   });
 
   $('trend-chart').addEventListener('mousemove', moveStageChartTip);
