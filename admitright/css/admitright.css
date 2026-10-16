@@ -7535,6 +7535,7 @@ label.ar-editor-program:focus-within {
 .ar-achart-plot {
   position: relative;
   height: 170px;
+  cursor: pointer;
 }
 
 .ar-achart-plot svg {
@@ -7718,6 +7719,7 @@ label.ar-editor-program:focus-within {
 /* Dashboard: leads-over-time panel */
 .ar-insights {
   grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+  align-items: stretch;
 }
 
 .ar-insights.collapsed {
@@ -7836,6 +7838,7 @@ label.ar-editor-program:focus-within {
 
 .ar-actions-panel {
   overflow: hidden;
+  height: 100%;
 }
 
 .ar-actions-panel .panel-head {
@@ -7848,6 +7851,16 @@ label.ar-editor-program:focus-within {
   flex-direction: column;
   min-height: 0;
   margin: 0 calc(-1 * var(--panel-pad-x)) calc(-1 * var(--panel-pad-y));
+}
+
+.ar-actions-panel .ar-faction {
+  flex: 1 1 auto;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--panel-pad-x);
+}
+
+.ar-actions-panel .ar-faction strong {
+  font-size: var(--text-xl);
 }
 
 .ar-actions-panel .ar-trend-actions {

@@ -1631,6 +1631,29 @@
     tip.style.left = Math.min(Math.max(left, 112), box.width - 112) + 'px';
   }
 
+  /** The bucket under the pointer, matching the hover tooltip. */
+  function chartBucketAt(e) {
+    var plot = e.target.closest('.ar-achart-plot');
+    if (!plot || !stageChart || stageChart.days.length < 2) return null;
+    var box = plot.getBoundingClientRect();
+    var n = stageChart.days.length;
+    var k = Math.max(0, Math.min(n - 1, Math.round(((e.clientX - box.left) / box.width) * (n - 1))));
+    var from = dayStart(stageChart.days[k]);
+    var to = stageChart.step === 1 ? from : addDays(from, stageChart.step - 1);
+    var cap = state.range ? dayStart(state.range.to) : dayStart(TODAY);
+    if (to > cap) to = cap;
+    return { from: from, to: to };
+  }
+
+  /** Clicking a point applies that day, week, or month the same way the date picker does. */
+  function selectChartDate(e) {
+    var bucket = chartBucketAt(e);
+    if (!bucket) return;
+    state.range = { from: bucket.from, to: bucket.to, preset: 'custom' };
+    $('range-label').textContent = rangeText(bucket.from, bucket.to);
+    renderDashboard();
+  }
+
   /* ——— Dashboard: insights ——— */
 
   function prefRows(pref, limit) {
@@ -2736,7 +2759,7 @@
     var menu = $('card-menu');
     menu.innerHTML = '<div class="ar-card-menu-head">Campaign</div>' + CAMPAIGN_CHANNELS.map(function (c) {
       return '<button type="button" class="ar-menu-item ar-card-menu-item" role="menuitem" data-campaign="' + c.id + '" data-campaign-student="' + id + '">' +
-        ico(c.icon) + '<span>' + c.name + ' campaign</span></button>';
+        ico(c.icon) + '<span>' + c.name + '</span></button>';
     }).join('');
     menu.hidden = false;
     var r = btn.getBoundingClientRect();
@@ -7177,6 +7200,7 @@
   });
 
   $('trend-chart').addEventListener('mousemove', moveStageChartTip);
+  $('trend-chart').addEventListener('click', selectChartDate);
 
   $('trend-chart').addEventListener('mouseleave', function () {
     document.querySelectorAll('.ar-achart-cursor, .ar-achart-tip').forEach(function (el) { el.hidden = true; });  });
