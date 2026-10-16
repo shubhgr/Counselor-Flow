@@ -602,7 +602,6 @@
 
 .ar-faction.active {
   background: var(--bg);
-  box-shadow: inset 2px 0 0 var(--gray-600);
 }
 
 .ar-faction:focus-visible {
@@ -8556,7 +8555,7 @@ label.ar-editor-program:focus-within {
 
 .ar-bchart-tip {
   position: absolute;
-  bottom: calc(100% - var(--space-6));
+  bottom: min(calc(var(--h, 0%) + 1.6rem), calc(100% - 5.25rem));
   left: 50%;
   z-index: 3;
   display: flex;

@@ -1601,9 +1601,10 @@
         var conv = si
           ? '<span><b>' + (prev ? Math.round((v / prev) * 100) : 0) + '%</b> of ' + esc(STAGES[si - 1].name) + '</span>'
           : '<span>Top of the funnel</span>';
-        return '<button type="button" class="' + (state.stage !== null && state.stage !== si ? 'dim' : '') + '" data-stage="' + si + '" aria-label="' + esc(st.name) + ': ' + v + '" style="--bar:' + CHART_COLORS[si] + '">' +
+        var barH = v ? Math.max(2, (v / bmax) * 100).toFixed(1) : 0;
+        return '<button type="button" class="' + (state.stage !== null && state.stage !== si ? 'dim' : '') + '" data-stage="' + si + '" aria-label="' + esc(st.name) + ': ' + v + '" style="--bar:' + CHART_COLORS[si] + ';--h:' + barH + '%">' +
           '<em class="ar-bchart-tip"><strong>' + esc(st.name) + '</strong><span>' + v + ' student' + (v === 1 ? '' : 's') + '</span>' + conv + '</em>' +
-          '<b>' + v + '</b><i style="height:' + (v ? Math.max(2, (v / bmax) * 100).toFixed(1) : 0) + '%"></i></button>';
+          '<b>' + v + '</b><i style="height:' + barH + '%"></i></button>';
       }).join('') + '</div></div>' +
       '<div class="ar-bchart-labels">' + STAGES.map(function (st) { return '<span>' + esc(st.name) + '</span>'; }).join('') + '</div></div>';
   }
