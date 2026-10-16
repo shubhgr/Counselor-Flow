@@ -5567,27 +5567,36 @@
     return { months: months, campaigns: campaigns, reached: reached };
   }
 
-  function cgAreaChart(id, values, months, color, noun) {
-    cgCharts[id] = { values: values, months: months, noun: noun };
-    var n = values.length;
+  function cgComboChart(series, brand, blue) {
+    var months = series.months;
+    var rows = [
+      { name: 'Campaigns', color: brand, values: series.campaigns },
+      { name: 'Users reached', color: blue, values: series.reached },
+    ];
+    cgCharts.activity = { months: months, rows: rows };
+    var n = months.length;
     var W = 600;
     var H = 200;
-    var max = Math.max.apply(null, values.concat([1])) * 1.15;
     var x = function (k) { return n === 1 ? W / 2 : (k / (n - 1)) * W; };
-    var y = function (v) { return H - (v / max) * (H - 8); };
-    var line = smoothPath(values.map(function (v, k) { return [x(k), y(v)]; }), H);
+    var defs = '';
+    var paths = '';
+    rows.slice().reverse().forEach(function (row, ri) {
+      var max = Math.max.apply(null, row.values.concat([1])) * 1.15;
+      var y = function (v) { return H - (v / max) * (H - 8); };
+      var line = smoothPath(row.values.map(function (v, k) { return [x(k), y(v)]; }), H);
+      defs += '<linearGradient id="ar-cg-fill-' + ri + '" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="5%" stop-color="' + row.color + '" stop-opacity="0.35"/>' +
+        '<stop offset="95%" stop-color="' + row.color + '" stop-opacity="0.04"/></linearGradient>';
+      paths += '<path d="' + line + 'L' + W + ',' + H + 'L0,' + H + 'Z" fill="url(#ar-cg-fill-' + ri + ')"/>' +
+        '<path d="' + line + '" fill="none" stroke="' + row.color + '" stroke-width="1.6" vector-effect="non-scaling-stroke"/>';
+    });
     var ticks = months.map(function (d) { return d.toLocaleDateString('en-GB', { month: 'short' }); });
-    return '<div class="ar-achart" data-cg-chart="' + id + '"><div class="ar-achart-plot">' +
-      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs>' +
-      '<linearGradient id="ar-cg-fill-' + id + '" x1="0" y1="0" x2="0" y2="1">' +
-      '<stop offset="5%" stop-color="' + color + '" stop-opacity="0.18"/>' +
-      '<stop offset="95%" stop-color="' + color + '" stop-opacity="0.02"/></linearGradient></defs>' +
+    return '<div class="ar-achart" data-cg-chart="activity"><div class="ar-achart-plot">' +
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs>' + defs + '</defs>' +
       [0.25, 0.5, 0.75].map(function (f) {
         return '<line x1="0" x2="' + W + '" y1="' + H * f + '" y2="' + H * f + '" stroke="#ece9f5" vector-effect="non-scaling-stroke"/>';
-      }).join('') +
-      '<path d="' + line + 'L' + W + ',' + H + 'L0,' + H + 'Z" fill="url(#ar-cg-fill-' + id + ')"/>' +
-      '<path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>' +
-      '<span class="ar-achart-cursor" hidden></span><div class="ar-achart-tip" hidden></div></div>' +
+      }).join('') + paths +
+      '</svg><span class="ar-achart-cursor" hidden></span><div class="ar-achart-tip" hidden></div></div>' +
       '<div class="ar-achart-ticks">' + ticks.map(function (t) { return '<span>' + esc(t) + '</span>'; }).join('') + '</div></div>';
   }
 
@@ -5595,9 +5604,8 @@
     var series = cgMonthSeries();
     var root = getComputedStyle(document.documentElement);
     var brand = root.getPropertyValue('--brand').trim() || '#782bff';
-    var second = root.getPropertyValue('--stage-2').trim() || '#5b4dff';
-    $('cg-chart-campaigns').innerHTML = cgAreaChart('campaigns', series.campaigns, series.months, brand, 'campaign');
-    $('cg-chart-reached').innerHTML = cgAreaChart('reached', series.reached, series.months, second, 'user');
+    var blue = root.getPropertyValue('--stage-2').trim() || '#3b7fc4';
+    $('cg-chart').innerHTML = cgComboChart(series, brand, blue);
   }
 
   function moveCgChartTip(e) {
@@ -5606,18 +5614,19 @@
     var data = chart && cgCharts[chart.getAttribute('data-cg-chart')];
     if (!data) return;
     var box = plot.getBoundingClientRect();
-    var n = data.values.length;
+    var n = data.months.length;
     var k = Math.max(0, Math.min(n - 1, Math.round(((e.clientX - box.left) / box.width) * (n - 1))));
     var left = n === 1 ? box.width / 2 : (k / (n - 1)) * box.width;
     var cursor = plot.querySelector('.ar-achart-cursor');
     var tip = plot.querySelector('.ar-achart-tip');
-    var nVal = data.values[k];
     var month = data.months[k].toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
     cursor.hidden = false;
     cursor.style.left = left + 'px';
     tip.hidden = false;
-    tip.innerHTML = '<b>' + esc(month) + '</b><span><strong>' + nVal.toLocaleString() + '</strong> ' + data.noun + (nVal === 1 ? '' : 's') + '</span>';
-    tip.style.left = Math.min(Math.max(left, 90), box.width - 90) + 'px';
+    tip.innerHTML = '<b>' + esc(month) + '</b>' + data.rows.map(function (row) {
+      return '<span><i style="background:' + row.color + '"></i>' + esc(row.name) + '<strong>' + row.values[k].toLocaleString() + '</strong></span>';
+    }).join('');
+    tip.style.left = Math.min(Math.max(left, 110), box.width - 110) + 'px';
   }
 
   /* ——— Campaigns: list ——— */
@@ -5820,7 +5829,8 @@
   }
 
   function cgKpi(icon, label, value, note) {
-    return '<div class="ar-cg-kpi"><span class="ar-cg-kpi-ico">' + ico(icon) + '</span><div><span>' + esc(label) + '</span><strong>' + esc(String(value)) + '</strong><small>' + esc(note) + '</small></div></div>';
+    return '<div class="ar-cg-kpi"><span class="ar-cg-kpi-ico">' + ico(icon) + '</span><div><span>' + esc(label) + '</span>' +
+      '<p><strong>' + esc(String(value)) + '</strong><small>' + esc(note) + '</small></p></div></div>';
   }
 
   function renderCampaignSide() {
@@ -5835,12 +5845,13 @@
     }, { sent: 0, delivered: 0, opened: 0, clicked: 0 });
     var drafts = CAMPAIGN_LIST.length - launched.length;
     var individuals = individualRows().length;
-    $('cg-side').innerHTML =
-      '<section class="panel ar-cg-kpis"><h3>Overview</h3>' +
+    $('cg-overview').innerHTML =
+      '<section class="panel ar-cg-kpis"><div class="panel-head"><h2>Overview</h2></div>' +
       cgKpi('campaign', 'Total campaigns', CAMPAIGN_LIST.length, launched.length + ' launched · ' + drafts + ' draft' + (drafts === 1 ? '' : 's')) +
       cgKpi('person', 'Individual sends', individuals.toLocaleString(), 'One student at a time') +
       cgKpi('groups', 'Total students', t.sent.toLocaleString(), 'Across ' + launched.length + ' launched campaign' + (launched.length === 1 ? '' : 's')) +
-      '</section>' +
+      '</section>';
+    $('cg-side').innerHTML =
       '<section class="panel ar-cg-quick"><h3>Quick actions</h3>' +
       '<button type="button" class="ar-cg-action" data-cg-templates>' + ico('description') + '<span><b>Manage templates</b><small>Reusable messages for every channel</small></span>' + ico('chevron_right') + '</button>' +
       '<button type="button" class="ar-cg-action" data-cg-export>' + ico('download') + '<span><b>Export campaign data</b><small>Results as CSV, without student contact details</small></span>' + ico('chevron_right') + '</button>' +

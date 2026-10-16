@@ -10,7 +10,7 @@
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=tok1" />
   <link rel="stylesheet" href="css/tokens.css?v=tok1" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar258" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar262" />
 </head>
 <body class="ar ar-locked">
   <section class="ar-gate" id="gate-login" hidden>
@@ -403,13 +403,10 @@
         <div class="content ar-content" id="cg-list-content">
           <section class="ar-cg-insights" id="cg-insights">
             <div class="panel">
-              <div class="panel-head"><h2>Campaigns</h2></div>
-              <div class="ar-trend-chart" id="cg-chart-campaigns"></div>
+              <div class="panel-head"><h2>Campaign activity</h2></div>
+              <div class="ar-trend-chart" id="cg-chart"></div>
             </div>
-            <div class="panel">
-              <div class="panel-head"><h2>Users reached</h2></div>
-              <div class="ar-trend-chart" id="cg-chart-reached"></div>
-            </div>
+            <div id="cg-overview"></div>
           </section>
           <div class="ar-cg-layout">
             <section class="ar-cg-main">
@@ -600,6 +597,6 @@
   <div class="ar-toast" id="toast" hidden></div>
 
   <script src="data/students-data.js?v=ar259"></script>
-  <script src="js/admitright.js?v=ar261"></script>
+  <script src="js/admitright.js?v=ar262"></script>
 </body>
 </html>
