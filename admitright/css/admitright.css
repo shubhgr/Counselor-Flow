@@ -116,6 +116,26 @@
   gap: var(--space-0-5);
 }
 
+.ar-title:has(> .ar-uni-logo) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-3);
+  row-gap: 0;
+  align-items: center;
+}
+
+.ar-uni-logo {
+  grid-row: 1 / span 2;
+  height: 28px;
+  width: auto;
+  mix-blend-mode: multiply;
+}
+
+.ar-title:has(> .ar-uni-logo) h1 {
+  font-size: var(--text-xl);
+  line-height: 1.15;
+}
+
 .ar-sub,
 .ar-meta {
   font-size: var(--text-sm);
