@@ -8,8 +8,9 @@
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AdmitRight — University dashboard</title>
-  <link rel="stylesheet" href="css/styles.css?v=notif8" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar176" />
+  <link rel="stylesheet" href="css/styles.css?v=tok1" />
+  <link rel="stylesheet" href="css/tokens.css?v=tok1" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar252" />
 </head>
 <body class="ar ar-locked">
   <section class="ar-gate" id="gate-login" hidden>
@@ -72,14 +73,25 @@
         <a class="ar-rail-item" href="#/events" data-go="events" title="Events" aria-label="Events">
           <span class="material-symbols-rounded" aria-hidden="true">event</span>
         </a>
+        <a class="ar-rail-item" href="#/campaigns" data-go="campaigns" title="Campaigns" aria-label="Campaigns">
+          <span class="material-symbols-rounded" aria-hidden="true">campaign</span>
+        </a>
+        <a class="ar-rail-item" href="#/billing" data-go="billing" title="Billing" aria-label="Billing">
+          <span class="material-symbols-rounded" aria-hidden="true">account_balance_wallet</span>
+        </a>
         <a class="ar-rail-item" href="#/chats" data-go="chats" title="Chats" aria-label="Chats">
           <span class="material-symbols-rounded" aria-hidden="true">chat</span>
           <span class="ar-rail-badge" id="chat-badge" hidden></span>
         </a>
       </nav>
-      <a class="ar-rail-item ar-rail-foot" href="#" data-logout title="Log out" aria-label="Log out">
-        <span class="material-symbols-rounded" aria-hidden="true">logout</span>
-      </a>
+      <div class="ar-rail-end">
+        <a class="ar-rail-item" href="#/settings" data-go="settings" title="Settings" aria-label="Settings">
+          <span class="material-symbols-rounded" aria-hidden="true">settings</span>
+        </a>
+        <a class="ar-rail-item" href="#" data-logout title="Log out" aria-label="Log out">
+          <span class="material-symbols-rounded" aria-hidden="true">logout</span>
+        </a>
+      </div>
     </aside>
 
     <div class="main">
@@ -98,12 +110,30 @@
               </button>
               <div class="ar-menu" id="program-menu" hidden></div>
             </div>
-            <div class="ar-menu-wrap">
+            <div class="ar-menu-wrap ar-pref-wrap">
               <button type="button" class="chip-btn ar-picker" id="pref-btn" aria-expanded="false">
                 <span class="ar-picker-text"><small>Preference</small><span id="pref-label">Default preference</span></span>
                 <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
               </button>
               <div class="ar-menu" id="pref-menu" hidden></div>
+              <div class="panel ar-prefs-panel ar-pref-hover">
+                <div class="panel-head">
+                  <h2 id="pref-panel-title">Preference</h2>
+                  <div class="ar-head-actions">
+                    <button type="button" class="ar-icon-btn ar-head-icon" id="pref-panel-create" aria-label="Create preference" data-tip="Create preference" hidden>
+                      <span class="material-symbols-rounded" aria-hidden="true">add</span>
+                    </button>
+                    <button type="button" class="ar-icon-btn ar-head-icon" id="pref-panel-edit" aria-label="Edit preference" data-tip="Edit">
+                      <span class="material-symbols-rounded" aria-hidden="true">edit</span>
+                    </button>
+                    <button type="button" class="ar-icon-btn ar-head-icon" id="pref-panel-dup" aria-label="Duplicate preference" data-tip="Duplicate">
+                      <span class="material-symbols-rounded" aria-hidden="true">content_copy</span>
+                    </button>
+                  </div>
+                </div>
+                <div id="prefs-summary"></div>
+                <div class="ar-mini" id="prefs-mini"></div>
+              </div>
             </div>
             <div class="ar-menu-wrap">
               <button type="button" class="chip-btn" id="range-btn" aria-expanded="false">
@@ -122,39 +152,28 @@
                 <h2>Stage</h2>
                 <div class="ar-head-actions">
                   <div class="ar-seg ar-seg-sm" role="tablist" aria-label="Stage view">
-                    <button type="button" class="ar-seg-btn active" data-stage-mode="funnel" role="tab" aria-selected="true" title="How many students reached each stage">Funnel</button>
-                    <button type="button" class="ar-seg-btn" data-stage-mode="snapshot" role="tab" aria-selected="false" title="How many students are at each stage right now">Snapshot</button>
+                    <button type="button" class="ar-seg-btn" data-stage-mode="funnel" role="tab" aria-selected="false" title="How many students reached each stage">Funnel</button>
+                    <button type="button" class="ar-seg-btn active" data-stage-mode="snapshot" role="tab" aria-selected="true" title="How many students are at each stage right now">Snapshot</button>
                   </div>
-                  <button type="button" class="btn btn-ghost btn-sm" data-clear="funnel" id="funnel-clear" hidden>Clear</button>
-                  <button type="button" class="ar-icon-btn ar-collapse-btn" data-toggle-insights aria-label="Collapse">
+                  <button type="button" class="ar-clear-chip" data-clear="funnel" id="funnel-clear" hidden><span class="material-symbols-rounded" aria-hidden="true">close</span>Clear</button>
+                  <button type="button" class="ar-icon-btn ar-collapse-btn ar-collapse-alt" data-toggle-insights aria-label="Collapse">
                     <span class="material-symbols-rounded" aria-hidden="true">expand_less</span>
                   </button>
                 </div>
               </div>
               <div class="ar-flist" id="funnel-grid"></div>
+              <div class="ar-trend-chart" id="trend-chart"></div>
               <div class="ar-mini" id="funnel-mini"></div>
             </div>
 
-            <div class="panel ar-prefs-panel">
+            <div class="panel ar-actions-panel">
               <div class="panel-head">
-                <h2 id="pref-panel-title">Preference</h2>
-                <div class="ar-head-actions">
-                  <button type="button" class="ar-icon-btn ar-head-icon" id="pref-panel-create" aria-label="Create preference" data-tip="Create preference" hidden>
-                    <span class="material-symbols-rounded" aria-hidden="true">add</span>
-                  </button>
-                  <button type="button" class="ar-icon-btn ar-head-icon" id="pref-panel-edit" aria-label="Edit preference" data-tip="Edit">
-                    <span class="material-symbols-rounded" aria-hidden="true">edit</span>
-                  </button>
-                  <button type="button" class="ar-icon-btn ar-head-icon" id="pref-panel-dup" aria-label="Duplicate preference" data-tip="Duplicate">
-                    <span class="material-symbols-rounded" aria-hidden="true">content_copy</span>
-                  </button>
-                  <button type="button" class="ar-icon-btn ar-collapse-btn" data-toggle-insights aria-label="Collapse">
-                    <span class="material-symbols-rounded" aria-hidden="true">expand_less</span>
-                  </button>
-                </div>
+                <h2>Additional user actions</h2>
+                <button type="button" class="ar-icon-btn ar-collapse-btn" data-toggle-insights aria-label="Collapse">
+                  <span class="material-symbols-rounded" aria-hidden="true">expand_less</span>
+                </button>
               </div>
-              <div id="prefs-summary"></div>
-              <div class="ar-mini" id="prefs-mini"></div>
+              <div class="ar-trend-actions" id="trend-actions"></div>
             </div>
           </section>
 
@@ -254,7 +273,26 @@
             <h1>BML Munjal University</h1>
             <span class="ar-sub">Events</span>
           </div>
-          <div class="actions">
+          <div class="actions ar-cg-actions">
+            <label class="ar-search ar-cg-search">
+              <span class="material-symbols-rounded" aria-hidden="true">search</span>
+              <input type="search" id="ev-search" placeholder="Search events" autocomplete="off" />
+            </label>
+            <div class="ar-cf-wrap" id="evf-wrap">
+              <button type="button" class="chip-btn ar-picker ar-cf-toggle" id="evf-toggle" aria-expanded="false" aria-controls="evf-pop">
+                <span class="material-symbols-rounded" aria-hidden="true">tune</span>
+                <span>Filters</span>
+                <b class="ar-cf-count" id="evf-count" hidden></b>
+                <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+              </button>
+              <div class="ar-cf-pop" id="evf-pop" hidden>
+                <div class="ar-cf-pop-head">
+                  <strong>Filter events</strong>
+                  <button type="button" class="ar-link" id="evf-clear" data-ev-clear-all hidden>Clear all</button>
+                </div>
+                <div class="ar-cgf-fields" id="evf-fields"></div>
+              </div>
+            </div>
             <button type="button" class="btn btn-primary btn-sm btn-icon" id="ev-create">
               <span class="material-symbols-rounded" aria-hidden="true">add</span>
               Create event
@@ -268,41 +306,6 @@
           <section class="ar-section">
             <div class="ar-section-head">
               <h2 class="ar-students-head"><span>Events</span><span class="ar-head-count" id="ev-count"></span></h2>
-              <div class="ar-tools">
-                <label class="ar-search">
-                  <span class="material-symbols-rounded" aria-hidden="true">search</span>
-                  <input type="search" id="ev-search" placeholder="Search event, type, host or venue" autocomplete="off" />
-                </label>
-                <div class="ar-menu-wrap">
-                  <button type="button" class="chip-btn ar-picker" id="ev-program-btn" aria-expanded="false">
-                    <span class="ar-picker-text"><small>Program</small><span id="ev-program-label">All programs</span></span>
-                    <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
-                  </button>
-                  <div class="ar-menu" id="ev-program-menu" hidden></div>
-                </div>
-                <div class="ar-menu-wrap">
-                  <button type="button" class="chip-btn ar-picker" id="ev-pref-btn" aria-expanded="false">
-                    <span class="ar-picker-text"><small>Preference</small><span id="ev-pref-label">Any</span></span>
-                    <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
-                  </button>
-                  <div class="ar-menu" id="ev-pref-menu" hidden></div>
-                </div>
-                <div class="ar-menu-wrap">
-                  <button type="button" class="chip-btn ar-picker" id="ev-cohort-btn" aria-expanded="false">
-                    <span class="ar-picker-text"><small>Cohort</small><span id="ev-cohort-label">All cohorts</span></span>
-                    <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
-                  </button>
-                  <div class="ar-menu" id="ev-cohort-menu" hidden></div>
-                </div>
-                <div class="ar-menu-wrap">
-                  <button type="button" class="btn btn-secondary btn-sm btn-icon" id="ev-filter-btn" aria-expanded="false">
-                    <span class="material-symbols-rounded" aria-hidden="true">filter_list</span>
-                    Filters
-                    <span class="ar-count" id="ev-filter-count" hidden></span>
-                  </button>
-                  <div class="ar-menu ar-filter-menu ar-ev-filter-menu" id="ev-filter-menu" hidden></div>
-                </div>
-              </div>
             </div>
             <div class="ar-filters" id="ev-active-filters" hidden></div>
             <div class="ar-board ar-ev-board" id="ev-board"></div>
@@ -311,10 +314,14 @@
 
         <div id="events-create-page" hidden>
           <header class="topbar ar-subpage-head">
-            <div class="ar-title">
-              <button type="button" class="ar-link ar-back-link" data-events-back><span class="material-symbols-rounded" aria-hidden="true">arrow_back</span> Events</button>
-              <h1>Create event</h1>
-              <span class="ar-sub">Build and publish an event</span>
+            <div class="ar-title ar-create-title">
+              <button type="button" class="ar-icon-btn" data-events-back aria-label="Back">
+                <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+              </button>
+              <div>
+                <h1>Create event</h1>
+                <span class="ar-sub" id="ev-create-sub">Event basics</span>
+              </div>
             </div>
           </header>
           <div class="content ar-content ar-event-page">
@@ -339,6 +346,147 @@
         </div>
       </div>
 
+      <!-- Campaigns -->
+      <div id="view-campaigns" hidden>
+        <header class="topbar" id="cg-list-head">
+          <div class="ar-title">
+            <h1>BML Munjal University</h1>
+            <span class="ar-sub">Campaigns</span>
+          </div>
+          <div class="actions ar-cg-actions">
+            <div class="ar-seg ar-cg-tabs" id="cg-tabs" role="tablist" aria-label="Campaign status"></div>
+            <label class="ar-search ar-cg-search">
+              <span class="material-symbols-rounded" aria-hidden="true">search</span>
+              <input type="search" id="cg-search" placeholder="Search campaigns" autocomplete="off" />
+            </label>
+            <div class="ar-cf-wrap" id="cgf-wrap">
+              <button type="button" class="chip-btn ar-picker ar-cf-toggle" id="cgf-toggle" aria-expanded="false" aria-controls="cgf-pop">
+                <span class="material-symbols-rounded" aria-hidden="true">tune</span>
+                <span>Filters</span>
+                <b class="ar-cf-count" id="cgf-count" hidden></b>
+                <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+              </button>
+              <div class="ar-cf-pop" id="cgf-pop" hidden>
+                <div class="ar-cf-pop-head">
+                  <strong>Filter campaigns</strong>
+                  <button type="button" class="ar-link" id="cgf-clear" hidden>Clear all</button>
+                </div>
+                <div class="ar-cgf-fields">
+                  <label><span>Channel</span>
+                    <select class="ar-cg-select" id="cgf-channel">
+                      <option value="all">All channels</option>
+                      <option value="email">Email</option>
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="sms">Text</option>
+                    </select>
+                  </label>
+                  <label><span>Program</span>
+                    <select class="ar-cg-select" id="cgf-program"></select>
+                  </label>
+                  <label><span>Sort by</span>
+                    <select class="ar-cg-select" id="cgf-sort">
+                      <option value="new">Newest first</option>
+                      <option value="old">Oldest first</option>
+                      <option value="reach">Most recipients</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm btn-icon" id="cg-create">
+              <span class="material-symbols-rounded" aria-hidden="true">add</span>
+              Create campaign
+            </button>
+          </div>
+        </header>
+
+        <div class="content ar-content" id="cg-list-content">
+          <div class="ar-cg-layout">
+            <section class="ar-cg-main">
+              <div class="ar-cg-list" id="cg-list"></div>
+            </section>
+            <aside class="ar-cg-side" id="cg-side"></aside>
+          </div>
+        </div>
+
+        <div id="cg-form-page" hidden>
+          <header class="topbar ar-subpage-head">
+            <div class="ar-title">
+              <button type="button" class="ar-link ar-back-link" data-cg-back><span class="material-symbols-rounded" aria-hidden="true">arrow_back</span> Campaigns</button>
+              <h1 id="cg-form-title">Create campaign</h1>
+              <span class="ar-sub" id="cg-form-sub"></span>
+            </div>
+          </header>
+          <div class="content ar-content ar-event-page">
+            <section class="panel ar-event-page-card">
+              <div id="cg-form-body"></div>
+              <div class="ar-event-page-foot" id="cg-form-foot"></div>
+            </section>
+          </div>
+        </div>
+
+        <div id="cg-detail-page" hidden>
+          <header class="topbar ar-subpage-head">
+            <div class="ar-title">
+              <button type="button" class="ar-link ar-back-link" data-cg-back><span class="material-symbols-rounded" aria-hidden="true">arrow_back</span> Campaigns</button>
+              <h1 id="cg-detail-title">Campaign</h1>
+              <span class="ar-sub" id="cg-detail-sub"></span>
+            </div>
+            <div class="actions" id="cg-detail-actions"></div>
+          </header>
+          <div class="content ar-content ar-event-page ar-cg-detail" id="cg-detail-body"></div>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div id="view-billing" hidden>
+        <header class="topbar">
+          <div class="ar-title">
+            <h1>Billing</h1>
+            <span class="ar-sub">Wallet balance and what this period costs</span>
+          </div>
+          <div class="actions">
+            <div class="ar-menu-wrap">
+              <button type="button" class="chip-btn" id="bill-range-btn" aria-expanded="false">
+                <span class="material-symbols-rounded" aria-hidden="true">calendar_today</span>
+                <span id="bill-range-label">Month to date</span>
+                <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+              </button>
+              <div class="ar-menu ar-rp" id="bill-range-menu" hidden></div>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm btn-icon" id="bill-history">
+              <span class="material-symbols-rounded" aria-hidden="true">history</span>
+              Recharge history
+            </button>
+          </div>
+        </header>
+        <div class="content ar-content" id="bill-body"></div>
+        <div class="ar-bill-grand" id="bill-grand"></div>
+      </div>
+
+      <div id="view-settings" hidden>
+        <header class="topbar">
+          <div class="ar-title">
+            <h1>BML Munjal University</h1>
+            <span class="ar-sub">Settings</span>
+          </div>
+          <div class="actions">
+            <div class="ar-seg" role="tablist" aria-label="Settings">
+              <a class="ar-seg-btn" href="#/settings" data-st-tab="roles" role="tab">Roles</a>
+              <a class="ar-seg-btn" href="#/settings/users" data-st-tab="users" role="tab">Users</a>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm btn-icon" id="st-add">
+              <span class="material-symbols-rounded" aria-hidden="true">add</span>
+              <span id="st-add-label">Add role</span>
+            </button>
+          </div>
+        </header>
+
+        <div class="content ar-content">
+          <section class="ar-section" id="st-list-body"></section>
+        </div>
+      </div>
+
       <!-- Chats -->
       <div id="view-chats" hidden>
         <header class="topbar">
@@ -346,8 +494,20 @@
             <h1>BML Munjal University</h1>
             <span class="ar-sub">Chats</span>
           </div>
-          <div class="actions ar-cf">
-            <div class="ar-cf-row">
+          <div class="actions">
+            <div class="ar-cf-wrap" id="cf-wrap">
+              <button type="button" class="chip-btn ar-picker ar-cf-toggle" id="cf-toggle" aria-expanded="false" aria-controls="cf-pop">
+                <span class="material-symbols-rounded" aria-hidden="true">tune</span>
+                <span>Filters</span>
+                <b class="ar-cf-count" id="cf-count" hidden></b>
+                <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+              </button>
+              <div class="ar-cf-pop" id="cf-pop" hidden>
+                <div class="ar-cf-pop-head">
+                  <strong>Filter chats</strong>
+                  <button type="button" class="ar-link" id="cf-clear" hidden>Clear all</button>
+                </div>
+                <div class="ar-cf">
               <div class="ar-menu-wrap">
                 <button type="button" class="chip-btn ar-picker" id="cf-program-btn" aria-expanded="false">
                   <span class="ar-picker-text"><small>Program</small><span id="cf-program-label">All programs</span></span>
@@ -369,8 +529,6 @@
                 </button>
                 <div class="ar-menu ar-cf-menu" id="cf-score-menu" hidden></div>
               </div>
-            </div>
-            <div class="ar-cf-row">
               <div class="ar-menu-wrap">
                 <button type="button" class="chip-btn ar-picker" id="cf-stage-btn" aria-expanded="false">
                   <span class="ar-picker-text"><small>Snapshot steps</small><span id="cf-stage-label">Any</span></span>
@@ -385,9 +543,8 @@
                 </button>
                 <div class="ar-menu ar-cf-menu" id="cf-extra-menu" hidden></div>
               </div>
-              <button type="button" class="ar-icon-btn ar-cf-clear" id="cf-clear" aria-label="Clear all filters" data-tip="Clear all" hidden>
-                <span class="material-symbols-rounded" aria-hidden="true">filter_alt_off</span>
-              </button>
+                </div>
+              </div>
             </div>
           </div>
         </header>
@@ -432,7 +589,7 @@
 
   <div class="ar-toast" id="toast" hidden></div>
 
-  <script src="data/students-data.js?v=ar176"></script>
-  <script src="js/admitright.js?v=ar176"></script>
+  <script src="data/students-data.js?v=ar248"></script>
+  <script src="js/admitright.js?v=ar252"></script>
 </body>
 </html>
