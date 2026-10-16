@@ -860,9 +860,7 @@
 
   /** Criteria filtered by a numeric range on the student's actual value, and those picked from a list. */
   var RANGE_FILTERS = {
-    location: { unit: 'km', get: function (s) { return s.km; } },
     academic: { unit: '%', get: function (s) { return s.class12; } },
-    budget: { unit: '₹L' },
   };
   var PICK_FILTERS = {
     stream: function (s) { return s.subjects; },
@@ -874,13 +872,36 @@
     return state.program !== 'all' && !!findPref(state.program, state.prefId);
   }
 
-  function filterActive(v) {
-    return !!v && ((v.min !== undefined && v.min !== '') || (v.max !== undefined && v.max !== '') || !!v.val);
+  /** Ranges keyed by test name. Older saves stored one selected test on val/min/max. */
+  function testRanges(v) {
+    if (!v) return {};
+    if (v.tests) return v.tests;
+    if (v.val && ((v.min !== undefined && v.min !== '') || (v.max !== undefined && v.max !== ''))) {
+      var one = {};
+      one[v.val] = { min: v.min, max: v.max };
+      return one;
+    }
+    return {};
+  }
+
+  function filterActive(id, v) {
+    if (!v) return false;
+    if (id === 'location') return !!v.mode && (v.mode !== 'custom' || !!(v.places && v.places.length));
+    if (id === 'test') {
+      return Object.keys(testRanges(v)).some(function (name) {
+        var r = testRanges(v)[name] || {};
+        return (r.min !== undefined && r.min !== '') || (r.max !== undefined && r.max !== '');
+      });
+    }
+    if (id === 'budget') return v.min !== undefined && v.min !== '';
+    if (v.vals && v.vals.length) return true;
+    if (v.val) return true;
+    return (v.min !== undefined && v.min !== '') || (v.max !== undefined && v.max !== '');
   }
 
   function activeFilters() {
     var vals = state.filters.vals;
-    return Object.keys(vals).filter(function (id) { return filterActive(vals[id]); });
+    return Object.keys(vals).filter(function (id) { return filterActive(id, vals[id]); });
   }
 
   function activeFilterCount() {
@@ -900,7 +921,7 @@
   var SFILTERS = (function () {
     try { return JSON.parse(localStorage.getItem(SFILTERS_KEY) || '[]'); } catch (err) { return []; }
   })();
-  var fsheet = { tab: 'new', naming: false, editId: null, menuFor: null };
+  var fsheet = { tab: 'new', naming: false, editId: null };
 
   function storeSavedFilters() {
     try { localStorage.setItem(SFILTERS_KEY, JSON.stringify(SFILTERS)); } catch (err) { /* storage full or blocked */ }
@@ -913,7 +934,7 @@
   function savedFilterSummary(sf) {
     var vals = sf.filters.vals || {};
     var n = (sf.filters.min !== '' || sf.filters.max !== '' ? 1 : 0) +
-      Object.keys(vals).filter(function (id) { return filterActive(vals[id]); }).length;
+      Object.keys(vals).filter(function (id) { return filterActive(id, vals[id]); }).length;
     var program = programById(sf.program);
     var pref = prefsFor(sf.program).filter(function (p) { return p.id === sf.prefId; })[0];
     return [program && program.name, pref && pref.name, n + ' filter' + (n === 1 ? '' : 's'), sf.intake || 'All intakes']
@@ -951,15 +972,13 @@
         '<span>Set filters under New filter, then save them to reuse in one click.</span></div>';
     }
     return '<div class="ar-fsaved">' + SFILTERS.map(function (sf) {
-      var on = fsheet.menuFor === sf.id;
-      return '<div class="ar-fsaved-row' + (on ? ' open' : '') + '">' +
+      return '<div class="ar-fsaved-row">' +
         '<button type="button" class="ar-fsaved-main" data-fsaved-apply="' + sf.id + '"><strong>' + esc(sf.name) + '</strong>' +
         '<small>' + esc(savedFilterSummary(sf)) + '</small></button>' +
-        '<button type="button" class="ar-icon-btn" data-fsaved-more="' + sf.id + '" aria-label="More for ' + esc(sf.name) + '" aria-expanded="' + on + '">' + ico('more_vert') + '</button>' +
-        (on ? '<div class="ar-fsaved-menu" role="menu">' +
-          '<button type="button" role="menuitem" data-fsaved-edit="' + sf.id + '">' + ico('edit') + 'Edit</button>' +
-          '<button type="button" role="menuitem" class="danger" data-fsaved-delete="' + sf.id + '">' + ico('delete') + 'Delete</button></div>' : '') +
-        '</div>';
+        '<div class="ar-fsaved-tools">' +
+        '<button type="button" class="ar-icon-btn" data-fsaved-edit="' + sf.id + '" aria-label="Edit ' + esc(sf.name) + '">' + ico('edit') + '</button>' +
+        '<button type="button" class="ar-icon-btn danger" data-fsaved-delete="' + sf.id + '" aria-label="Delete ' + esc(sf.name) + '">' + ico('delete') + '</button>' +
+        '</div></div>';
     }).join('') + '</div>';
   }
 
@@ -1002,15 +1021,15 @@
     if (typeof v.intake === 'string') state.intake = v.intake;
   })();
 
-  function within(x, v) {
-    return (v.min === undefined || v.min === '' || x >= Number(v.min)) && (v.max === undefined || v.max === '' || x <= Number(v.max));
+  function studentInLocation(s, v) {
+    var st = CITY_STATE[s.city] || '';
+    if (v.mode === 'city') return s.city === CAMPUS.city;
+    if (v.mode === 'state') return st === CAMPUS.state;
+    return (v.places || []).some(function (x) { return x === s.city || x === st; });
   }
 
-  /** The test a test filter applies to; defaults to the preference's first accepted test. */
-  function filterTest(pref) {
-    var tests = pref.criteria.test.tests;
-    var name = (state.filters.vals.test || {}).val;
-    return tests.filter(function (t) { return t.name === name; })[0] || tests[0];
+  function within(x, v) {
+    return (v.min === undefined || v.min === '' || x >= Number(v.min)) && (v.max === undefined || v.max === '' || x <= Number(v.max));
   }
 
   /** Score and value filters only apply while a preference is scoring the students. */
@@ -1024,18 +1043,27 @@
       var id = ids[i];
       var v = f.vals[id];
       if (id === 'test') {
-        var rq = filterTest(s.pref);
-        var t = rq && s.tests.filter(function (x) { return x.name.toLowerCase() === rq.name.toLowerCase(); })[0];
-        if (!t || !within(t.value, v)) return false;
+        var ranges = testRanges(v);
+        var names = Object.keys(ranges);
+        for (var ti = 0; ti < names.length; ti++) {
+          var range = ranges[names[ti]] || {};
+          if ((range.min === undefined || range.min === '') && (range.max === undefined || range.max === '')) continue;
+          var taken = s.tests.filter(function (x) { return x.name.toLowerCase() === names[ti].toLowerCase(); })[0];
+          if (!taken || !within(taken.value, range)) return false;
+        }
       } else if (id === 'budget') {
         if (v.min !== undefined && v.min !== '' && s.budget[1] < Number(v.min)) return false;
-        if (v.max !== undefined && v.max !== '' && s.budget[0] > Number(v.max)) return false;
+      } else if (id === 'location') {
+        if (!studentInLocation(s, v)) return false;
       } else if (ENGAGE_FILTERS[id]) {
         if (s.engage[id] < ENGAGE_FILTERS[id].steps.indexOf(v.val) + 1) return false;
       } else if (RANGE_FILTERS[id]) {
         if (!within(RANGE_FILTERS[id].get(s), v)) return false;
-      } else if (PICK_FILTERS[id] && v.val) {
-        if (PICK_FILTERS[id](s).indexOf(v.val) === -1) return false;
+      } else if (PICK_FILTERS[id]) {
+        var picked = v.vals && v.vals.length ? v.vals : (v.val ? [v.val] : []);
+        if (picked.length && !picked.some(function (w) {
+          return PICK_FILTERS[id](s).some(function (a) { return String(a).toLowerCase() === String(w).toLowerCase(); });
+        })) return false;
       }
     }
     return true;
@@ -2077,15 +2105,31 @@
   }
 
   function filterChipText(id, v, pref) {
+    if (ENGAGE_FILTERS[id]) return ENGAGE_FILTERS[id].label + ': ' + v.val;
     var c = CRITERIA.filter(function (x) { return x.id === id; })[0];
     var label = c.label;
     var unit = RANGE_FILTERS[id] ? RANGE_FILTERS[id].unit : '';
     if (id === 'test') {
-      var rq = filterTest(pref);
-      label = rq.name;
-      unit = testUnit(rq);
+      var ranges = testRanges(v);
+      return Object.keys(ranges).map(function (name) {
+        var r = ranges[name] || {};
+        var lo = r.min !== undefined && r.min !== '';
+        var hi = r.max !== undefined && r.max !== '';
+        if (!lo && !hi) return '';
+        var rq = (pref.criteria.test.tests || []).filter(function (t) { return t.name === name; })[0] || { kind: 'score', max: 100 };
+        var suffix = testUnit(rq);
+        suffix = suffix === 'rank' ? ' rank' : suffix === '%ile' ? ' %ile' : ' ' + suffix;
+        if (lo && hi) return name + ' ' + r.min + '–' + r.max + suffix;
+        if (lo) return name + ' ≥ ' + r.min + suffix;
+        return name + ' ≤ ' + r.max + suffix;
+      }).filter(Boolean).join(', ');
     }
-    if (PICK_FILTERS[id]) return label + ': ' + v.val;
+    if (id === 'location') {
+      if (v.mode === 'city') return 'Location: in ' + CAMPUS.city;
+      if (v.mode === 'state') return 'Location: in ' + CAMPUS.state;
+      return 'Location: ' + ((v.places || []).join(', ') || 'Custom');
+    }
+    if (PICK_FILTERS[id]) return label + ': ' + (v.vals && v.vals.length ? v.vals : [v.val]).join(', ');
     var lo = v.min !== undefined && v.min !== '';
     var hi = v.max !== undefined && v.max !== '';
     var money = id === 'budget';
@@ -2130,6 +2174,57 @@
 
   var FILTER_ORDER = ['academic', 'test', 'stream', 'board', 'location', 'budget', 'activities'];
 
+  function filterMultiHtml(id, v) {
+    var selected = v.vals && v.vals.length ? v.vals : (v.val ? [v.val] : []);
+    var boxes = function (all, labels) {
+      return '<div class="ar-checks">' + all.map(function (item) {
+        return '<label class="ar-check"><input type="checkbox" data-ff="' + id + '" value="' + esc(item) + '"' +
+          (selected.indexOf(item) !== -1 ? ' checked' : '') + ' />' + esc((labels && labels[item]) || item) + '</label>';
+      }).join('') + '</div>';
+    };
+    if (id === 'board') {
+      return BOARD_GROUPS.map(function (g) {
+        return '<div class="ar-check-group"><div class="ar-check-group-head"><span>' + esc(g[0]) + '</span></div>' + boxes(g[1], BOARD_LABELS) + '</div>';
+      }).join('');
+    }
+    var known = id === 'stream' ? SUBJECTS : ACTIVITIES;
+    var extra = pickOptions(PICK_FILTERS[id]).filter(function (item) { return known.indexOf(item) === -1; });
+    return boxes(known.concat(extra));
+  }
+
+  function filterLocationHtml(v) {
+    var mode = v.mode || '';
+    var places = v.places || [];
+    var modes = [['', 'Any'], ['city', 'In ' + CAMPUS.city], ['state', 'In ' + CAMPUS.state], ['custom', 'Custom']];
+    var html = '<div class="ar-loc-modes" role="radiogroup" aria-label="Location">' + modes.map(function (m) {
+      return '<label><input type="radio" name="ff-loc-mode" value="' + m[0] + '"' + (mode === m[0] ? ' checked' : '') + ' />' + esc(m[1]) + '</label>';
+    }).join('') + '</div>';
+    if (mode !== 'custom') return html;
+    return html + '<div class="ar-place" id="ff-place">' +
+      (places.length ? '<div class="ar-place-chips">' + places.map(function (p) {
+        return '<span class="ar-place-chip">' + esc(p) + '<button type="button" data-ff-remove-place="' + esc(p) + '" aria-label="Remove ' + esc(p) + '">' + ico('close') + '</button></span>';
+      }).join('') + '</div>' : '') +
+      '<label class="ar-place-search">' + ico('search') +
+      '<input type="text" id="ff-place-q" placeholder="Search a city or state" autocomplete="off" /></label>' +
+      '<div class="ar-place-list" id="ff-place-list" hidden></div></div>';
+  }
+
+  function openFilterPlaces() {
+    var list = $('ff-place-list');
+    if (!list) return;
+    var places = (state.filters.vals.location && state.filters.vals.location.places) || [];
+    list.innerHTML = placeListHtml($('ff-place-q').value, places, 'data-ff-add-place');
+    list.hidden = false;
+  }
+
+  function refreshFilterMenu() {
+    var body = $('filter-menu').querySelector('.ar-fmenu-body');
+    var top = body ? body.scrollTop : 0;
+    renderFilterMenu();
+    body = $('filter-menu').querySelector('.ar-fmenu-body');
+    if (body) body.scrollTop = top;
+  }
+
   /** One row per criterion the preference scores on, filtering on each student's actual value. */
   function renderFilterMenu() {
     var pref = findPref(state.program, state.prefId);
@@ -2151,30 +2246,33 @@
       var v = f.vals[id] || {};
       var name = crit(id).label;
       if (id === 'test') {
-        var rq = filterTest(pref);
-        var unit = testUnit(rq);
-        var ext = extent(function (s) {
-          var t = s.tests.filter(function (x) { return x.name.toLowerCase() === rq.name.toLowerCase(); })[0];
-          return t ? t.value : null;
-        });
-        return row('<select class="ar-fselect ar-flabel-select" data-fsel="test" aria-label="Test" title="' + esc(span(ext, unit)) + '">' +
-          pref.criteria.test.tests.map(function (t) {
-            return '<option' + (t.name === rq.name ? ' selected' : '') + '>' + esc(t.name) + '</option>';
-          }).join('') + '</select>', rangeInputs(numAttr('test'), v, unit));
+        var ranges = testRanges(v);
+        return (pref.criteria.test.tests || []).map(function (rq) {
+          var tv = ranges[rq.name] || {};
+          var unit = testUnit(rq);
+          var ext = extent(function (s) {
+            var t = s.tests.filter(function (x) { return x.name.toLowerCase() === rq.name.toLowerCase(); })[0];
+            return t ? t.value : null;
+          });
+          return row(label(rq.name, span(ext, unit)), rangeInputs(function (k) {
+            return 'data-fnum="test:' + encodeURIComponent(rq.name) + ':' + k + '"';
+          }, tv, unit));
+        }).join('');
       }
       if (id === 'budget') {
         var lo = extent(function (s) { return s.budget[0]; })[0];
         var hi = extent(function (s) { return s.budget[1]; })[1];
-        return row(label(name, lo === '' ? '' : 'In data: ₹' + lo + '–' + hi + 'L'), rangeInputs(numAttr(id), v, '₹L'));
+        return row(label(name, lo === '' ? '' : 'In data: ₹' + lo + '–' + hi + 'L'),
+          '<label class="ar-fin"><span>₹</span><input type="number" placeholder="Minimum" data-fnum="budget:min" value="' +
+          (v.min === undefined ? '' : v.min) + '" aria-label="Minimum fee budget"><span>L</span></label>');
       }
+      if (id === 'location') return row(label(name), filterLocationHtml(v));
+      if (PICK_FILTERS[id]) return row(label(name), filterMultiHtml(id, v));
       if (RANGE_FILTERS[id]) {
         var u = RANGE_FILTERS[id].unit;
         return row(label(name, span(extent(RANGE_FILTERS[id].get), u)), rangeInputs(numAttr(id), v, u));
       }
-      return row(label(name), '<select class="ar-fselect" data-fsel="' + id + '" aria-label="' + esc(name) + '"><option value="">Any</option>' +
-        pickOptions(PICK_FILTERS[id]).map(function (o) {
-          return '<option' + (v.val === o ? ' selected' : '') + '>' + esc(o) + '</option>';
-        }).join('') + '</select>');
+      return row(label(name), '');
     };
     var scoreAttr = function (k) { return 'data-fscore="' + k + '" min="0" max="100"'; };
     var head = '<div class="ar-fmenu-head"><strong>Filters</strong>' +
@@ -3548,11 +3646,12 @@
     });
   }
 
-  function placeListHtml(q, taken) {
+  function placeListHtml(q, taken, attr) {
+    attr = attr || 'data-add-place';
     var opts = placeOptions(q, taken);
     if (!opts.length) return '<p class="ar-place-none">No city or state matches “' + esc(q) + '”.</p>';
     return opts.map(function (o) {
-      return '<button type="button" class="ar-place-opt" data-add-place="' + esc(o.name) + '"><span>' + esc(o.name) + '</span><small>' + esc(o.sub) + '</small></button>';
+      return '<button type="button" class="ar-place-opt" ' + attr + '="' + esc(o.name) + '"><span>' + esc(o.name) + '</span><small>' + esc(o.sub) + '</small></button>';
     }).join('');
   }
 
@@ -6419,7 +6518,6 @@
       if (t.closest('#' + MENUS[i][0])) {
         if (MENUS[i][1] === 'filter-menu') {
           fsheet.naming = false;
-          fsheet.menuFor = null;
           renderFilterMenu();
         }
         if (MENUS[i][1] === 'bulk-menu') renderBulkMenu();
@@ -6436,6 +6534,24 @@
       resetFilters();
       renderFilterMenu();
       renderStudents();
+      return;
+    }
+
+    var ffAdd = t.closest('[data-ff-add-place]');
+    var ffRemove = t.closest('[data-ff-remove-place]');
+    if (ffAdd || ffRemove) {
+      var loc = state.filters.vals.location || { mode: 'custom', places: [] };
+      var nextPlaces = (loc.places || []).slice();
+      if (ffAdd) {
+        var placeName = ffAdd.getAttribute('data-ff-add-place');
+        if (nextPlaces.indexOf(placeName) === -1) nextPlaces.push(placeName);
+      } else {
+        nextPlaces = nextPlaces.filter(function (p) { return p !== ffRemove.getAttribute('data-ff-remove-place'); });
+      }
+      state.filters.vals.location = { mode: 'custom', places: nextPlaces };
+      refreshFilterMenu();
+      renderStudents();
+      if (ffAdd && $('ff-place-q')) { $('ff-place-q').focus(); openFilterPlaces(); }
       return;
     }
 
@@ -6457,7 +6573,6 @@
     if (ftab) {
       fsheet.tab = ftab.getAttribute('data-ftab');
       fsheet.naming = false;
-      fsheet.menuFor = null;
       renderFilterMenu();
       return;
     }
@@ -6481,14 +6596,6 @@
       return;
     }
 
-    var sfMore = t.closest('[data-fsaved-more]');
-    if (sfMore) {
-      var sfId = sfMore.getAttribute('data-fsaved-more');
-      fsheet.menuFor = fsheet.menuFor === sfId ? null : sfId;
-      renderFilterMenu();
-      return;
-    }
-
     var sfApply = t.closest('[data-fsaved-apply]');
     if (sfApply) {
       var sfPick = savedFilterById(sfApply.getAttribute('data-fsaved-apply'));
@@ -6508,7 +6615,6 @@
         applySavedFilter(sfEditing);
         fsheet.editId = sfEditing.id;
         fsheet.tab = 'new';
-        fsheet.menuFor = null;
         $('filter-menu').hidden = false;
         renderFilterMenu();
       }
@@ -6522,7 +6628,6 @@
       SFILTERS = SFILTERS.filter(function (x) { return x.id !== delId; });
       storeSavedFilters();
       if (fsheet.editId === delId) fsheet.editId = null;
-      fsheet.menuFor = null;
       renderFilterMenu();
       if (gone) toast('Deleted “' + gone.name + '”.');
       return;
@@ -7496,6 +7601,7 @@
   });
 
   $('filter-menu').addEventListener('input', function (e) {
+    if (e.target.id === 'ff-place-q') { openFilterPlaces(); return; }
     var v = e.target.value.trim();
     var key = e.target.getAttribute('data-fscore');
     if (key) {
@@ -7507,12 +7613,34 @@
     if (!num) return;
     var bits = num.split(':');
     var vals = state.filters.vals;
+    if (bits[0] === 'test') {
+      var slot = bits.pop();
+      var testName = decodeURIComponent(bits.slice(1).join(':'));
+      var next = {};
+      var prevRanges = testRanges(vals.test);
+      Object.keys(prevRanges).forEach(function (n) { next[n] = { min: prevRanges[n].min || '', max: prevRanges[n].max || '' }; });
+      next[testName] = next[testName] || { min: '', max: '' };
+      next[testName][slot] = v === '' || isNaN(Number(v)) ? '' : v;
+      Object.keys(next).forEach(function (n) {
+        if (!next[n].min && !next[n].max) delete next[n];
+      });
+      if (Object.keys(next).length) vals.test = { tests: next };
+      else delete vals.test;
+      renderStudents();
+      return;
+    }
     vals[bits[0]] = vals[bits[0]] || {};
     vals[bits[0]][bits[1]] = v === '' || isNaN(Number(v)) ? '' : v;
     renderStudents();
   });
 
   $('filter-menu').addEventListener('keydown', function (e) {
+    if (e.target.id === 'ff-place-q' && e.key === 'Enter') {
+      e.preventDefault();
+      var firstPlace = $('ff-place-list') && $('ff-place-list').querySelector('[data-ff-add-place]');
+      if (firstPlace) firstPlace.click();
+      return;
+    }
     if (e.target.id !== 'fsave-name') return;
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -7524,24 +7652,27 @@
     }
   });
 
-  /** Changing the test redraws the menu so its unit and hints follow; its old range no longer applies. */
   $('filter-menu').addEventListener('change', function (e) {
-    if (e.target.hasAttribute('data-fintake')) {
-      setIntake(e.target.value);
+    var multi = e.target.getAttribute('data-ff');
+    if (multi) {
+      var cur = ((state.filters.vals[multi] && state.filters.vals[multi].vals) || []).filter(function (x) { return x !== e.target.value; });
+      if (e.target.checked) cur.push(e.target.value);
+      if (cur.length) state.filters.vals[multi] = { vals: cur };
+      else delete state.filters.vals[multi];
+      renderStudents();
       return;
     }
-    var id = e.target.getAttribute('data-fsel');
-    if (!id) return;
-    var vals = state.filters.vals;
-    if (id === 'test') {
-      vals.test = { val: e.target.value };
-      renderFilterMenu();
-    } else if (e.target.value) {
-      vals[id] = { val: e.target.value };
-    } else {
-      delete vals[id];
+    if (e.target.name === 'ff-loc-mode') {
+      if (!e.target.value) delete state.filters.vals.location;
+      else {
+        var prevLoc = state.filters.vals.location || {};
+        state.filters.vals.location = { mode: e.target.value, places: prevLoc.places || [] };
+      }
+      refreshFilterMenu();
+      renderStudents();
+      return;
     }
-    renderStudents();
+    if (e.target.hasAttribute('data-fintake')) setIntake(e.target.value);
   });
 
   $('table').addEventListener('change', function (e) {

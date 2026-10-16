@@ -8759,6 +8759,26 @@ body:has(#filter-menu:not([hidden]))::after {
   padding: var(--space-3-5) 0;
 }
 
+#filter-menu .ar-checks {
+  max-height: 168px;
+  overflow: auto;
+}
+
+#filter-menu .ar-loc-modes {
+  display: flex;
+  width: 100%;
+}
+
+#filter-menu .ar-place {
+  margin-top: var(--space-2);
+}
+
+#filter-menu .ar-place-list {
+  position: static;
+  margin-top: var(--space-1);
+  box-shadow: none;
+}
+
 #filter-menu .ar-ffield + .ar-ffield {
   border-top: 1px solid var(--line);
 }
@@ -8891,51 +8911,19 @@ body:has(#filter-menu:not([hidden]))::after {
   text-overflow: ellipsis;
 }
 
-.ar-fsaved-row.open .ar-icon-btn {
-  background: var(--bg);
-  color: var(--ink);
-}
-
-.ar-fsaved-menu {
-  position: absolute;
-  top: calc(100% - var(--space-2));
-  right: 0;
-  z-index: 2;
+.ar-fsaved-tools {
   display: flex;
-  flex-direction: column;
-  min-width: 140px;
-  padding: var(--space-1);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-btn);
-  background: var(--surface);
-  box-shadow: var(--shadow-pop);
+  flex: none;
+  gap: 2px;
 }
 
-.ar-fsaved-menu button {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-2-5);
-  border: none;
-  border-radius: var(--radius-md);
-  background: none;
-  color: var(--ink);
-  font: inherit;
-  font-size: var(--text-sm);
-  text-align: left;
-  cursor: pointer;
+.ar-fsaved-tools .ar-icon-btn.danger {
+  color: var(--danger);
 }
 
-.ar-fsaved-menu button:hover {
-  background: var(--bg);
-}
-
-.ar-fsaved-menu button.danger {
-  color: var(--danger, #c62f3b);
-}
-
-.ar-fsaved-menu .material-symbols-rounded {
-  font-size: var(--icon-sm);
+.ar-fsaved-tools .ar-icon-btn.danger:hover {
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  color: var(--danger);
 }
 
 .ar-fsaved-empty {
