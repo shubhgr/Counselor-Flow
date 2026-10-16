@@ -119,7 +119,7 @@
     Humanities: ['Geography', 'Psychology', 'Sociology', 'Fine Arts'],
   };
 
-  var CAMPUS = { city: 'Gurugram', state: 'Haryana', venue: 'BML Munjal University campus, Sidhrawali' };
+  var CAMPUS = { city: 'Gurugram', state: 'Haryana', venue: 'UDIT campus, Sidhrawali' };
   var CITY_STATE = {
     Gurugram: 'Haryana', Faridabad: 'Haryana', Sonipat: 'Haryana', Panipat: 'Haryana', Rohtak: 'Haryana',
     Karnal: 'Haryana', Ambala: 'Haryana', Hisar: 'Haryana', Delhi: 'Delhi', Chandigarh: 'Chandigarh',
@@ -2713,7 +2713,7 @@
      Each message is [from, text, hours ago]. */
   var DEMO_THREADS = [
     { unread: 2, msgs: [
-      ['student', 'Hi! Does BML Munjal offer scholarships for JEE Main above 90 percentile?', 30],
+      ['student', 'Hi! Does UDIT offer scholarships for JEE Main above 90 percentile?', 30],
       ['student', 'Also, is hostel accommodation guaranteed for first-year students?', 29]] },
     { seen: true, msgs: [
       ['uni', 'Hi {first}, thanks for shortlisting {program}! Would you like to book a call with our admissions team?', 54],
@@ -2831,7 +2831,7 @@
     return text
       .replace(/\{first\}/g, s.name.split(' ')[0])
       .replace(/\{program\}/g, programById(s.program).name)
-      .replace(/\{university\}/g, 'BML Munjal University');
+      .replace(/\{university\}/g, 'UDIT');
   }
 
   var cardMenuFor = null;
@@ -2866,7 +2866,7 @@
 
   /** For a group the {first} and {program} tokens stay in the draft and are filled in per student when it's sent. */
   function draftText(text, students) {
-    return students.length === 1 ? fillTemplate(text, students[0]) : text.replace(/\{university\}/g, 'BML Munjal University');
+    return students.length === 1 ? fillTemplate(text, students[0]) : text.replace(/\{university\}/g, 'UDIT');
   }
 
   function openCampaign(ids, channel) {
@@ -3343,7 +3343,7 @@
     var first = s.name.split(' ')[0];
     var programName = programById(s.program).name;
     var quick = [
-      'Hi ' + first + ', thanks for your interest in ' + programName + ' at BML Munjal University!',
+      'Hi ' + first + ', thanks for your interest in ' + programName + ' at UDIT!',
       'Would you like to schedule a call with our admissions team?',
       'Have you had a chance to start your application?',
     ];
@@ -4135,7 +4135,7 @@
   function defaultFollowups(e) {
     return {
       email: { on: !e.draft, subject: 'You’re registered: {event}',
-        text: 'Hi {first},\n\nThanks for registering for {event} on {date} at {time}.\n{where}\n\nWe’ll send you a reminder before it starts. See you there!\n\nAdmissions team, BML Munjal University' },
+        text: 'Hi {first},\n\nThanks for registering for {event} on {date} at {time}.\n{where}\n\nWe’ll send you a reminder before it starts. See you there!\n\nAdmissions team, UDIT' },
       whatsapp: { on: !e.draft && e.kind !== 'expert',
         text: 'Hi {first}! You’re in for {event} on {date}, {time}. {where} Reply here if you have any questions.' },
     };
@@ -5507,11 +5507,11 @@
     var text = fillTemplate(c.text || '', s).trim();
     if (c.channel === 'email') {
       return '<div class="ar-cg-mail"><div class="ar-cg-mail-head"><span>' + ico('mail') + '</span><div><b>' +
-        esc(fillTemplate(c.subject || '', s).trim() || '(No subject)') + '</b><small>BML Munjal University · via AdmitRight</small></div></div>' +
+        esc(fillTemplate(c.subject || '', s).trim() || '(No subject)') + '</b><small>UDIT · via AdmitRight</small></div></div>' +
         '<p>' + esc(text || 'Your message will appear here.') + '</p></div>';
     }
     return '<div class="ar-cg-phone ch-' + c.channel + '"><div class="ar-cg-phone-head">' + ico(channelById(c.channel).icon) +
-      '<b>BML Munjal University</b><small>' + esc(channelById(c.channel).name) + '</small></div>' +
+      '<b>UDIT</b><small>' + esc(channelById(c.channel).name) + '</small></div>' +
       '<div class="ar-cg-bubble">' + esc(text || 'Your message will appear here.') + '</div></div>';
   }
 
@@ -5849,7 +5849,7 @@
       '<section class="panel ar-cg-kpis"><div class="panel-head"><h2>Overview</h2></div>' +
       cgKpi('campaign', 'Total campaigns', CAMPAIGN_LIST.length, launched.length + ' launched · ' + drafts + ' draft' + (drafts === 1 ? '' : 's')) +
       cgKpi('person', 'Individual sends', individuals.toLocaleString(), 'One student at a time') +
-      cgKpi('groups', 'Total students', t.sent.toLocaleString(), 'Across ' + launched.length + ' launched campaign' + (launched.length === 1 ? '' : 's')) +
+      cgKpi('groups', 'Total students', t.sent.toLocaleString(), 'from ' + launched.length + ' launched campaign' + (launched.length === 1 ? '' : 's')) +
       '</section>';
     $('cg-side').innerHTML =
       '<section class="panel ar-cg-quick"><h3>Quick actions</h3>' +
