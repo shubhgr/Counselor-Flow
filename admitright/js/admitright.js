@@ -85,12 +85,12 @@
   }
 
   var PROGRAMS = [
-    { id: 'btech-cse', name: 'B.Tech Computer Science', fee: 18, stream: 'PCM', seats: 240, prefName: 'JEE Main 85+ coders' },
-    { id: 'btech-ai', name: 'B.Tech AI & ML', fee: 20, stream: 'PCM', seats: 120, prefName: 'Maths-strong AI aspirants' },
-    { id: 'bsc-ds', name: 'B.Sc Data Science', fee: 12, stream: 'PCM', seats: 90, prefName: 'Analytical PCM students' },
-    { id: 'bba', name: 'BBA', fee: 10, stream: 'Any', seats: 180, prefName: 'Business-minded all-rounders' },
-    { id: 'bdes', name: 'B.Des', fee: 16, stream: 'Any', seats: 60, prefName: 'UCEED & NATA creatives' },
-    { id: 'bcom', name: 'B.Com (Hons)', fee: 8, stream: 'Commerce', seats: 120, prefName: 'Commerce toppers' },
+    { id: 'btech-cse', name: 'B.Tech Computer Science', fee: 18, stream: 'PCM', seats: 240, prefName: 'Eligibility' },
+    { id: 'btech-ai', name: 'B.Tech AI & ML', fee: 20, stream: 'PCM', seats: 120, prefName: 'Eligibility' },
+    { id: 'bsc-ds', name: 'B.Sc Data Science', fee: 12, stream: 'PCM', seats: 90, prefName: 'Eligibility' },
+    { id: 'bba', name: 'BBA', fee: 10, stream: 'Any', seats: 180, prefName: 'Eligibility' },
+    { id: 'bdes', name: 'B.Des', fee: 16, stream: 'Any', seats: 60, prefName: 'Eligibility' },
+    { id: 'bcom', name: 'B.Com (Hons)', fee: 8, stream: 'Commerce', seats: 120, prefName: 'Eligibility' },
   ];
 
   var BOARD_GROUPS = [
@@ -443,7 +443,7 @@
     var er = (eh >>> 8) % 100;
     s.engage = {
       campaign: cr < 15 ? 0 : cr < 19 ? 1 : cr < 55 ? 2 : cr < 80 ? 3 : 4,
-      event: er < 40 ? 0 : er < 70 ? 1 : er < 87 ? 2 : 3,
+      event: er < 12 ? 0 : er < 28 ? 1 : er < 70 ? 2 : 3,
     };
     return s;
   }
@@ -609,7 +609,9 @@
     } catch (e) {}
     PROGRAMS.forEach(function (p) {
       (defaults[p.id] || []).forEach(function (pref) { normCriteria(pref.criteria); });
+      if (defaults[p.id] && defaults[p.id][0]) defaults[p.id][0].name = 'Eligibility';
     });
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify(defaults)); } catch (e2) {}
     return defaults;
   }
 
@@ -1714,7 +1716,7 @@
     $('pref-panel-title').textContent = 'Preferences';
     var locked = isDefaultPref(state.program, pref.id);
     edit.disabled = locked;
-    edit.setAttribute('data-tip', locked ? 'Default can’t be edited, duplicate it' : 'Edit');
+    edit.setAttribute('data-tip', locked ? 'Eligibility can’t be edited, duplicate it' : 'Edit');
     $('prefs-summary').innerHTML = '<div class="ar-pref-list">' + prefRows(pref) + '</div>';
     var on = CRITERIA.filter(function (c) { return pref.criteria[c.id].weight > 0; });
     $('prefs-mini').innerHTML = on.map(function (c) {
@@ -2726,7 +2728,7 @@
     { unread: 1, msgs: [
       ['uni', 'Hi {first}, we saw you opened the {program} page. Any questions we can help with?', 80],
       ['student', 'What is the last date to apply for the August intake?', 6]] },
-    { msgs: [
+    { unread: 1, msgs: [
       ['student', 'Is there a campus visit day coming up?', 120],
       ['uni', 'Yes! Our next open campus is on 24 October. Shall we reserve a spot for you?', 118],
       ['student', 'Please do, thank you!', 117]] },
@@ -2737,7 +2739,7 @@
     { seen: true, msgs: [
       ['student', 'Hello, what are the placement stats for the last batch?', 200],
       ['uni', 'Our last batch had 92% placements with a median package of ₹8.4 LPA. Happy to share the full report.', 196]] },
-    { msgs: [
+    { unread: 1, msgs: [
       ['uni', 'Hi {first}, congratulations on your Class 12 results! {program} could be a great fit for you.', 300],
       ['student', 'Thank you! I’m still comparing a few options.', 290]] },
   ];
@@ -2791,6 +2793,33 @@
     if (!CHATS[id].messages.length) delete CHATS[id];
     else CHATS[id].typing = false;
   });
+  (function addUnreadReplies() {
+    var key = 'admitright_chats_unread_v1';
+    try { if (localStorage.getItem(key)) return; } catch (err) { return; }
+    var replies = [
+      'Thanks, I will look at this today.',
+      'What is the last date to apply?',
+      'Is the scholarship still open for this program?',
+      'Could you share the fee structure?',
+      'Can I visit campus this weekend?',
+    ];
+    Object.keys(CHATS).forEach(function (id) {
+      var thread = CHATS[id];
+      if (!thread || !thread.messages || !thread.messages.length || thread.unread) return;
+      if (hashOf(id + ':unread') % 2 !== 0) return;
+      var last = thread.messages[thread.messages.length - 1];
+      if (last.from !== 'student') {
+        thread.messages.push({
+          from: 'student',
+          text: replies[hashOf(id + ':reply') % replies.length],
+          at: (Number(last.at) || Date.now()) + 45 * 60000,
+        });
+      }
+      thread.unread = 1;
+      thread.seen = false;
+    });
+    try { localStorage.setItem(key, '1'); } catch (err2) { /* storage blocked */ }
+  })();
   saveChats();
   updateChatBadge();
 
@@ -2966,8 +2995,11 @@
       var day = fmtDate(steps[0].at);
       var key = s.id + '|' + c.at + '|' + c.channel;
       var lastWhen = fmtDate(last.at) === fmtDate(new Date()) ? fmtTime(last.at) : fmtDateTime(last.at);
+      var title = (c.title || c.subject || (c.text || '').replace(/\s+/g, ' ').trim());
+      if (title.length > 72) title = title.slice(0, 72) + '…';
+      if (!title) title = ch.name + ' message';
       return '<details class="ar-cmp" data-cmp="' + esc(key) + '"' + (CMP_OPEN[key] ? ' open' : '') + '>' +
-        '<summary class="ar-cmp-head">' + ico(ch.icon) + '<span>' + esc(c.subject || (c.text ? c.text.slice(0, 60) + (c.text.length > 60 ? '…' : '') : ch.name + ' campaign')) +
+        '<summary class="ar-cmp-head">' + ico(ch.icon) + '<span>' + esc(title) +
         '<small>' + esc(ch.name) + ' · ' + esc(last.name) + ' ' + esc(lastWhen) + '</small></span>' +
         '<em class="ar-cmp-status s' + steps.length + '">' + esc(last.name) + '</em>' + ico('expand_more') + '</summary>' +
         '<ol class="ar-cmp-steps">' + CAMPAIGN_STEPS.map(function (name, i) {
@@ -2983,10 +3015,107 @@
     if (key) CMP_OPEN[key] = e.target.open;
   }, true);
 
+  /** Launched campaigns this student is in, plus one-to-one sends that carry a message. */
+  function studentInCampaign(s, c) {
+    if (!c || c.status !== 'launched') return false;
+    var a = c.audience || {};
+    if (a.program && a.program !== 'all' && s.program !== a.program) return false;
+    var stage = a.stage === '' || a.stage == null ? -1 : Number(a.stage);
+    if (stage >= 0 && s.stage < stage) return false;
+    if (a.intake && intakeYear(s) !== String(a.intake)) return false;
+    var pref = cgPrefOf(a);
+    var min = Number(a.minScore) || 0;
+    if (pref && min && scoreAgainst(s, pref).score < min) return false;
+    return true;
+  }
+
+  function profileCampaigns(s) {
+    var seen = {};
+    var rows = [];
+    (CAMPAIGNS[s.id] || []).forEach(function (c) {
+      if (c.campaignId) {
+        var named = campaignById(c.campaignId);
+        if (!named || named.status !== 'launched') return;
+        seen[named.id] = true;
+        rows.push({ channel: c.channel || named.channel, title: named.name, subject: '', text: '', at: c.at });
+        return;
+      }
+      if (!(c.text || '').trim() && !(c.subject || '').trim()) return;
+      rows.push(c);
+    });
+    (CAMPAIGN_LIST || []).forEach(function (c) {
+      if (seen[c.id] || !studentInCampaign(s, c)) return;
+      rows.push({
+        channel: c.channel, title: c.name, subject: '', text: '',
+        at: new Date(c.sentAt || c.updated).toISOString(),
+      });
+    });
+    rows.sort(function (a, b) { return new Date(b.at) - new Date(a.at); });
+    return rows;
+  }
+
+  /** Events this student opened, registered for, or joined. Most students get at least one. */
+  function studentEventActivity(s) {
+    var level = s.engage ? s.engage.event : 0;
+    if (level < 1) return [];
+    var now = TODAY.getTime();
+    var pool = EVENTS.filter(function (e) { return !e.draft && e.program === s.program; });
+    if (!pool.length) pool = EVENTS.filter(function (e) { return !e.draft; });
+    var picked = pool.filter(function (e) { return hashOf(s.id + ':' + e.id) % 2 === 0; });
+    if (!picked.length && pool.length) picked = [pool[hashOf(s.id) % pool.length]];
+    if (picked.length > 3) picked = picked.slice(0, 3);
+    return picked.map(function (e) {
+      var h = hashOf(s.id + ':evwhen:' + e.id);
+      var openedAt = new Date(Math.min(e.start.getTime(), now) - (1 + h % 8) * 86400000 - (9 + h % 8) * 3600000);
+      if (openedAt.getTime() > now) openedAt = new Date(now - (2 + h % 10) * 3600000);
+      var registeredAt = null;
+      if (level >= 2) {
+        registeredAt = new Date(openedAt.getTime() + (30 + h % 90) * 60000);
+        if (registeredAt.getTime() > now) registeredAt = new Date(now - (h % 3) * 60000);
+      }
+      var joinedAt = level >= 3 && e.start.getTime() <= now && h % 5 !== 0
+        ? new Date(e.start.getTime() + (5 + h % 20) * 60000) : null;
+      return { event: e, openedAt: openedAt, registeredAt: registeredAt, joinedAt: joinedAt };
+    }).sort(function (a, b) {
+      return (b.registeredAt || b.openedAt) - (a.registeredAt || a.openedAt);
+    });
+  }
+
+  function eventItemsHtml(s, rows) {
+    return '<div class="ar-cmp-list">' + rows.map(function (r) {
+      var e = r.event;
+      var kind = kindById(e.kind);
+      var status = r.joinedAt ? 'Joined' : r.registeredAt ? 'Registered' : 'Opened';
+      var when = r.joinedAt || r.registeredAt || r.openedAt;
+      var key = s.id + '|ev|' + e.id;
+      var day = fmtDate(r.openedAt);
+      var steps = [
+        { name: 'Opened', at: r.openedAt },
+        { name: 'Registered', at: r.registeredAt },
+        { name: 'Joined', at: r.joinedAt },
+      ];
+      var lastWhen = fmtDate(when) === fmtDate(new Date()) ? fmtTime(when) : fmtDateTime(when);
+      return '<details class="ar-cmp" data-cmp="' + esc(key) + '"' + (CMP_OPEN[key] ? ' open' : '') + '>' +
+        '<summary class="ar-cmp-head">' + ico(kind.icon) + '<span>' + esc(e.name) +
+        '<small>' + esc(formatById(e.format).name) + ' · ' + esc(status) + ' ' + esc(lastWhen) + '</small></span>' +
+        '<em class="ar-cmp-status s' + (r.joinedAt ? 4 : r.registeredAt ? 3 : 2) + '">' + esc(status) + '</em>' + ico('expand_more') + '</summary>' +
+        '<ol class="ar-cmp-steps">' + steps.map(function (st, i) {
+          var label = st.at ? (i === 0 ? fmtDateTime(st.at) : (fmtDate(st.at) === day ? fmtTime(st.at) : fmtDateTime(st.at))) : 'Not yet';
+          return '<li class="' + (st.at ? 'done' : '') + '"><span>' + st.name + '</span><time>' + esc(label) + '</time></li>';
+        }).join('') + '</ol></details>';
+    }).join('') + '</div>';
+  }
+
   function campaignLogHtml(s) {
-    var sent = (CAMPAIGNS[s.id] || []).slice().reverse();
-    if (!sent.length) return '';
-    return profileSection('campaigns', 'Campaigns · ' + sent.length, campaignItemsHtml(s, sent));
+    var sent = profileCampaigns(s);
+    var body = sent.length ? campaignItemsHtml(s, sent) : '<p class="ar-muted">No campaigns yet.</p>';
+    return profileSection('campaigns', 'Campaigns · ' + sent.length, body);
+  }
+
+  function engagementLogHtml(s) {
+    var rows = studentEventActivity(s);
+    var body = rows.length ? eventItemsHtml(s, rows) : '<p class="ar-muted">No event registrations yet.</p>';
+    return profileSection('engage', 'Engagement · ' + rows.length, body);
   }
 
   function sendCampaign() {
@@ -3229,7 +3358,7 @@
       '<span class="ar-chat-card-main">' +
       '<span class="ar-chat-card-top"><strong>' + esc(c.s.name) + '</strong>' + (last ? '<time>' + esc(chatTime(last.at)) + '</time>' : '') + '</span>' +
       '<span class="ar-chat-card-sub">' + tick +
-      '<span class="ar-chat-preview">' + (last ? (mine ? 'You: ' : '') + (last.campaign ? esc(channelById(last.campaign).name) + ' campaign · ' : '') + esc(last.text) : '<em>No messages yet</em>') + '</span>' +
+      '<span class="ar-chat-preview">' + (last ? (mine ? 'You: ' : '') + (last.campaign ? esc(channelById(last.campaign).name) + ' campaign · ' : '') + esc(last.text || (mediaList(last).length > 1 ? mediaList(last).length + ' files' : (mediaList(last)[0] ? mediaList(last)[0].name : ''))) : '<em>No messages yet</em>') + '</span>' +
       (t.unread ? '<b class="ar-chat-unread" aria-label="' + t.unread + ' unread">' + t.unread + '</b>' : '') +
       '</span></span></button>'
     );
@@ -3305,8 +3434,8 @@
       return '<div class="ar-cp-extra' + (at ? ' on' : '') + '">' + ico(a.icon) + '<span>' + esc(a.name) + '</span>' +
         (at ? '<time>' + esc(fmtDate(at)) + '</time>' : '') + ico(at ? 'check_circle' : 'radio_button_unchecked') + '</div>';
     }).join('');
-    var sent = (CAMPAIGNS[s.id] || []).slice().reverse();
-    var campaigns = sent.length ? campaignItemsHtml(s, sent) : '';
+    var sent = profileCampaigns(s);
+    var evRows = studentEventActivity(s);
     var box = $('chat-profile');
     var keepScroll = box.getAttribute('data-sid') === s.id ? box.scrollTop : 0;
     box.setAttribute('data-sid', s.id);
@@ -3329,7 +3458,10 @@
       '<div class="ar-cp-group">' +
       '<h5>Snapshot steps</h5><div class="ar-journey">' + steps + '</div>' +
       '<h5>Additional user actions <small>' + have.length + ' of ' + ACTIONS.length + '</small></h5>' + extras + '</div></div>' +
-      (campaigns ? '<div class="ar-cp-sec"><h4>Campaigns <small>' + sent.length + '</small></h4>' + campaigns + '</div>' : '');
+      '<div class="ar-cp-sec"><h4>Campaigns <small>' + sent.length + '</small></h4>' +
+      (sent.length ? campaignItemsHtml(s, sent) : '<p class="ar-muted">No campaigns yet.</p>') + '</div>' +
+      '<div class="ar-cp-sec"><h4>Engagement <small>' + evRows.length + '</small></h4>' +
+      (evRows.length ? eventItemsHtml(s, evRows) : '<p class="ar-muted">No event registrations yet.</p>') + '</div>';
     box.scrollTop = keepScroll;
   }
 
@@ -3355,7 +3487,8 @@
       var ch = m.campaign ? channelById(m.campaign) : null;
       return '<div class="ar-msg ' + (m.from === 'uni' ? 'out' : 'in') + (ch ? ' campaign' : '') + '">' +
         (ch ? '<span class="ar-msg-tag">' + ico(ch.icon) + esc(ch.name) + ' campaign</span>' : '') +
-        '<p>' + (m.subject ? '<b>' + esc(m.subject) + '</b>' : '') + esc(m.text) + '</p>' +
+        chatMediaHtml(m) +
+        (m.text ? '<p>' + (m.subject ? '<b>' + esc(m.subject) + '</b>' : '') + esc(m.text) + '</p>' : '') +
         '<time>' + esc(chatTime(m.at)) + '</time></div>';
     }).join('') : '<div class="ar-chat-start">Say hello to ' + esc(first) + '. Messages stay on the platform; contact details are never shared.</div>';
     $('chat-thread').innerHTML =
@@ -3370,6 +3503,9 @@
         return '<button type="button" class="ar-chat-chip" data-chat-quick="' + esc(q) + '">' + esc(q) + '</button>';
       }).join('') + '</div>') +
       '<form class="ar-chat-compose" id="chat-form">' +
+      chatFileChips(id) +
+      '<button type="button" class="ar-icon-btn ar-chat-attach" data-chat-attach aria-label="Add media">' + ico('attach_file') + '</button>' +
+      '<input type="file" id="chat-file" multiple hidden />' +
       '<textarea id="chat-input" rows="1" data-chat="' + id + '" placeholder="Message ' + esc(first) + '…">' + esc(draft) + '</textarea>' +
       '<button type="submit" class="btn btn-primary btn-sm btn-icon">' + ico('send') + 'Send</button>' +
       '</form>';
@@ -3377,14 +3513,53 @@
     box.scrollTop = box.scrollHeight;
   }
 
+  var chatAttach = {};
+
+  function chatFiles(id) {
+    var list = chatAttach[id];
+    if (!list) return [];
+    return Array.isArray(list) ? list : [list];
+  }
+
+  function chatFileChips(id) {
+    var files = chatFiles(id);
+    if (!files.length) return '';
+    return '<div class="ar-chat-files">' + files.map(function (f, i) {
+      return '<div class="ar-chat-file">' + ico('attach_file') + '<span>' + esc(f.name) + '</span>' +
+        '<button type="button" class="ar-icon-btn" data-chat-file-clear="' + i + '" aria-label="Remove ' + esc(f.name) + '">' + ico('close') + '</button></div>';
+    }).join('') + '</div>';
+  }
+
+  function mediaList(m) {
+    if (!m || !m.media) return [];
+    return Array.isArray(m.media) ? m.media : [m.media];
+  }
+
+  function oneMediaHtml(med) {
+    if (!med || !med.url) return '';
+    var type = med.type || '';
+    if (type.indexOf('image/') === 0) return '<img class="ar-msg-media" src="' + med.url + '" alt="' + esc(med.name) + '">';
+    if (type.indexOf('video/') === 0) return '<video class="ar-msg-media" controls src="' + med.url + '"></video>';
+    if (type.indexOf('audio/') === 0) return '<audio class="ar-msg-media" controls src="' + med.url + '"></audio>';
+    return '<a class="ar-msg-file" href="' + med.url + '" download="' + esc(med.name) + '">' + ico('attach_file') + '<span>' + esc(med.name) + '</span></a>';
+  }
+
+  function chatMediaHtml(m) {
+    return mediaList(m).map(oneMediaHtml).join('');
+  }
+
   function sendChat(text) {
     var id = state.chatId;
     text = (text || '').trim();
-    if (!id || !text || !CHATS[id]) return;
+    var files = chatFiles(id);
+    if (!id || (!text && !files.length) || !CHATS[id]) return;
     var thread = CHATS[id];
-    thread.messages.push({ from: 'uni', text: text, at: Date.now() });
+    var msg = { from: 'uni', text: text, at: Date.now() };
+    if (files.length) msg.media = files.map(function (f) { return { name: f.name, type: f.type, url: f.url }; });
+    thread.messages.push(msg);
     thread.seen = false;
-    $('chat-input').value = '';
+    delete chatAttach[id];
+    if ($('chat-input')) $('chat-input').value = '';
     var reply = DEMO_REPLIES[thread.messages.filter(function (m) { return m.from === 'student'; }).length % DEMO_REPLIES.length];
     thread.typing = true;
     saveChats();
@@ -3449,7 +3624,7 @@
     );
   }
 
-  var profileCollapsed = { match: true, profile: true, other: true, log: true, campaigns: true };
+  var profileCollapsed = { match: true, profile: true, other: true, log: true, campaigns: true, engage: true };
 
   function profileSection(key, title, html, cls) {
     return (
@@ -3566,7 +3741,8 @@
         '<div class="ar-subsec"><span class="ar-sublabel">Extracurricular</span>' + activitiesHtml(s) + '</div>') +
       profileSection('other', 'Other details', factsHtml(otherDetails(s))) +
       profileSection('log', 'Activity log', '<div id="log-body">' + activityLogHtml(s) + '</div>') +
-      campaignLogHtml(s);
+      campaignLogHtml(s) +
+      engagementLogHtml(s);
 
     openDrawer(
       'Student profile',
@@ -7202,6 +7378,22 @@
       return;
     }
 
+    if (t.closest('[data-chat-attach]')) {
+      var fileInput = $('chat-file');
+      if (fileInput) fileInput.click();
+      return;
+    }
+
+    if (t.closest('[data-chat-file-clear]')) {
+      var clearBtn = t.closest('[data-chat-file-clear]');
+      var filesNow = chatFiles(state.chatId);
+      filesNow.splice(Number(clearBtn.getAttribute('data-chat-file-clear')), 1);
+      if (filesNow.length) chatAttach[state.chatId] = filesNow;
+      else delete chatAttach[state.chatId];
+      renderChatThread();
+      return;
+    }
+
     var chatQuick = t.closest('[data-chat-quick]');
     if (chatQuick) {
       $('chat-input').value = chatQuick.getAttribute('data-chat-quick');
@@ -7336,6 +7528,33 @@
     if (e.target.id !== 'chat-form') return;
     e.preventDefault();
     sendChat($('chat-input').value);
+  });
+
+  document.addEventListener('change', function (e) {
+    if (e.target.id !== 'chat-file') return;
+    var picked = e.target.files ? [].slice.call(e.target.files) : [];
+    e.target.value = '';
+    if (!picked.length || !state.chatId) return;
+    var chatId = state.chatId;
+    var pending = picked.filter(function (file) {
+      if (file.size <= 8 * 1024 * 1024) return true;
+      toast(file.name + ' is over 8 MB.');
+      return false;
+    });
+    if (!pending.length) return;
+    var added = new Array(pending.length);
+    var left = pending.length;
+    pending.forEach(function (file, i) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        added[i] = { name: file.name, type: file.type || 'application/octet-stream', url: reader.result };
+        left -= 1;
+        if (left) return;
+        chatAttach[chatId] = chatFiles(chatId).concat(added);
+        renderChatThread();
+      };
+      reader.readAsDataURL(file);
+    });
   });
 
   $('chat-search').addEventListener('input', function () {
