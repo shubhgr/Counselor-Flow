@@ -10,7 +10,7 @@
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=tok1" />
   <link rel="stylesheet" href="css/tokens.css?v=tok1" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar269" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar277" />
 </head>
 <body class="ar ar-locked">
   <section class="ar-gate" id="gate-login" hidden>
@@ -75,6 +75,9 @@
         </a>
         <a class="ar-rail-item" href="#/campaigns" data-go="campaigns" title="Campaigns" aria-label="Campaigns">
           <span class="material-symbols-rounded" aria-hidden="true">campaign</span>
+        </a>
+        <a class="ar-rail-item" href="#/templates" data-go="templates" title="Templates" aria-label="Templates">
+          <span class="material-symbols-rounded" aria-hidden="true">description</span>
         </a>
         <a class="ar-rail-item" href="#/billing" data-go="billing" title="Billing" aria-label="Billing">
           <span class="material-symbols-rounded" aria-hidden="true">account_balance_wallet</span>
@@ -331,6 +334,13 @@
             <section class="panel ar-event-page-card">
               <div id="ev-create-body"></div>
               <div class="ar-event-page-foot" id="ev-create-foot"></div>
+              <div class="ar-event-page-foot ar-unsaved" id="ev-savebar" hidden>
+                <span>Careful — you have unsaved changes!</span>
+                <div class="ar-unsaved-actions">
+                  <button type="button" class="ar-unsaved-reset" data-ev-reset>Reset</button>
+                  <button type="button" class="btn btn-primary btn-sm" data-ev-save id="ev-save-btn">Save</button>
+                </div>
+              </div>
             </section>
           </div>
         </div>
@@ -446,6 +456,23 @@
             <div class="actions" id="cg-detail-actions"></div>
           </header>
           <div class="content ar-content ar-event-page ar-cg-detail" id="cg-detail-body"></div>
+        </div>
+      </div>
+
+      <!-- Templates -->
+      <div id="view-templates" hidden>
+        <header class="topbar">
+          <div class="ar-title">
+            <img class="ar-uni-logo" src="img/udit.png" alt="" />
+            <h1 data-uni></h1>
+            <span class="ar-sub">Templates</span>
+          </div>
+        </header>
+        <div class="content ar-content ar-event-page">
+          <section class="panel ar-event-page-card">
+            <div id="tpl-body"></div>
+            <div class="ar-event-page-foot" id="tpl-foot"></div>
+          </section>
         </div>
       </div>
 
@@ -603,6 +630,6 @@
   <div class="ar-toast" id="toast" hidden></div>
 
   <script src="data/students-data.js?v=ar259"></script>
-  <script src="js/admitright.js?v=ar276"></script>
+  <script src="js/admitright.js?v=ar277"></script>
 </body>
 </html>

@@ -2547,12 +2547,13 @@
 
   function setView(view, fromRoute) {
     state.view = view;
-    $('view-dashboard').hidden = view === 'programs' || view === 'chats' || view === 'events' || view === 'campaigns' || view === 'billing' || view === 'settings';
+    $('view-dashboard').hidden = view === 'programs' || view === 'chats' || view === 'events' || view === 'campaigns' || view === 'templates' || view === 'billing' || view === 'settings';
     $('view-dashboard').classList.toggle('ar-saved-view', view === 'saved');
     $('view-programs').hidden = view !== 'programs';
     $('view-chats').hidden = view !== 'chats';
     $('view-events').hidden = view !== 'events';
     $('view-campaigns').hidden = view !== 'campaigns';
+    $('view-templates').hidden = view !== 'templates';
     $('view-billing').hidden = view !== 'billing';
     $('view-settings').hidden = view !== 'settings';
     document.querySelectorAll('.ar-rail-item[data-go]').forEach(function (a) {
@@ -2562,6 +2563,7 @@
     else if (view === 'chats') renderChats();
     else if (view === 'events') renderEvents();
     else if (view === 'campaigns') renderCampaigns();
+    else if (view === 'templates') renderTemplates();
     else if (view === 'billing') renderBilling();
     else if (view === 'settings') renderSettings();
     else renderDashboard();
@@ -2587,7 +2589,7 @@
       try { return decodeURIComponent(p); } catch (err) { return p; }
     });
     var view = parts[0] || 'dashboard';
-    if (['dashboard', 'programs', 'saved', 'events', 'campaigns', 'billing', 'chats', 'settings'].indexOf(view) < 0) view = 'dashboard';
+    if (['dashboard', 'programs', 'saved', 'events', 'campaigns', 'templates', 'billing', 'chats', 'settings'].indexOf(view) < 0) view = 'dashboard';
     var page = 'list';
     var id = null;
     var tab = null;
@@ -4888,7 +4890,8 @@
   }
 
   function openEventCreate(fromRoute) {
-    if (!fromRoute || !evCreate) evCreate = { step: 0, draft: newEventDraft() };
+    if (!fromRoute || !evCreate) evCreate = { step: 0, draft: newEventDraft(), clean: '', savedOnce: false };
+    if (!evCreate.clean) evCreate.clean = JSON.stringify(evCreate.draft);
     showEventsPage('create');
     renderEventCreate();
     if (!fromRoute) goTo('events/create');
@@ -5120,6 +5123,18 @@
     if (back) back.textContent = evCreate.step ? 'Previous step' : 'Cancel';
     var next = document.querySelector('[data-ev-create-next]');
     if (next) next.hidden = evCreate.step === EVENT_CREATE_STEPS.length - 1;
+    syncEventSaveBar();
+  }
+
+  function syncEventSaveBar() {
+    var bar = $('ev-savebar');
+    var foot = $('ev-create-foot');
+    if (!bar || !evCreate) return;
+    var dirty = evCreate.clean !== JSON.stringify(evCreate.draft);
+    bar.hidden = !dirty;
+    if (foot) foot.hidden = dirty;
+    var label = $('ev-save-btn');
+    if (label) label.textContent = evCreate.savedOnce ? 'Update' : 'Save';
   }
 
   function eventCreateNext() {
@@ -5198,6 +5213,7 @@
     { id: 'events_manage', name: 'Create events', hint: 'Create, draft and publish events' },
     { id: 'chats', name: 'Chats', hint: 'Message students in-platform' },
     { id: 'campaigns', name: 'Campaigns', hint: 'Send email and WhatsApp campaigns' },
+    { id: 'templates', name: 'Templates', hint: 'Start a campaign from a template' },
     { id: 'settings', name: 'Settings', hint: 'Manage roles and users' },
   ];
 
@@ -5525,6 +5541,194 @@
   };
   var cgPage = { tab: 'launched', page: 'list', id: null };
   var cgForm = null; // { step, id, draft }
+
+  /* ——— Templates: choose a starting point, then the same campaign flow ——— */
+
+  var TPL_STEPS = ['Choose template', 'Campaign details', 'Select audience', 'Review & launch'];
+  var TPL_PREBUILT = [
+    { id: 'deadline', name: 'Application Deadline', note: 'Remind students about deadlines',
+      subject: 'The {program} deadline is coming up',
+      text: 'Hi {first}, the application deadline for {program} at {university} is coming up soon. Finish your application to keep your seat in the running.' },
+    { id: 'welcome', name: 'Welcome Email', note: 'Greet new students warmly',
+      subject: 'Welcome to {program}',
+      text: 'Hi {first}, welcome. We are glad you are looking at {program} at {university}. Reply here if you want help with the next step.' },
+    { id: 'followup', name: 'Follow-up Email', note: 'Re-engage interested students',
+      subject: 'Still thinking about {program}?',
+      text: 'Hi {first}, you opened {program} at {university} and we have not heard back. Tell us what is still on your mind and we will help.' },
+    { id: 'scholarship', name: 'Scholarship Information', note: 'Share funding opportunities',
+      subject: 'Scholarships you may qualify for',
+      text: 'Hi {first}, based on your profile you may qualify for a merit scholarship on {program} at {university}. Apply before the deadline to be considered.' },
+    { id: 'visit', name: 'Event Invitation', note: 'Invite to campus events',
+      subject: 'You are invited',
+      text: 'Hi {first}, we would love to show you around {university}. Book a campus visit or a virtual tour to see {program} up close.' },
+  ];
+  var TPL_KEY = 'admitright_my_templates_v1';
+  var MY_TEMPLATES = null;
+  try { MY_TEMPLATES = JSON.parse(localStorage.getItem(TPL_KEY) || 'null'); } catch (err) { MY_TEMPLATES = null; }
+  if (!Array.isArray(MY_TEMPLATES)) {
+    MY_TEMPLATES = [
+      { id: 'mt-nudge', name: 'Application nudge', note: 'A short note to start the form', subject: 'Your {program} application', text: 'Hi {first}, your {program} application at {university} is still open. Start it when you have a few minutes.' },
+      { id: 'mt-visit', name: 'Visit follow-up', note: 'After they look at a campus event', subject: 'About your campus visit', text: 'Hi {first}, thanks for looking at a visit for {program}. Reply with a day that works and we will hold a slot.' },
+    ];
+    try { localStorage.setItem(TPL_KEY, JSON.stringify(MY_TEMPLATES)); } catch (err2) { /* storage blocked */ }
+  }
+  var tplDraft = null;
+  var tplManage = false;
+
+  function saveMyTemplates() {
+    try { localStorage.setItem(TPL_KEY, JSON.stringify(MY_TEMPLATES)); } catch (err) { /* storage blocked */ }
+  }
+
+  function tplById(id) {
+    var pre = TPL_PREBUILT.filter(function (t) { return t.id === id; })[0];
+    if (pre) return pre;
+    return MY_TEMPLATES.filter(function (t) { return t.id === id; })[0] || null;
+  }
+
+  function ensureTplDraft() {
+    if (tplDraft) return;
+    var base = newCampaignDraft('custom');
+    base.template = 'custom';
+    base.subject = '';
+    base.text = '';
+    base.start = '';
+    base.htmlName = '';
+    base.html = '';
+    base.applied = false;
+    tplDraft = { step: 0, draft: base };
+  }
+
+  function tplSyncForm() {
+    cgForm = { step: Math.max(0, tplDraft.step - 1), id: null, draft: tplDraft.draft };
+  }
+
+  function tplApplyStart() {
+    var d = tplDraft.draft;
+    var start = d.start;
+    if (start === 'scratch') {
+      d.template = 'custom';
+      d.subject = '';
+      d.text = '';
+      return;
+    }
+    if (start === 'html') {
+      d.template = 'custom';
+      d.channel = 'email';
+      d.text = d.html || '';
+      return;
+    }
+    var picked = tplById(start);
+    if (!picked) return;
+    d.template = TPL_PREBUILT.some(function (t) { return t.id === start; }) ? start : 'custom';
+    d.subject = picked.subject || '';
+    d.text = picked.text || '';
+    if (!d.name.trim()) d.name = picked.name;
+  }
+
+  function tplRow(t, on) {
+    var icons = {
+      deadline: 'schedule', welcome: 'mail', followup: 'reply', scholarship: 'school', visit: 'event',
+      'mt-nudge': 'edit_note', 'mt-visit': 'location_on',
+    };
+    return '<button type="button" class="ar-tpl-row' + (on ? ' on' : '') + '" data-tpl-pick="' + esc(t.id) + '">' +
+      ico(icons[t.id] || 'description') +
+      '<span><b>' + esc(t.name) + '</b><small>' + esc(t.note || '') + '</small></span></button>';
+  }
+
+  function tplChooseHtml(d) {
+    var htmlOn = d.start === 'html';
+    var scratchOn = d.start === 'scratch';
+    return '<section class="ar-evc-section"><h3>Starting point</h3>' +
+      '<p class="ar-evc-note">Upload an HTML email, write the message yourself, or use a template.</p>' +
+      '<div class="ar-evc-formats">' +
+      '<input type="file" id="tpl-file" accept=".html,text/html" hidden />' +
+      '<button type="button" class="' + (htmlOn ? 'on' : '') + '" data-tpl-start="html">' +
+      ico('upload') + (d.htmlName ? esc(d.htmlName) : 'Upload HTML') + '</button>' +
+      '<button type="button" class="' + (scratchOn ? 'on' : '') + '" data-tpl-start="scratch">' +
+      ico('edit_note') + 'Start from scratch</button></div>' +
+      '<h3>Templates</h3>' +
+      '<div class="ar-tpl-cols">' +
+      '<div><div class="ar-tpl-col-head"><h4>Pre-built</h4></div>' +
+      TPL_PREBUILT.map(function (t) { return tplRow(t, d.start === t.id); }).join('') + '</div>' +
+      '<div><div class="ar-tpl-col-head"><h4>Yours <small>' + MY_TEMPLATES.length + '</small></h4>' +
+      '<button type="button" class="ar-link" data-tpl-manage>' + (tplManage ? 'Done' : 'Manage') + '</button></div>' +
+      (MY_TEMPLATES.length ? MY_TEMPLATES.map(function (t) {
+        return '<div class="ar-tpl-mine">' + tplRow(t, d.start === t.id) +
+          (tplManage ? '<button type="button" class="ar-icon-btn" data-tpl-delete="' + esc(t.id) + '" aria-label="Delete ' + esc(t.name) + '">' + ico('delete') + '</button>' : '') +
+          '</div>';
+      }).join('') : '<p class="ar-muted">Save a message on the next step and it shows up here.</p>') +
+      '</div></div></section>';
+  }
+
+  function tplDetailsHtml(d) {
+    return cgDetailsStepHtml(d) +
+      '<section class="ar-evc-section"><h3>Message</h3><p class="ar-evc-note">This came from the starting point you picked. Edit it before you choose who receives it.</p>' +
+      (d.channel === 'email' ? fieldWrap('Subject', textInput('cg-subject', d.subject, 'Subject line'), true) : '') +
+      fieldWrap('Message', '<textarea id="cg-text" rows="8" placeholder="Write your message">' + esc(d.text) + '</textarea>', true) +
+      (d.channel === 'sms' ? '<p class="ar-cg-count" id="cg-sms-count"></p>' : '') +
+      '<p class="ar-cm-note">' + ico('auto_fix_high') + '{first}, {program} and {university} are filled in for each student.</p>' +
+      '<button type="button" class="btn btn-secondary btn-sm" data-tpl-save-mine>' + ico('bookmark_add') + 'Save to my templates</button></section>';
+  }
+
+  function renderTemplates() {
+    ensureTplDraft();
+    var d = tplDraft.draft;
+    var step = tplDraft.step;
+    if (step > 0) tplSyncForm();
+    var body = '<div class="ar-evc-stepper">' + TPL_STEPS.map(function (n, i) {
+      var cls = i < step ? ' done' : i === step ? ' active' : '';
+      return '<span class="' + cls + '"><i>' + (i < step ? ico('check') : '') + '</i><b>' + esc(n) + '</b></span>';
+    }).join('') + '</div>';
+    if (step === 0) body += tplChooseHtml(d);
+    else if (step === 1) body += tplDetailsHtml(d);
+    else if (step === 2) body += cgAudienceStepHtml(d);
+    else body += cgReviewStepHtml(d);
+    $('tpl-body').innerHTML = body;
+    $('tpl-foot').innerHTML = '<button type="button" class="btn btn-ghost btn-sm" data-tpl-prev>' + (step ? 'Previous step' : 'Cancel') + '</button>' +
+      (step && step < 3 ? '<div class="ar-cg-foot-right"><button type="button" class="btn btn-secondary btn-sm" data-tpl-draft>Save draft</button>' +
+        '<button type="button" class="btn btn-primary btn-sm btn-icon" data-tpl-next>Next step' + ico('arrow_forward') + '</button></div>' :
+        step ? '' : '<button type="button" class="btn btn-primary btn-sm btn-icon" data-tpl-next>Continue' + ico('arrow_forward') + '</button>');
+    if (step === 1) updateCampaignPreview();
+  }
+
+  function tplNext() {
+    ensureTplDraft();
+    var d = tplDraft.draft;
+    if (tplDraft.step === 0) {
+      if (!d.start) { toast('Choose a starting point first.'); return; }
+      if (d.start === 'html' && !d.html) { toast('Upload an HTML file first.'); return; }
+      if (!d.applied) { tplApplyStart(); d.applied = true; }
+      tplDraft.step = 1;
+      renderTemplates();
+      window.scrollTo(0, 0);
+      return;
+    }
+    tplSyncForm();
+    readCampaignForm();
+    if (tplDraft.step === 1) {
+      if (!d.name.trim()) { toast('Give the campaign a name.'); if ($('cg-name')) $('cg-name').focus(); return; }
+      if (d.channel === 'email' && !d.subject.trim()) { toast('Add a subject line.'); if ($('cg-subject')) $('cg-subject').focus(); return; }
+      if (!d.text.trim()) { toast('Write a message first.'); if ($('cg-text')) $('cg-text').focus(); return; }
+      if (d.channel === 'sms' && fillTemplate(d.text, cgSample(d)).length > SMS_LIMIT) { toast('Keep the text under ' + SMS_LIMIT + ' characters.'); return; }
+    }
+    if (tplDraft.step === 2 && !cgAudience(d.audience).length) { toast('No students match this audience. Loosen a filter.'); return; }
+    tplDraft.step = Math.min(3, tplDraft.step + 1);
+    renderTemplates();
+    window.scrollTo(0, 0);
+  }
+
+  function tplPrev() {
+    ensureTplDraft();
+    if (tplDraft.step > 0) {
+      tplSyncForm();
+      readCampaignForm();
+      tplDraft.step -= 1;
+      renderTemplates();
+      window.scrollTo(0, 0);
+      return;
+    }
+    goTo('dashboard');
+  }
   var cgCache = {};
   var CGF = { q: '', channel: 'all', program: 'all', sort: 'new' };
 
@@ -6686,6 +6890,77 @@
       return;
     }
 
+    if (t.closest('[data-tpl-start]')) {
+      ensureTplDraft();
+      var startKind = t.closest('[data-tpl-start]').getAttribute('data-tpl-start');
+      tplDraft.draft.start = startKind;
+      tplDraft.draft.applied = false;
+      renderTemplates();
+      if (startKind === 'html' && $('tpl-file')) $('tpl-file').click();
+      return;
+    }
+
+    var tplPick = t.closest('[data-tpl-pick]');
+    if (tplPick) {
+      ensureTplDraft();
+      tplDraft.draft.start = tplPick.getAttribute('data-tpl-pick');
+      tplDraft.draft.applied = false;
+      renderTemplates();
+      return;
+    }
+
+    if (t.closest('[data-tpl-manage]')) {
+      tplManage = !tplManage;
+      renderTemplates();
+      return;
+    }
+
+    var tplDel = t.closest('[data-tpl-delete]');
+    if (tplDel) {
+      var dropId = tplDel.getAttribute('data-tpl-delete');
+      MY_TEMPLATES = MY_TEMPLATES.filter(function (item) { return item.id !== dropId; });
+      saveMyTemplates();
+      if (tplDraft && tplDraft.draft.start === dropId) tplDraft.draft.start = '';
+      renderTemplates();
+      return;
+    }
+
+    if (t.closest('[data-tpl-save-mine]')) {
+      ensureTplDraft();
+      tplSyncForm();
+      readCampaignForm();
+      var mineDraft = tplDraft.draft;
+      if (!mineDraft.text.trim()) { toast('Write a message before saving it.'); return; }
+      var mineName = mineDraft.name.trim() || 'Untitled template';
+      MY_TEMPLATES.unshift({
+        id: storeId('mt'), name: mineName, note: mineDraft.description.trim() || 'Saved from this campaign',
+        subject: mineDraft.subject || '', text: mineDraft.text,
+      });
+      saveMyTemplates();
+      toast('Saved to My templates.');
+      return;
+    }
+
+    if (t.closest('[data-tpl-next]')) {
+      tplNext();
+      return;
+    }
+
+    if (t.closest('[data-tpl-prev]')) {
+      tplPrev();
+      return;
+    }
+
+    if (t.closest('[data-tpl-draft]')) {
+      ensureTplDraft();
+      tplSyncForm();
+      readCampaignForm();
+      if (!tplDraft.draft.name.trim()) { toast('Give the campaign a name.'); if ($('cg-name')) $('cg-name').focus(); return; }
+      saveCampaignDraft();
+      tplDraft = null;
+      return;
+    }
+
     if (t.closest('[data-cg-next]')) {
       campaignFormNext();
       return;
@@ -6697,6 +6972,15 @@
     }
 
     var cgStep = t.closest('[data-cg-step]');
+    if (cgStep && state.view === 'templates' && tplDraft) {
+      tplSyncForm();
+      readCampaignForm();
+      var jump = Number(cgStep.getAttribute('data-cg-step'));
+      tplDraft.step = jump === 1 ? 2 : 1;
+      renderTemplates();
+      window.scrollTo(0, 0);
+      return;
+    }
     if (cgStep && cgForm) {
       readCampaignForm();
       cgForm.step = Number(cgStep.getAttribute('data-cg-step'));
@@ -6706,12 +6990,18 @@
     }
 
     if (t.closest('[data-cg-save-draft]')) {
+      var draftFromTpl = state.view === 'templates';
+      if (draftFromTpl) tplSyncForm();
       saveCampaignDraft();
+      if (draftFromTpl) tplDraft = null;
       return;
     }
 
     if (t.closest('[data-cg-launch]')) {
+      var launchFromTpl = state.view === 'templates';
+      if (launchFromTpl) tplSyncForm();
       launchCampaign();
+      if (launchFromTpl) tplDraft = null;
       return;
     }
 
@@ -7112,6 +7402,22 @@
 
     if (t.closest('[data-ev-create-next]') && evCreate) {
       eventCreateNext();
+      return;
+    }
+
+    if (t.closest('[data-ev-save]') && evCreate) {
+      readEventCreate();
+      var wasSaved = evCreate.savedOnce;
+      evCreate.clean = JSON.stringify(evCreate.draft);
+      evCreate.savedOnce = true;
+      syncEventSaveBar();
+      toast(wasSaved ? 'Changes updated.' : 'Changes saved.');
+      return;
+    }
+
+    if (t.closest('[data-ev-reset]') && evCreate) {
+      evCreate.draft = JSON.parse(evCreate.clean);
+      renderEventCreate();
       return;
     }
 
@@ -7532,6 +7838,24 @@
   });
 
   document.addEventListener('change', function (e) {
+    if (e.target.id === 'tpl-file') {
+      var htmlFile = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!htmlFile) return;
+      var htmlName = htmlFile.name || '';
+      if (!/\.html?$/i.test(htmlName) && htmlFile.type !== 'text/html') { toast('Choose an HTML file.'); return; }
+      var htmlReader = new FileReader();
+      htmlReader.onload = function () {
+        ensureTplDraft();
+        tplDraft.draft.start = 'html';
+        tplDraft.draft.applied = false;
+        tplDraft.draft.htmlName = htmlName;
+        tplDraft.draft.html = String(htmlReader.result || '');
+        renderTemplates();
+      };
+      htmlReader.readAsText(htmlFile);
+      return;
+    }
     if (e.target.id !== 'chat-file') return;
     var picked = e.target.files ? [].slice.call(e.target.files) : [];
     e.target.value = '';
@@ -7669,6 +7993,20 @@
     }
   });
 
+  $('view-templates').addEventListener('change', function (e) {
+    if (!tplDraft || tplDraft.step < 1) return;
+    var tid = e.target.id || '';
+    if (e.target.name !== 'cg-channel' && tid.indexOf('cga-') !== 0) return;
+    tplSyncForm();
+    readCampaignForm();
+    if (tid === 'cga-program') {
+      tplDraft.draft.audience.prefId = '';
+      tplDraft.draft.audience.minScore = '0';
+    }
+    if (tid === 'cga-prefId' && !tplDraft.draft.audience.prefId) tplDraft.draft.audience.minScore = '0';
+    renderTemplates();
+  });
+
   $('view-campaigns').addEventListener('change', function (e) {
     var id = e.target.id;
     var filterKey = { 'cgf-channel': 'channel', 'cgf-program': 'program', 'cgf-sort': 'sort' }[id];
@@ -7739,12 +8077,15 @@
     if (tag === 'SELECT' || e.target.type === 'radio' || e.target.type === 'checkbox') {
       if (e.target.id === 'evc-program') evCreate.draft.prefId = '';
       renderEventCreate();
+      return;
     }
+    syncEventSaveBar();
   });
 
   $('events-create-page').addEventListener('input', function (e) {
     if (!evCreate) return;
-    if (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type === 'text')) readEventCreate();
+    if (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type !== 'file')) readEventCreate();
+    syncEventSaveBar();
   });
 
   $('drawer-body').addEventListener('change', function (e) {
