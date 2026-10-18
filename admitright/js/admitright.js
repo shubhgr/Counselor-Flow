@@ -101,7 +101,38 @@
   ];
   var BOARDS = BOARD_GROUPS[0][1].concat(BOARD_GROUPS[1][1]);
   var BOARD_LABELS = { CISCE: 'ICSE / ISC' };
-  var OLD_BOARDS = ['CBSE', 'CISCE', 'UP Board', 'Maharashtra Board', 'Telangana Board', 'Other State Board', 'IB'];
+  var NATIONAL_BOARDS = BOARD_GROUPS[0][1];
+
+  function boardOffers() {
+    return NATIONAL_BOARDS.concat([CAMPUS.state + ' Board', 'Other state board']);
+  }
+
+  function boardOffer(board) {
+    if (NATIONAL_BOARDS.indexOf(board) !== -1) return board;
+    if (board === CAMPUS.state + ' Board') return CAMPUS.state + ' Board';
+    return 'Other state board';
+  }
+
+  function normalizeBoardValues(values) {
+    var offers = boardOffers();
+    if (!values || !values.length) return [];
+    var picked = [];
+    values.forEach(function (v) {
+      if (v === 'National board') {
+        NATIONAL_BOARDS.forEach(function (b) { if (picked.indexOf(b) === -1) picked.push(b); });
+        return;
+      }
+      var offer = offers.indexOf(v) !== -1 ? v : boardOffer(v);
+      if (picked.indexOf(offer) === -1) picked.push(offer);
+    });
+    return offers.filter(function (o) { return picked.indexOf(o) !== -1; });
+  }
+
+  function boardAccepted(values, board) {
+    if (!values || !values.length || !board) return false;
+    if (values.indexOf(board) !== -1) return true;
+    return values.indexOf(boardOffer(board)) !== -1;
+  }
   var STREAMS = ['PCM', 'PCB', 'Commerce', 'Humanities'];
   var SUBJECTS = ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science', 'Accountancy',
     'Business Studies', 'Economics', 'History', 'Political Science', 'Geography', 'Psychology', 'Sociology', 'Fine Arts'];
@@ -483,7 +514,7 @@
       academic: { min: tech ? 80 : 70, weight: 40 },
       test: { tests: (DEFAULT_TESTS[program.id] || [req('CUET UG', 70)]).map(function (t) { return Object.assign({}, t); }), weight: 30 },
       stream: { subjects: (STREAM_SUBJECTS[program.stream] || []).slice(), weight: tech ? 30 : 1 },
-      board: { values: BOARDS.slice(), weight: 10 },
+      board: { values: boardOffers().slice(), weight: 10 },
       location: { mode: 'state', places: [], weight: 20 },
       budget: { min: Math.max(5, program.fee - 6), weight: 20 },
       activities: { values: tech ? ['Coding', 'Robotics'] : ['Debate', 'Art', 'MUN'], weight: 10 },
@@ -511,7 +542,7 @@
       c.stream = { subjects: (STREAM_SUBJECTS[c.stream.value] || []).slice(), weight: c.stream.weight, saved: c.stream.saved };
     }
     if (c.budget) delete c.budget.max;
-    if (c.board && OLD_BOARDS.every(function (b) { return c.board.values.indexOf(b) !== -1; })) c.board.values = BOARDS.slice();
+    if (c.board) c.board.values = normalizeBoardValues(c.board.values);
     return c;
   }
 
@@ -705,7 +736,7 @@
         return { v: okStream, raw: okStream, note: s.subjects.join(', ') };
       }
       case 'board': {
-        var okBoard = p.values.indexOf(s.board) !== -1 ? 1 : 0;
+        var okBoard = boardAccepted(p.values, s.board) ? 1 : 0;
         return { v: okBoard, raw: okBoard, note: s.board };
       }
       case 'activities': {
@@ -1065,6 +1096,9 @@
         if (s.engage[id] < ENGAGE_FILTERS[id].steps.indexOf(v.val) + 1) return false;
       } else if (RANGE_FILTERS[id]) {
         if (!within(RANGE_FILTERS[id].get(s), v)) return false;
+      } else if (id === 'board') {
+        var boards = v.vals && v.vals.length ? v.vals : (v.val ? [v.val] : []);
+        if (boards.length && !boardAccepted(boards, s.board)) return false;
       } else if (PICK_FILTERS[id]) {
         var picked = v.vals && v.vals.length ? v.vals : (v.val ? [v.val] : []);
         if (picked.length && !picked.some(function (w) {
@@ -1285,7 +1319,7 @@
         var named = STREAMS.filter(function (k) { return STREAM_SUBJECTS[k].join() === subs.join(); })[0];
         return named || subs.join(', ');
       }
-      case 'board': return p.values.length === BOARDS.length ? 'All boards' : p.values.join(', ') || 'None';
+      case 'board': return p.values.length === boardOffers().length ? 'All boards' : p.values.map(function (v) { return BOARD_LABELS[v] || v; }).join(', ') || 'None';
       case 'activities': return p.values.join(', ') || 'Any';
     }
     return '';
@@ -2129,7 +2163,12 @@
       if (v.mode === 'state') return 'Location: in ' + CAMPUS.state;
       return 'Location: ' + ((v.places || []).join(', ') || 'Custom');
     }
-    if (PICK_FILTERS[id]) return label + ': ' + (v.vals && v.vals.length ? v.vals : [v.val]).join(', ');
+    if (PICK_FILTERS[id]) {
+      var names = (v.vals && v.vals.length ? v.vals : [v.val]).map(function (x) {
+        return id === 'board' ? (BOARD_LABELS[x] || x) : x;
+      });
+      return label + ': ' + names.join(', ');
+    }
     var lo = v.min !== undefined && v.min !== '';
     var hi = v.max !== undefined && v.max !== '';
     var money = id === 'budget';
@@ -2174,22 +2213,36 @@
 
   var FILTER_ORDER = ['academic', 'test', 'stream', 'board', 'location', 'budget', 'activities'];
 
+  function filterChipSelect(id, all, selected, labels, placeholder) {
+    function label(item) { return (labels && labels[item]) || item; }
+    var chips = selected.length ? '<div class="ar-place-chips">' + selected.map(function (item) {
+      return '<span class="ar-place-chip">' + esc(label(item)) +
+        '<button type="button" data-ff-remove="' + id + '" data-ff-value="' + esc(item) + '" aria-label="Remove ' + esc(label(item)) + '">' + ico('close') + '</button></span>';
+    }).join('') + '</div>' : '';
+    var left = all.filter(function (item) { return selected.indexOf(item) === -1; });
+    var menu = left.length
+      ? '<select class="ar-add-select" data-ff-add="' + id + '"><option value="">' + esc(placeholder) + '</option>' +
+        left.map(function (item) { return '<option value="' + esc(item) + '">' + esc(label(item)) + '</option>'; }).join('') + '</select>'
+      : '';
+    return '<div class="ar-pick">' + chips + menu + '</div>';
+  }
+
   function filterMultiHtml(id, v) {
-    var selected = v.vals && v.vals.length ? v.vals : (v.val ? [v.val] : []);
-    var boxes = function (all, labels) {
-      return '<div class="ar-checks">' + all.map(function (item) {
-        return '<label class="ar-check"><input type="checkbox" data-ff="' + id + '" value="' + esc(item) + '"' +
-          (selected.indexOf(item) !== -1 ? ' checked' : '') + ' />' + esc((labels && labels[item]) || item) + '</label>';
-      }).join('') + '</div>';
-    };
+    var selected = v.vals && v.vals.length ? v.vals.slice() : (v.val ? [v.val] : []);
     if (id === 'board') {
-      return BOARD_GROUPS.map(function (g) {
-        return '<div class="ar-check-group"><div class="ar-check-group-head"><span>' + esc(g[0]) + '</span></div>' + boxes(g[1], BOARD_LABELS) + '</div>';
-      }).join('');
+      var norm = normalizeBoardValues(selected);
+      if (norm.join('\n') !== selected.join('\n')) {
+        if (norm.length) state.filters.vals.board = { vals: norm };
+        else delete state.filters.vals.board;
+      }
+      return filterChipSelect(id, boardOffers(), norm, BOARD_LABELS, 'Add a board');
     }
     var known = id === 'stream' ? SUBJECTS : ACTIVITIES;
     var extra = pickOptions(PICK_FILTERS[id]).filter(function (item) { return known.indexOf(item) === -1; });
-    return boxes(known.concat(extra));
+    selected.forEach(function (item) {
+      if (known.indexOf(item) === -1 && extra.indexOf(item) === -1) extra.push(item);
+    });
+    return filterChipSelect(id, known.concat(extra), selected, null, id === 'stream' ? 'Add a subject' : 'Add an activity');
   }
 
   function filterLocationHtml(v) {
@@ -3339,13 +3392,24 @@
     }
   }
 
+  var chatBulk = { on: false, ids: {}, shown: [], profileId: null, draft: '' };
+
+  function chatBulkSelected() {
+    return chatBulk.shown.filter(function (id) { return chatBulk.ids[id] && studentById(id); });
+  }
+
   function renderChats() {
     if (state.chatId && !CHATS[state.chatId]) state.chatId = null;
     updateChatBadge();
     renderChatFilters();
     renderChatList();
-    renderChatThread();
-    renderChatProfile();
+    if (chatBulk.on) {
+      renderBulkCompose();
+      renderBulkSide();
+    } else {
+      renderChatThread();
+      renderChatProfile();
+    }
   }
 
   function chatCardHtml(c) {
@@ -3355,8 +3419,11 @@
     var tick = mine
       ? '<span class="ar-chat-tick' + (t.seen ? ' seen' : '') + '" title="' + (t.seen ? 'Read' : 'Sent') + '">' + ico(t.seen ? 'done_all' : 'done') + '</span>'
       : '';
+    var picked = chatBulk.on && chatBulk.ids[c.id];
     return (
-      '<button type="button" class="ar-chat-card' + (c.id === state.chatId ? ' active' : '') + (t.unread ? ' unread' : '') + '" data-chat-open="' + c.id + '">' +
+      '<button type="button" class="ar-chat-card' + (c.id === state.chatId && !chatBulk.on ? ' active' : '') + (picked ? ' picked' : '') + (t.unread ? ' unread' : '') + '" ' +
+      (chatBulk.on ? 'data-chat-bulk="' + c.id + '"' : 'data-chat-open="' + c.id + '"') + '>' +
+      (chatBulk.on ? '<span class="ar-chat-check">' + ico(picked ? 'check_box' : 'check_box_outline_blank') + '</span>' : '') +
       '<span class="avatar">' + esc(c.s.initials) + '</span>' +
       '<span class="ar-chat-card-main">' +
       '<span class="ar-chat-card-top"><strong>' + esc(c.s.name) + '</strong>' + (last ? '<time>' + esc(chatTime(last.at)) + '</time>' : '') + '</span>' +
@@ -3367,11 +3434,88 @@
     );
   }
 
+  function syncChatBulkBar() {
+    var toggle = $('chat-bulk-toggle');
+    var wrap = $('chat-bulk-all-wrap');
+    if (!toggle || !wrap) return;
+    toggle.classList.toggle('on', chatBulk.on);
+    wrap.hidden = !chatBulk.on;
+    var n = chatBulk.shown.filter(function (id) { return chatBulk.ids[id]; }).length;
+    $('chat-bulk-count').textContent = n ? n + ' selected' : 'Select all';
+    var allOn = chatBulk.shown.length > 0 && n === chatBulk.shown.length;
+    $('chat-bulk-all-icon').innerHTML = ico(allOn ? 'check_box' : n ? 'indeterminate_check_box' : 'check_box_outline_blank');
+  }
+
+  function bulkPersonLine(s) {
+    return esc(s.name) + '</strong><small>' + esc(s.id + ' · ' + programById(s.program).name) + '</small>';
+  }
+
+  function renderBulkCompose() {
+    var box = $('chat-bulk-input');
+    if (box) chatBulk.draft = box.value;
+    var n = chatBulkSelected().length;
+    $('chat-thread').innerHTML =
+      '<div class="ar-chat-head"><div class="ar-chat-who"><strong>Message</strong><small>' +
+      (n ? 'Sent separately to the ' + n + (n === 1 ? ' person' : ' people') + ' on the right' : 'Pick people on the left') +
+      '</small></div></div>' +
+      '<div class="ar-bulk-note">' + (n
+        ? 'This is not a group chat. Each person gets this message in their own chat.'
+        : 'Select people on the left. They are listed on the right.') + '</div>' +
+      '<form class="ar-chat-compose" id="chat-bulk-form">' +
+      chatFileChips('bulk') +
+      '<button type="button" class="ar-icon-btn ar-chat-attach" data-chat-attach aria-label="Add media">' + ico('attach_file') + '</button>' +
+      '<input type="file" id="chat-file" multiple hidden />' +
+      '<textarea id="chat-bulk-input" rows="1" placeholder="Write a message…">' + esc(chatBulk.draft) + '</textarea>' +
+      '<button type="submit" class="btn btn-primary btn-sm btn-icon">' + ico('send') + 'Send</button></form>';
+  }
+
+  function renderBulkSide() {
+    if (chatBulk.profileId && studentById(chatBulk.profileId)) {
+      renderChatProfile();
+      return;
+    }
+    var ids = chatBulkSelected();
+    var n = ids.length;
+    $('chat-profile').innerHTML = '<div class="ar-bulk-roster">' +
+      '<div class="ar-chat-head"><div class="ar-chat-who"><strong>Selected</strong><small>' +
+      (n ? n + (n === 1 ? ' person' : ' people') : 'Nobody selected') + '</small></div></div>' +
+      '<div class="ar-bulk-list">' +
+      (n ? ids.map(function (id) {
+        var s = studentById(id);
+        return '<button type="button" class="ar-bulk-person" data-chat-bulk-open="' + id + '"><span class="avatar">' + esc(s.initials) + '</span><span class="ar-bulk-who"><strong>' +
+          bulkPersonLine(s) + '</span></button>';
+      }).join('') : '<p class="ar-muted">Select people on the left.</p>') +
+      '</div></div>';
+  }
+
+  function sendBulkChat() {
+    var text = $('chat-bulk-input') ? $('chat-bulk-input').value.trim() : chatBulk.draft.trim();
+    var files = chatFiles('bulk');
+    var ids = chatBulk.shown.filter(function (id) { return chatBulk.ids[id] && CHATS[id]; });
+    if (!ids.length) { toast('Select at least one chat.'); return; }
+    if (!text && !files.length) { toast('Write a message first.'); $('chat-bulk-input').focus(); return; }
+    var at = Date.now();
+    var media = files.map(function (f) { return { name: f.name, type: f.type, url: f.url }; });
+    ids.forEach(function (id) {
+      var msg = { from: 'uni', text: text, at: at };
+      if (media.length) msg.media = media.map(function (m) { return { name: m.name, type: m.type, url: m.url }; });
+      CHATS[id].messages.push(msg);
+      CHATS[id].seen = false;
+    });
+    delete chatAttach.bulk;
+    saveChats();
+    chatBulk.draft = '';
+    toast('Sent to ' + ids.length + ' chat' + (ids.length === 1 ? '' : 's') + '.');
+    renderChats();
+  }
+
   /** With a program and preference picked, chats are grouped into the same cohorts as the dashboard board. */
   function renderChatList() {
     var threads = chatThreads();
     var shown = threads.filter(function (c) { return cfPassesBase(c) && cfPassesQuick(c); });
     $('chat-count').textContent = shown.length === threads.length ? threads.length : shown.length + ' of ' + threads.length;
+    chatBulk.shown = shown.map(function (c) { return c.id; });
+    syncChatBulkBar();
     if (!shown.length) {
       $('chat-list').innerHTML = '<div class="ar-chat-none">' + (threads.length
         ? 'No chats match these filters.<br><button type="button" class="ar-link" data-cf-clear>Clear filters</button>'
@@ -3412,7 +3556,8 @@
   }
 
   function renderChatProfile() {
-    var s = state.chatId && studentById(state.chatId);
+    var sid = chatBulk.on && chatBulk.profileId ? chatBulk.profileId : state.chatId;
+    var s = sid && studentById(sid);
     if (!s) {
       $('chat-profile').innerHTML = '<div class="ar-chat-empty sm">' + ico('person') + '<p>The student’s profile shows here.</p></div>';
       return;
@@ -3440,9 +3585,11 @@
     var sent = profileCampaigns(s);
     var evRows = studentEventActivity(s);
     var box = $('chat-profile');
-    var keepScroll = box.getAttribute('data-sid') === s.id ? box.scrollTop : 0;
+    var scrollerNow = box.querySelector('.ar-cp-scroll') || box;
+    var keepScroll = box.getAttribute('data-sid') === s.id ? scrollerNow.scrollTop : 0;
     box.setAttribute('data-sid', s.id);
     box.innerHTML =
+      (chatBulk.on ? '<div class="ar-chat-head"><button type="button" class="ar-bulk-back" data-chat-bulk-back>' + ico('arrow_back') + 'Selected</button></div><div class="ar-cp-scroll">' : '') +
       '<div class="ar-cp-hero"><div class="avatar lg">' + esc(s.initials) + '</div>' +
       '<h3>' + esc(s.name) + '</h3><p>' + esc(s.id + ' · ' + program.name) + '</p>' + stagePill(s) + '</div>' +
       (pref
@@ -3464,8 +3611,9 @@
       '<div class="ar-cp-sec"><h4>Campaigns <small>' + sent.length + '</small></h4>' +
       (sent.length ? campaignItemsHtml(s, sent) : '<p class="ar-muted">No campaigns yet.</p>') + '</div>' +
       '<div class="ar-cp-sec"><h4>Engagement <small>' + evRows.length + '</small></h4>' +
-      (evRows.length ? eventItemsHtml(s, evRows) : '<p class="ar-muted">No event registrations yet.</p>') + '</div>';
-    box.scrollTop = keepScroll;
+      (evRows.length ? eventItemsHtml(s, evRows) : '<p class="ar-muted">No event registrations yet.</p>') + '</div>' +
+      (chatBulk.on ? '</div>' : '');
+    (box.querySelector('.ar-cp-scroll') || box).scrollTop = keepScroll;
   }
 
   function renderChatThread() {
@@ -3805,12 +3953,24 @@
     }).join('') + '</div>';
   }
 
+  function chipSelect(name, all, selected, placeholder, labels) {
+    function label(v) { return (labels && labels[v]) || v; }
+    var chips = selected.length ? '<div class="ar-place-chips">' + selected.map(function (v) {
+      return '<span class="ar-place-chip">' + esc(label(v)) +
+        '<input type="hidden" name="' + name + '" value="' + esc(v) + '" />' +
+        '<button type="button" data-pick-remove="' + name + '" data-pick-value="' + esc(v) + '" aria-label="Remove ' + esc(label(v)) + '">' + ico('close') + '</button></span>';
+    }).join('') + '</div>' : '';
+    var left = all.filter(function (v) { return selected.indexOf(v) === -1; });
+    var menu = left.length
+      ? '<select class="ar-add-select" data-pick-add="' + name + '"><option value="">' + esc(placeholder) + '</option>' +
+        left.map(function (v) { return '<option value="' + esc(v) + '">' + esc(label(v)) + '</option>'; }).join('') + '</select>'
+      : '';
+    return '<div class="ar-pick">' + chips + menu + '</div>';
+  }
+
   function boardEditor(c) {
-    return BOARD_GROUPS.map(function (g, i) {
-      return '<div class="ar-check-group"><div class="ar-check-group-head"><span>' + esc(g[0]) + '</span>' +
-        '<button type="button" class="ar-link" data-board-all="' + i + '">Select all</button></div>' +
-        checks('pe-board', g[1], c.board.values, BOARD_LABELS) + '</div>';
-    }).join('');
+    c.board.values = normalizeBoardValues(c.board.values);
+    return chipSelect('pe-board', boardOffers(), c.board.values, 'Add a board', BOARD_LABELS);
   }
 
   function placeOptions(q, taken) {
@@ -3904,7 +4064,7 @@
     var known = ACTIVITIES.map(function (a) { return a.toLowerCase(); });
     var extra = c.activities.values.filter(function (a) { return known.indexOf(a.toLowerCase()) === -1; });
     return (
-      checks('pe-activity', ACTIVITIES.concat(extra), c.activities.values) +
+      chipSelect('pe-activity', ACTIVITIES.concat(extra), c.activities.values, 'Add an activity') +
       '<div class="ar-add-row"><input type="text" id="pe-activity-new" placeholder="Add a custom activity, e.g. Astronomy club" />' +
       '<button type="button" class="btn btn-secondary btn-sm" data-add-activity>Add</button></div>'
     );
@@ -4034,7 +4194,10 @@
       return body.querySelector('[data-include="' + cid + '"]').checked ? saved[cid] : 0;
     }
     function checked(name) {
-      return Array.prototype.map.call(body.querySelectorAll('input[name="' + name + '"]:checked'), function (i) { return i.value; });
+      return Array.prototype.map.call(body.querySelectorAll('input[name="' + name + '"]'), function (i) {
+        if (i.type === 'hidden') return i.value;
+        return i.checked ? i.value : null;
+      }).filter(function (v) { return v; });
     }
     var locMode = body.querySelector('input[name="pe-loc-mode"]:checked');
     d.name = $('pe-name').value.trim();
@@ -7124,6 +7287,19 @@
       return;
     }
 
+    var ffChip = t.closest('[data-ff-remove]');
+    if (ffChip) {
+      var ffId = ffChip.getAttribute('data-ff-remove');
+      var ffCur = ((state.filters.vals[ffId] && state.filters.vals[ffId].vals) || []).filter(function (x) {
+        return x !== ffChip.getAttribute('data-ff-value');
+      });
+      if (ffCur.length) state.filters.vals[ffId] = { vals: ffCur };
+      else delete state.filters.vals[ffId];
+      refreshFilterMenu();
+      renderStudents();
+      return;
+    }
+
     var ffAdd = t.closest('[data-ff-add-place]');
     var ffRemove = t.closest('[data-ff-remove-place]');
     if (ffAdd || ffRemove) {
@@ -7638,6 +7814,43 @@
       return;
     }
 
+    var chatPick = t.closest('[data-chat-bulk]');
+    if (chatPick) {
+      var pickId = chatPick.getAttribute('data-chat-bulk');
+      if (chatBulk.ids[pickId]) {
+        delete chatBulk.ids[pickId];
+        if (chatBulk.profileId === pickId) chatBulk.profileId = null;
+      } else chatBulk.ids[pickId] = true;
+      renderChatList();
+      renderBulkCompose();
+      renderBulkSide();
+      return;
+    }
+
+    var bulkOpen = t.closest('[data-chat-bulk-open]');
+    if (bulkOpen) {
+      chatBulk.profileId = bulkOpen.getAttribute('data-chat-bulk-open');
+      renderBulkSide();
+      return;
+    }
+
+    if (t.closest('[data-chat-bulk-back]')) {
+      chatBulk.profileId = null;
+      renderBulkSide();
+      return;
+    }
+
+    var bulkRemove = t.closest('[data-chat-bulk-remove]');
+    if (bulkRemove) {
+      var rid = bulkRemove.getAttribute('data-chat-bulk-remove');
+      delete chatBulk.ids[rid];
+      if (chatBulk.profileId === rid) chatBulk.profileId = null;
+      renderChatList();
+      renderBulkCompose();
+      renderBulkSide();
+      return;
+    }
+
     var cfProgram = t.closest('[data-cf-program]');
     if (cfProgram) {
       CF.program = cfProgram.getAttribute('data-cf-program');
@@ -7693,11 +7906,13 @@
 
     if (t.closest('[data-chat-file-clear]')) {
       var clearBtn = t.closest('[data-chat-file-clear]');
-      var filesNow = chatFiles(state.chatId);
+      var fileId = chatBulk.on ? 'bulk' : state.chatId;
+      var filesNow = chatFiles(fileId);
       filesNow.splice(Number(clearBtn.getAttribute('data-chat-file-clear')), 1);
-      if (filesNow.length) chatAttach[state.chatId] = filesNow;
-      else delete chatAttach[state.chatId];
-      renderChatThread();
+      if (filesNow.length) chatAttach[fileId] = filesNow;
+      else delete chatAttach[fileId];
+      if (chatBulk.on) renderBulkCompose();
+      else renderChatThread();
       return;
     }
 
@@ -7806,12 +8021,14 @@
         if (addPlace) { $('pe-place-q').focus(); openPlaceList(); }
         return;
       }
-      var boardAll = t.closest('[data-board-all]');
-      if (boardAll) {
-        var boxes = boardAll.closest('.ar-check-group').querySelectorAll('input[name="pe-board"]');
-        var allOn = Array.prototype.every.call(boxes, function (b) { return b.checked; });
-        Array.prototype.forEach.call(boxes, function (b) { b.checked = !allOn; });
-        updatePreview();
+      var pickRemove = t.closest('[data-pick-remove]');
+      if (pickRemove && editing) {
+        readEditor();
+        var pickField = pickRemove.getAttribute('data-pick-remove') === 'pe-board' ? 'board' : 'activities';
+        var pickList = editing.draft.criteria[pickField].values;
+        var pickAt = pickList.indexOf(pickRemove.getAttribute('data-pick-value'));
+        if (pickAt !== -1) pickList.splice(pickAt, 1);
+        rerenderEditor();
         return;
       }
       if ($('pe-place-list') && !t.closest('#pe-place')) $('pe-place-list').hidden = true;
@@ -7859,8 +8076,9 @@
     if (e.target.id !== 'chat-file') return;
     var picked = e.target.files ? [].slice.call(e.target.files) : [];
     e.target.value = '';
-    if (!picked.length || !state.chatId) return;
-    var chatId = state.chatId;
+    var bulkFiles = !!e.target.closest('#chat-bulk-form');
+    if (!picked.length || (!bulkFiles && !state.chatId)) return;
+    var chatId = bulkFiles ? 'bulk' : state.chatId;
     var pending = picked.filter(function (file) {
       if (file.size <= 8 * 1024 * 1024) return true;
       toast(file.name + ' is over 8 MB.');
@@ -7876,7 +8094,8 @@
         left -= 1;
         if (left) return;
         chatAttach[chatId] = chatFiles(chatId).concat(added);
-        renderChatThread();
+        if (chatId === 'bulk') renderBulkCompose();
+        else renderChatThread();
       };
       reader.readAsDataURL(file);
     });
@@ -7885,6 +8104,40 @@
   $('chat-search').addEventListener('input', function () {
     renderChatFilters();
     renderChatList();
+  });
+
+  $('chat-bulk-toggle').addEventListener('click', function () {
+    chatBulk.on = !chatBulk.on;
+    if (!chatBulk.on) {
+      chatBulk.ids = {};
+      chatBulk.profileId = null;
+      chatBulk.draft = '';
+      delete chatAttach.bulk;
+    }
+    renderChats();
+  });
+
+  $('chat-bulk-all-wrap').addEventListener('click', function () {
+    var picked = chatBulk.shown.filter(function (id) { return chatBulk.ids[id]; }).length;
+    var on = !(chatBulk.shown.length && picked === chatBulk.shown.length);
+    chatBulk.shown.forEach(function (id) {
+      if (on) chatBulk.ids[id] = true;
+      else delete chatBulk.ids[id];
+    });
+    if (!on) chatBulk.profileId = null;
+    renderChatList();
+    renderBulkCompose();
+    renderBulkSide();
+  });
+
+  $('chat-thread').addEventListener('submit', function (e) {
+    if (!e.target || e.target.id !== 'chat-bulk-form') return;
+    e.preventDefault();
+    sendBulkChat();
+  });
+
+  $('chat-thread').addEventListener('input', function (e) {
+    if (e.target.id === 'chat-bulk-input') chatBulk.draft = e.target.value;
   });
 
   $('evf-pop').addEventListener('click', function (e) {
@@ -8210,6 +8463,16 @@
       if (e.target.name === 'pe-loc-mode' && $('pe-place-q')) $('pe-place-q').focus();
       return;
     }
+    var pickAdd = e.target.getAttribute && e.target.getAttribute('data-pick-add');
+    if (pickAdd) {
+      var picked = e.target.value;
+      if (!picked) return;
+      readEditor();
+      var pickList = editing.draft.criteria[pickAdd === 'pe-board' ? 'board' : 'activities'].values;
+      if (pickList.indexOf(picked) === -1) pickList.push(picked);
+      rerenderEditor();
+      return;
+    }
     if (e.target.id === 'pe-add-test') {
       var name = e.target.value;
       if (!name) return;
@@ -8339,6 +8602,17 @@
   });
 
   $('filter-menu').addEventListener('change', function (e) {
+    var ffAdd = e.target.getAttribute('data-ff-add');
+    if (ffAdd) {
+      var ffValue = e.target.value;
+      if (!ffValue) return;
+      var ffCur = ((state.filters.vals[ffAdd] && state.filters.vals[ffAdd].vals) || []).slice();
+      if (ffCur.indexOf(ffValue) === -1) ffCur.push(ffValue);
+      state.filters.vals[ffAdd] = { vals: ffCur };
+      refreshFilterMenu();
+      renderStudents();
+      return;
+    }
     var multi = e.target.getAttribute('data-ff');
     if (multi) {
       var cur = ((state.filters.vals[multi] && state.filters.vals[multi].vals) || []).filter(function (x) { return x !== e.target.value; });
