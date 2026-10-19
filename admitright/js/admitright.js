@@ -3953,6 +3953,13 @@
     }).join('') + '</div>';
   }
 
+  function pickValues(name) {
+    var c = editing.draft.criteria;
+    if (name === 'pe-board') return c.board.values;
+    if (name === 'pe-subject') return c.stream.subjects;
+    return c.activities.values;
+  }
+
   function chipSelect(name, all, selected, placeholder, labels) {
     function label(v) { return (labels && labels[v]) || v; }
     var chips = selected.length ? '<div class="ar-place-chips">' + selected.map(function (v) {
@@ -4098,10 +4105,11 @@
     var known = SUBJECTS.map(function (a) { return a.toLowerCase(); });
     var extra = c.stream.subjects.filter(function (a) { return known.indexOf(a.toLowerCase()) === -1; });
     return (
-      checks('pe-subject', SUBJECTS.concat(extra), c.stream.subjects) +
+      chipSelect('pe-subject', SUBJECTS.concat(extra), c.stream.subjects, 'Add a subject') +
       '<div class="ar-add-row"><input type="text" id="pe-subject-new" placeholder="Add a custom subject, e.g. Legal Studies" />' +
       '<button type="button" class="btn btn-secondary btn-sm" data-add-subject>Add</button></div>'
     );
+  }
   }
 
   function addCustomSubject() {
@@ -8024,8 +8032,7 @@
       var pickRemove = t.closest('[data-pick-remove]');
       if (pickRemove && editing) {
         readEditor();
-        var pickField = pickRemove.getAttribute('data-pick-remove') === 'pe-board' ? 'board' : 'activities';
-        var pickList = editing.draft.criteria[pickField].values;
+        var pickList = pickValues(pickRemove.getAttribute('data-pick-remove'));
         var pickAt = pickList.indexOf(pickRemove.getAttribute('data-pick-value'));
         if (pickAt !== -1) pickList.splice(pickAt, 1);
         rerenderEditor();
@@ -8468,7 +8475,7 @@
       var picked = e.target.value;
       if (!picked) return;
       readEditor();
-      var pickList = editing.draft.criteria[pickAdd === 'pe-board' ? 'board' : 'activities'].values;
+      var pickList = pickValues(pickAdd);
       if (pickList.indexOf(picked) === -1) pickList.push(picked);
       rerenderEditor();
       return;
