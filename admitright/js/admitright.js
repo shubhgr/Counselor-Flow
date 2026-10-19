@@ -3955,11 +3955,40 @@
     return thread.messages.length ? thread.messages[0].from : '';
   }
 
+  /* Layout only: counselors on the team. Outgoing chats are tagged with one of them. */
+  var CHAT_STAFF = [
+    { id: 'meera', name: 'Meera Kapoor' },
+    { id: 'arjun', name: 'Arjun Malik' },
+    { id: 'neha', name: 'Neha Iyer' },
+    { id: 'rahul', name: 'Rahul Sethi' },
+  ];
+  var CHAT_ME = 'meera';
+
+  function staffById(id) {
+    return CHAT_STAFF.filter(function (p) { return p.id === id; })[0] || null;
+  }
+
+  function messageStaff(m, studentId) {
+    if (!m || m.from !== 'uni') return null;
+    if (m.by && staffById(m.by)) return staffById(m.by);
+    var n = 0;
+    var key = String(studentId || '') + ':' + String(m.at || '');
+    for (var i = 0; i < key.length; i++) n = (n + key.charCodeAt(i)) % CHAT_STAFF.length;
+    return CHAT_STAFF[n];
+  }
+
+  function threadHasStaff(thread, studentId, staffId) {
+    return thread.messages.some(function (m) {
+      var who = messageStaff(m, studentId);
+      return who && who.id === staffId;
+    });
+  }
+
   /* ——— Chat filters ——— */
-  var CF = { program: 'all', prefId: null, min: '', max: '', stages: [], extras: [], unread: false, by: '' };
+  var CF = { program: 'all', prefId: null, min: '', max: '', stages: [], extras: [], unread: false, by: '', sender: '' };
 
   function resetChatFilters() {
-    CF = { program: 'all', prefId: null, min: '', max: '', stages: [], extras: [], unread: false, by: '' };
+    CF = { program: 'all', prefId: null, min: '', max: '', stages: [], extras: [], unread: false, by: '', sender: '' };
     $('chat-search').value = '';
   }
 
@@ -4000,6 +4029,7 @@
     if (CF.extras.length) {
       if (!CF.extras.some(function (x) { return journey.actions[x]; })) return false;
     }
+    if (CF.sender && !threadHasStaff(c.thread, s.id, CF.sender)) return false;
     var q = $('chat-search').value.trim().toLowerCase();
     return !q || s.name.toLowerCase().indexOf(q) !== -1 || s.id.toLowerCase().indexOf(q) !== -1;
   }
@@ -4010,7 +4040,7 @@
   }
 
   function cfActive() {
-    return CF.program !== 'all' || CF.stages.length || CF.extras.length || CF.unread || CF.by || $('chat-search').value.trim();
+    return CF.program !== 'all' || CF.stages.length || CF.extras.length || CF.unread || CF.by || CF.sender || $('chat-search').value.trim();
   }
 
   function pickedLabel(list, names) {
@@ -4072,8 +4102,14 @@
       return ACTIONS.filter(function (a) { return a.id === id; })[0].name;
     }));
 
+    $('cf-sender-menu').innerHTML = [{ id: '', name: 'Anyone on the team' }].concat(CHAT_STAFF).map(function (p) {
+      return '<button type="button" class="ar-menu-item' + (CF.sender === p.id ? ' active' : '') + '" data-cf-sender="' + p.id + '">' + esc(p.name) + '</button>';
+    }).join('');
+    var sender = staffById(CF.sender);
+    $('cf-sender-label').textContent = sender ? sender.name : 'Anyone';
+
     $('cf-clear').hidden = !cfActive();
-    var picked = (CF.program !== 'all') + !!cfPref() + (CF.min !== '' || CF.max !== '') + (CF.stages.length > 0) + (CF.extras.length > 0);
+    var picked = (CF.program !== 'all') + !!cfPref() + (CF.min !== '' || CF.max !== '') + (CF.stages.length > 0) + (CF.extras.length > 0) + !!CF.sender;
     $('cf-count').textContent = picked;
     $('cf-count').hidden = !picked;
     $('cf-toggle').classList.toggle('on', picked > 0);
@@ -4094,6 +4130,12 @@
     var unread = Object.keys(CHATS).reduce(function (n, id) { return n + (CHATS[id].unread || 0); }, 0);
     $('chat-badge').hidden = !unread;
     $('chat-badge').textContent = unread > 9 ? '9+' : unread;
+  }
+
+  /** "Thu · 3:10 AM" under a message. */
+  function chatStamp(ts) {
+    var d = new Date(ts);
+    return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()] + ' · ' + fmtTime(d);
   }
 
   /** "4:05 PM" today, then "Yesterday", a weekday within the week, else "12 Oct". */
@@ -4167,7 +4209,7 @@
       '<span class="ar-chat-card-main">' +
       '<span class="ar-chat-card-top"><strong>' + esc(c.s.name) + '</strong>' + (last ? '<time>' + esc(chatTime(last.at)) + '</time>' : '') + '</span>' +
       '<span class="ar-chat-card-sub">' + tick +
-      '<span class="ar-chat-preview">' + (last ? (mine ? 'You: ' : '') + (last.campaign ? esc(channelById(last.campaign).name) + ' campaign · ' : '') + esc(last.text || (mediaList(last).length > 1 ? mediaList(last).length + ' files' : (mediaList(last)[0] ? mediaList(last)[0].name : ''))) : '<em>No messages yet</em>') + '</span>' +
+      '<span class="ar-chat-preview">' + (last ? ((mine && messageStaff(last, c.id)) ? esc(messageStaff(last, c.id).name) + ': ' : '') + (last.campaign ? esc(channelById(last.campaign).name) + ' campaign · ' : '') + esc(last.text || (mediaList(last).length > 1 ? mediaList(last).length + ' files' : (mediaList(last)[0] ? mediaList(last)[0].name : ''))) : '<em>No messages yet</em>') + '</span>' +
       (t.unread ? '<b class="ar-chat-unread" aria-label="' + t.unread + ' unread">' + t.unread + '</b>' : '') +
       '</span></span></button>'
     );
@@ -4236,7 +4278,7 @@
     var at = Date.now();
     var media = files.map(function (f) { return { name: f.name, type: f.type, url: f.url }; });
     ids.forEach(function (id) {
-      var msg = { from: 'uni', text: text, at: at };
+      var msg = { from: 'uni', by: CHAT_ME, text: text, at: at };
       if (media.length) msg.media = media.map(function (m) { return { name: m.name, type: m.type, url: m.url }; });
       CHATS[id].messages.push(msg);
       CHATS[id].seen = false;
@@ -4375,7 +4417,7 @@
         (ch ? '<span class="ar-msg-tag">' + ico(ch.icon) + esc(ch.name) + ' campaign</span>' : '') +
         chatMediaHtml(m) +
         (m.text ? '<p>' + (m.subject ? '<b>' + esc(m.subject) + '</b>' : '') + esc(m.text) + '</p>' : '') +
-        '<time>' + esc(chatTime(m.at)) + '</time></div>';
+        '<time>' + (m.from === 'uni' && messageStaff(m, id) ? esc(messageStaff(m, id).name) + ' · ' : '') + esc(chatStamp(m.at)) + '</time></div>';
     }).join('') : '<div class="ar-chat-start">Say hello to ' + esc(first) + '. Messages stay on the platform; contact details are never shared.</div>';
     $('chat-thread').innerHTML =
       '<div class="ar-chat-head">' +
@@ -4437,7 +4479,7 @@
     var files = chatFiles(id);
     if (!id || (!text && !files.length) || !CHATS[id]) return;
     var thread = CHATS[id];
-    var msg = { from: 'uni', text: text, at: Date.now() };
+    var msg = { from: 'uni', by: CHAT_ME, text: text, at: Date.now() };
     if (files.length) msg.media = files.map(function (f) { return { name: f.name, type: f.type, url: f.url }; });
     thread.messages.push(msg);
     thread.seen = false;
@@ -5278,7 +5320,7 @@
 
   /* ——— Events: filters ——— */
 
-  var EF = { program: 'all', prefId: null, cohort: '', formats: [], kinds: [], cities: [], platforms: [], q: '' };
+  var EF = { program: 'all', prefId: null, cohort: '', formats: [], kinds: [], cities: [], platforms: [], category: '', creator: '', startFrom: '', startTo: '', q: '' };
 
   function efPref() {
     return EF.program === 'all' || !EF.prefId ? null : findPref(EF.program, EF.prefId);
@@ -5297,13 +5339,21 @@
     if (skip !== 'kinds' && EF.kinds.length && EF.kinds.indexOf(e.kind) === -1) return false;
     if (skip !== 'cities' && EF.cities.length && !eventPlaces(e).some(function (c) { return EF.cities.indexOf(c) !== -1; })) return false;
     if (EF.platforms.length && EF.platforms.indexOf(e.platform) === -1) return false;
+    if (EF.category) {
+      var catKind = EVENT_CATEGORY_KIND[EF.category];
+      if (catKind && e.kind !== catKind) return false;
+    }
+    if (EF.creator && e.host !== EF.creator) return false;
+    if (EF.startFrom && e.start < new Date(EF.startFrom + 'T00:00:00')) return false;
+    if (EF.startTo && e.start > new Date(EF.startTo + 'T23:59:59')) return false;
     var q = EF.q.trim().toLowerCase();
     return !q || (e.name + ' ' + kindById(e.kind).name + ' ' + e.host + ' ' + e.city + ' ' + e.venue).toLowerCase().indexOf(q) !== -1;
   }
 
   function efFacetCount() {
     return (EF.program !== 'all') + !!EF.prefId + !!EF.cohort +
-      EF.formats.length + EF.kinds.length + EF.cities.length + EF.platforms.length;
+      EF.formats.length + EF.kinds.length + EF.cities.length + EF.platforms.length +
+      !!EF.category + !!EF.creator + !!(EF.startFrom || EF.startTo);
   }
 
   function toggleIn(list, v) {
@@ -5346,7 +5396,24 @@
       '<label><span>Format</span>' + checks('formats', EVENT_FORMATS) + '</label>' +
       '<label><span>Kind of event</span>' + checks('kinds', EVENT_KINDS) + '</label>' +
       '<label><span>City</span>' + checks('cities', eventCities().map(function (c) { return { id: c, name: c }; })) + '</label>' +
-      '<label><span>Meeting platform</span>' + checks('platforms', Object.keys(PLATFORM_LINKS).map(function (p) { return { id: p, name: p }; })) + '</label>';
+      '<label><span>Meeting platform</span>' + checks('platforms', Object.keys(PLATFORM_LINKS).map(function (p) { return { id: p, name: p }; })) + '</label>' +
+      '<div class="ar-evf-block"><span>Event type</span><div class="ar-evf-type">' +
+      [{ id: 'online', name: 'Online event', icon: 'computer' }, { id: 'offline', name: 'Offline event', icon: 'groups' }, { id: 'hybrid', name: 'Hybrid event', icon: 'calendar_month' }].map(function (f) {
+        var on = EF.formats.indexOf(f.id) !== -1;
+        return '<button type="button" class="' + (on ? 'active' : '') + '" data-ev-check="formats:' + f.id + '">' + ico(f.icon) + esc(f.name) + '</button>';
+      }).join('') + '</div></div>' +
+      '<label><span>Event category</span>' + select('evf-category', opt('', 'Select event category', !EF.category) + EVENT_CATEGORIES.filter(function (c) { return c !== 'Other'; }).map(function (c) {
+        return opt(c, c, EF.category === c);
+      }).join('')) + '</label>' +
+      '<div class="ar-evf-block"><span>Start date range</span><div class="ar-evf-dates">' +
+      '<label><span>From</span><input type="date" id="evf-from" value="' + esc(EF.startFrom) + '"></label>' +
+      '<em>to</em>' +
+      '<label><span>To</span><input type="date" id="evf-to" value="' + esc(EF.startTo) + '"></label></div></div>' +
+      '<label><span>Creator</span>' + select('evf-creator', opt('', 'Select creators', !EF.creator) + (function () {
+        var seen = {};
+        EVENTS.forEach(function (e) { if (e.host) seen[e.host] = true; });
+        return Object.keys(seen).sort().map(function (h) { return opt(h, h, EF.creator === h); }).join('');
+      })()) + '</label>';
     $('evf-pref').disabled = EF.program === 'all';
     var n = efFacetCount();
     $('evf-count').textContent = n;
@@ -5366,6 +5433,9 @@
     if (EF.program !== 'all') chips.push('<button type="button" class="ar-filter-chip" data-ev-clear="program">' + esc(programById(EF.program).name) + ico('close') + '</button>');
     if (EF.prefId && efPref()) chips.push('<button type="button" class="ar-filter-chip" data-ev-clear="pref">' + esc(efPref().name) + ico('close') + '</button>');
     if (EF.cohort) chips.push('<button type="button" class="ar-filter-chip" data-ev-clear="cohort">' + esc(EF.cohort) + ' intake' + ico('close') + '</button>');
+    if (EF.category) chips.push('<button type="button" class="ar-filter-chip" data-ev-clear="category">' + esc(EF.category) + ico('close') + '</button>');
+    if (EF.creator) chips.push('<button type="button" class="ar-filter-chip" data-ev-clear="creator">' + esc(EF.creator) + ico('close') + '</button>');
+    if (EF.startFrom || EF.startTo) chips.push('<button type="button" class="ar-filter-chip" data-ev-clear="dates">' + esc((EF.startFrom || 'Any') + ' – ' + (EF.startTo || 'Any')) + ico('close') + '</button>');
     ['formats', 'kinds', 'cities', 'platforms'].forEach(function (g) {
       EF[g].forEach(function (v) {
         chips.push('<button type="button" class="ar-filter-chip" data-ev-clear="' + g + ':' + esc(v) + '">' + esc(names[g](v)) + ico('close') + '</button>');
@@ -8124,7 +8194,7 @@
   }
 
   var MENUS = [['program-btn', 'program-menu'], ['pref-btn', 'pref-menu'], ['range-btn', 'range-menu'], ['bill-range-btn', 'bill-range-menu'], ['intake-btn', 'intake-menu'], ['filter-btn', 'filter-menu'], ['bulk-btn', 'bulk-menu'],
-    ['cf-program-btn', 'cf-program-menu'], ['cf-pref-btn', 'cf-pref-menu'], ['cf-score-btn', 'cf-score-menu'], ['cf-stage-btn', 'cf-stage-menu'], ['cf-extra-btn', 'cf-extra-menu']];
+    ['cf-program-btn', 'cf-program-menu'], ['cf-pref-btn', 'cf-pref-menu'], ['cf-score-btn', 'cf-score-menu'], ['cf-stage-btn', 'cf-stage-menu'], ['cf-extra-btn', 'cf-extra-menu'], ['cf-sender-btn', 'cf-sender-menu']];
 
   /** The toolbar menu and the Filters row both drive the same intake year. */
   /* ——— Date range picker ——— */
@@ -9071,6 +9141,10 @@
       EF.kinds = [];
       EF.cities = [];
       EF.platforms = [];
+      EF.category = '';
+      EF.creator = '';
+      EF.startFrom = '';
+      EF.startTo = '';
       renderEvents();
       return;
     }
@@ -9229,6 +9303,9 @@
       if (cleared[0] === 'program') { EF.program = 'all'; EF.prefId = null; }
       else if (cleared[0] === 'pref') EF.prefId = null;
       else if (cleared[0] === 'cohort') EF.cohort = '';
+      else if (cleared[0] === 'category') EF.category = '';
+      else if (cleared[0] === 'creator') EF.creator = '';
+      else if (cleared[0] === 'dates') { EF.startFrom = ''; EF.startTo = ''; }
       else toggleIn(EF[cleared[0]], cleared.slice(1).join(':'));
       renderEvents();
       return;
@@ -9432,6 +9509,14 @@
       renderChatList();
       renderBulkCompose();
       renderBulkSide();
+      return;
+    }
+
+    var cfSender = t.closest('[data-cf-sender]');
+    if (cfSender) {
+      CF.sender = cfSender.getAttribute('data-cf-sender') || '';
+      closeMenus();
+      renderChats();
       return;
     }
 
@@ -9859,6 +9944,14 @@
       EF.prefId = e.target.value || null;
     } else if (e.target.id === 'evf-cohort') {
       EF.cohort = e.target.value;
+    } else if (e.target.id === 'evf-category') {
+      EF.category = e.target.value;
+    } else if (e.target.id === 'evf-creator') {
+      EF.creator = e.target.value;
+    } else if (e.target.id === 'evf-from') {
+      EF.startFrom = e.target.value;
+    } else if (e.target.id === 'evf-to') {
+      EF.startTo = e.target.value;
     } else return;
     renderEvents();
   });

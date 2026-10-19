@@ -10,7 +10,7 @@
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=tok1" />
   <link rel="stylesheet" href="css/tokens.css?v=tok1" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar368" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar371" />
 </head>
 <body class="ar ar-locked">
   <section class="ar-gate" id="gate-login" hidden>
@@ -608,6 +608,13 @@
                 </button>
                 <div class="ar-menu ar-cf-menu" id="cf-extra-menu" hidden></div>
               </div>
+              <div class="ar-menu-wrap">
+                <button type="button" class="chip-btn ar-picker" id="cf-sender-btn" aria-expanded="false">
+                  <span class="ar-picker-text"><small>Sent by</small><span id="cf-sender-label">Anyone</span></span>
+                  <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+                </button>
+                <div class="ar-menu" id="cf-sender-menu" hidden></div>
+              </div>
                 </div>
               </div>
             </div>
@@ -656,6 +663,6 @@
   <div class="ar-toast" id="toast" hidden></div>
 
   <script src="data/students-data.js?v=ar259"></script>
-  <script src="js/admitright.js?v=ar375"></script>
+  <script src="js/admitright.js?v=ar378"></script>
 </body>
 </html>

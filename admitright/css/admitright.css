@@ -4750,9 +4750,14 @@ label.ar-editor-program:focus-within {
   word-wrap: break-word;
 }
 
-.ar-msg time {
+.ar-msg time,
+.ar-msg-who {
   font-size: var(--text-2xs);
   color: var(--muted);
+}
+
+.ar-msg-who {
+  margin-top: 4px;
 }
 
 .ar-msg.in {
@@ -10607,9 +10612,91 @@ label.ar-editor-program:focus-within {
 #evf-pop {
   right: 0;
   left: auto;
-  width: 320px;
-  max-height: min(70vh, 560px);
+  width: 460px;
+  max-height: min(82vh, 760px);
+  padding-bottom: 20px;
   overflow-y: auto;
+}
+
+.ar-evf-block > span {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--ink);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-heavy);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ar-evf-type {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ar-evf-type button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.ar-evf-type button .material-symbols-rounded {
+  font-size: 18px;
+  color: var(--brand);
+}
+
+.ar-evf-type button.active {
+  border-color: transparent;
+  background: var(--purple-50);
+}
+
+.ar-evf-dates {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 8px;
+  align-items: end;
+}
+
+.ar-evf-dates em {
+  padding-bottom: 10px;
+  color: var(--muted);
+  font-style: normal;
+  font-size: var(--text-sm);
+}
+
+.ar-evf-dates label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ar-evf-dates label span {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.ar-evf-dates input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+  font: inherit;
+  font-size: var(--text-sm);
 }
 
 #evf-pop .ar-cgf-fields label {
@@ -10624,13 +10711,25 @@ label.ar-editor-program:focus-within {
   cursor: default;
 }
 
-#evf-pop .ar-cgf-fields .ar-cg-select {
-  height: var(--btn-h);
-  padding-left: var(--space-3);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-btn);
-  background-color: var(--surface);
+#evf-pop .ar-cgf-fields {
+  gap: 16px;
+}
+
+#evf-pop .ar-cgf-fields .ar-cg-select,
+#evf-pop .ar-evf-dates input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background-color: var(--bg);
   font-weight: var(--weight-medium);
+  font-size: var(--text-sm);
+}
+
+#evf-pop .ar-cgf-fields label > span {
+  margin-bottom: 0;
 }
 
 #evf-pop .ar-fchips {
