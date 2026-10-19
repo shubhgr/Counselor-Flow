@@ -10,7 +10,7 @@
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=tok1" />
   <link rel="stylesheet" href="css/tokens.css?v=tok1" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar356" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar368" />
 </head>
 <body class="ar ar-locked">
   <section class="ar-gate" id="gate-login" hidden>
@@ -64,30 +64,30 @@
         <a class="ar-rail-item active" href="#/dashboard" data-go="dashboard" title="Dashboard" aria-label="Dashboard">
           <span class="material-symbols-rounded" aria-hidden="true">space_dashboard</span>
         </a>
-        <a class="ar-rail-item" href="#/programs" data-go="programs" title="Programs &amp; preferences" aria-label="Programs and preferences">
-          <span class="material-symbols-rounded" aria-hidden="true">school</span>
-        </a>
-        <a class="ar-rail-item" href="#/saved" data-go="saved" title="Leads" aria-label="Leads">
+        <a class="ar-rail-item" href="#/saved" data-go="saved" title="Shortlist" aria-label="Shortlist">
           <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+        </a>
+        <a class="ar-rail-item" href="#/programs" data-go="programs" title="Preference" aria-label="Preference">
+          <span class="material-symbols-rounded" aria-hidden="true">school</span>
         </a>
         <a class="ar-rail-item" href="#/segments" data-go="segments" title="Segment" aria-label="Segment">
           <span class="material-symbols-rounded" aria-hidden="true">segment</span>
         </a>
+        <a class="ar-rail-item" href="#/chats" data-go="chats" title="Chat" aria-label="Chat">
+          <span class="material-symbols-rounded" aria-hidden="true">forum</span>
+          <span class="ar-rail-badge" id="chat-badge" hidden></span>
+        </a>
+        <a class="ar-rail-item" href="#/campaigns" data-go="campaigns" title="Campaign" aria-label="Campaign">
+          <span class="material-symbols-rounded" aria-hidden="true">campaign</span>
+        </a>
         <a class="ar-rail-item" href="#/events" data-go="events" title="Events" aria-label="Events">
           <span class="material-symbols-rounded" aria-hidden="true">event</span>
-        </a>
-        <a class="ar-rail-item" href="#/campaigns" data-go="campaigns" title="Campaigns" aria-label="Campaigns">
-          <span class="material-symbols-rounded" aria-hidden="true">campaign</span>
         </a>
         <a class="ar-rail-item" href="#/templates" data-go="templates" title="Templates" aria-label="Templates">
           <span class="material-symbols-rounded" aria-hidden="true">description</span>
         </a>
         <a class="ar-rail-item" href="#/billing" data-go="billing" title="Billing" aria-label="Billing">
           <span class="material-symbols-rounded" aria-hidden="true">account_balance_wallet</span>
-        </a>
-        <a class="ar-rail-item" href="#/chats" data-go="chats" title="Chats" aria-label="Chats">
-          <span class="material-symbols-rounded" aria-hidden="true">forum</span>
-          <span class="ar-rail-badge" id="chat-badge" hidden></span>
         </a>
       </nav>
       <div class="ar-rail-end">
@@ -448,10 +448,14 @@
 
         <div id="cg-form-page" hidden>
           <header class="topbar ar-subpage-head">
-            <div class="ar-title">
-              <button type="button" class="ar-link ar-back-link" data-cg-back><span class="material-symbols-rounded" aria-hidden="true">arrow_back</span> Campaigns</button>
-              <h1 id="cg-form-title">Create campaign</h1>
-              <span class="ar-sub" id="cg-form-sub"></span>
+            <div class="ar-title ar-create-title">
+              <button type="button" class="ar-icon-btn" data-cg-back aria-label="Back">
+                <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+              </button>
+              <div>
+                <h1 id="cg-form-title">Create campaign</h1>
+                <span class="ar-sub" id="cg-form-sub">Campaign details</span>
+              </div>
             </div>
           </header>
           <div class="content ar-content ar-event-page">
@@ -652,6 +656,6 @@
   <div class="ar-toast" id="toast" hidden></div>
 
   <script src="data/students-data.js?v=ar259"></script>
-  <script src="js/admitright.js?v=ar361"></script>
+  <script src="js/admitright.js?v=ar375"></script>
 </body>
 </html>

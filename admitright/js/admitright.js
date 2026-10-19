@@ -964,6 +964,7 @@
 
   /* Named filter sets, each tied to the program, preference and intake it was saved with. */
   var SFILTERS_KEY = 'admitright_saved_filters_v1';
+  var SFILTER_SEED_KEY = 'admitright_saved_filters_seed_v1';
   var SFILTERS = (function () {
     try { return JSON.parse(localStorage.getItem(SFILTERS_KEY) || '[]'); } catch (err) { return []; }
   })();
@@ -972,6 +973,31 @@
   function storeSavedFilters() {
     try { localStorage.setItem(SFILTERS_KEY, JSON.stringify(SFILTERS)); } catch (err) { /* storage full or blocked */ }
   }
+
+  function seedSavedFilters() {
+    try {
+      if (localStorage.getItem(SFILTER_SEED_KEY) === '1') return;
+      if (SFILTERS.length) {
+        localStorage.setItem(SFILTER_SEED_KEY, '1');
+        return;
+      }
+    } catch (err) { return; }
+    var pref = prefsFor('btech-cse').filter(function (p) { return p.name === 'Eligibility'; })[0] || prefsFor('btech-cse')[0];
+    if (!pref) return;
+    function bag(min, intake, vals) {
+      return { min: min, max: '', intake: intake, vals: vals };
+    }
+    SFILTERS = [
+      { id: 'sf-seed-ggm', name: 'CSE around Gurugram', program: 'btech-cse', prefId: pref.id, intake: '2027', filters: bag('', '2027', { location: { mode: 'custom', places: ['Gurugram'] } }) },
+      { id: 'sf-seed-cbse', name: 'CBSE above 85', program: 'btech-cse', prefId: pref.id, intake: '', filters: bag('70', '', { board: { vals: ['CBSE'] }, academic: { min: '85' } }) },
+      { id: 'sf-seed-jee', name: 'JEE Main 90+', program: 'btech-cse', prefId: pref.id, intake: '2027', filters: bag('80', '2027', { test: { tests: { 'JEE Main': { min: '90', max: '' } } } }) },
+      { id: 'sf-seed-ncr', name: 'Delhi NCR, opened a campaign', program: 'btech-cse', prefId: pref.id, intake: '', filters: bag('', '', { location: { mode: 'custom', places: ['Delhi', 'Gurugram', 'Noida'] }, campaign: { val: 'Opened' } }) },
+      { id: 'sf-seed-match', name: 'High match, class 12 80%+', program: 'btech-cse', prefId: pref.id, intake: '2026', filters: bag('85', '2026', { academic: { min: '80' } }) },
+    ];
+    storeSavedFilters();
+    try { localStorage.setItem(SFILTER_SEED_KEY, '1'); } catch (err2) { /* storage full or blocked */ }
+  }
+  seedSavedFilters();
 
   function savedFilterById(id) {
     return SFILTERS.filter(function (x) { return x.id === id; })[0] || null;
@@ -2848,7 +2874,7 @@
     { id: 'seg-cse-tight', name: 'CSE, Haryana, CBSE, 85%+', program: 'btech-cse', prefName: 'Eligibility', shortlisted: 'any', filters: { min: '80', max: '', intake: '2027', vals: { location: { mode: 'state', places: [] }, board: { vals: ['CBSE'] }, academic: { min: '85' }, campaign: { val: 'Opened' } } }, createdAt: new Date(2026, 9, 16).getTime() },
   ];
 
-  var segPage = { id: SEGMENTS[0].id, q: '', treat: 'all' };
+  var segPage = { id: SEGMENTS[0].id, q: '', treat: 'all', source: 'all' };
   var segEditor = null;
   var segCache = {};
 
@@ -2922,9 +2948,29 @@
     return pref ? scoreAgainst(s, pref).score : null;
   }
 
+  function leadInitials(name) {
+    var parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '•';
+    return (parts[0].charAt(0) + (parts[1] ? parts[1].charAt(0) : '')).toUpperCase();
+  }
+
+  function segIsUpload(seg) {
+    return !!(seg && (seg.source === 'upload' || seg.leads));
+  }
+
   function segRows(seg) {
     if (segCache[seg.id]) return segCache[seg.id];
     var rows = [];
+    if (seg.leads) {
+      segCache[seg.id] = seg.leads.map(function (lead, i) {
+        var name = lead.name || lead.email || lead.phone || 'Lead';
+        return {
+          s: { id: 'up-' + seg.id + '-' + i, name: name, email: lead.email || '', phone: lead.phone || '', initials: leadInitials(name), uploaded: true },
+          score: null,
+        };
+      });
+      return segCache[seg.id];
+    }
     if (seg.members) {
       seg.members.forEach(function (id) {
         var s = studentById(id);
@@ -2945,6 +2991,9 @@
   }
 
   function segChips(seg) {
+    if (seg.leads) {
+      return ['Uploaded leads', seg.leads.length + ' students'].map(function (b) { return '<span>' + esc(b) + '</span>'; }).join('');
+    }
     if (seg.members) {
       var pickedBits = [seg.members.length + ' selected'];
       if (seg.program && seg.program !== 'all' && programById(seg.program)) pickedBits.unshift(programById(seg.program).name);
@@ -2968,7 +3017,18 @@
     return bits.map(function (b) { return '<span>' + esc(b) + '</span>'; }).join('');
   }
 
-  function segTableHtml(rows) {
+  function segTableHtml(rows, uploaded) {
+    if (uploaded) {
+      var uploadBody = rows.slice(0, TABLE_LIMIT).map(function (row) {
+        var s = row.s;
+        return '<tr><td class="ar-td-student"><div class="ar-who"><span class="avatar sm">' + esc(s.initials) + '</span>' +
+          '<div><span class="ar-name">' + esc(s.name) + '</span></div></div></td>' +
+          '<td>' + esc(s.email || '—') + '</td><td>' + esc(s.phone || '—') + '</td></tr>';
+      }).join('');
+      return '<div class="ar-table-scroll"><table class="ar-table ar-table-fit ar-seg-table"><thead><tr>' +
+        '<th>Student</th><th>Email</th><th>Phone number</th></tr></thead><tbody>' + uploadBody + '</tbody></table></div>' +
+        (rows.length > TABLE_LIMIT ? '<p class="ar-muted">Showing ' + TABLE_LIMIT + ' of ' + rows.length + '.</p>' : '');
+    }
     var body = rows.slice(0, TABLE_LIMIT).map(function (row) {
       var s = row.s;
       return '<tr data-student="' + esc(s.id) + '">' +
@@ -2999,15 +3059,30 @@
     var rows = segRows(seg);
     var q = segPage.q.trim().toLowerCase();
     var segs = SEGMENTS.filter(function (item) {
+      if (segPage.source === 'upload' && !segIsUpload(item)) return false;
+      if (segPage.source === 'graded' && segIsUpload(item)) return false;
       if (!q) return true;
-      var program = programById(item.program);
+      var program = item.program ? programById(item.program) : null;
       return (item.name + ' ' + (program ? program.name : '')).toLowerCase().indexOf(q) !== -1;
     });
+    if (segs.length && !segs.some(function (item) { return item.id === seg.id; })) {
+      seg = segs[0];
+      segPage.id = seg.id;
+      rows = segRows(seg);
+    }
+    if (!segs.length) {
+      seg = null;
+      rows = [];
+    }
+    var sourceBtn = function (id, label) {
+      return '<button type="button" class="ar-seg-btn' + (segPage.source === id ? ' active' : '') + '" data-seg-source="' + id + '">' + label + '</button>';
+    };
     body.innerHTML =
       '<section class="panel ar-seglist">' +
         '<div class="panel-head"><h2>Segment</h2><span class="ar-meta">' + segs.length + '</span></div>' +
         '<label class="ar-search ar-seg-find"><span class="material-symbols-rounded" aria-hidden="true">search</span>' +
         '<input type="search" id="seg-search" placeholder="Search segments" value="' + esc(segPage.q) + '" /></label>' +
+        '<div class="ar-seg ar-seg-source">' + sourceBtn('all', 'All') + sourceBtn('graded', 'GR Lead') + sourceBtn('upload', 'Uploaded') + '</div>' +
         '<div class="ar-seg-scroll">' + (segs.length ? segs.map(function (item) {
           var n = segRows(item).length;
           var on = item.id === seg.id ? ' on' : '';
@@ -3021,7 +3096,7 @@
       '<section class="panel ar-segleads">' +
         '<div class="panel-head"><h2>' + rows.length.toLocaleString() + '</h2></div>' +
         '<div class="ar-seg-scroll">' +
-          (rows.length ? segTableHtml(rows) : '<p class="ar-muted">No leads match this segment.</p>') +
+          (seg && rows.length ? segTableHtml(rows, segIsUpload(seg)) : '<p class="ar-muted">' + (seg ? 'No leads match this segment.' : 'No segments in this list.') + '</p>') +
         '</div>' +
       '</section>';
   }
@@ -3093,11 +3168,14 @@
   }
 
   function segSavedPickHtml(d) {
-    if (!SFILTERS.length) {
-      return '<div class="ar-fsaved-empty">' + ico('bookmark') + '<strong>No saved filters yet</strong>' +
-        '<span>Save a filter on the dashboard, or create a new one here.</span></div>';
+    var list = SFILTERS.filter(function (sf) {
+      return sf.program === d.program && (!sf.prefId || sf.prefId === d.prefId);
+    });
+    if (!list.length) {
+      return '<div class="ar-fsaved-empty">' + ico('bookmark') + '<strong>No saved filters for this preference</strong>' +
+        '<span>Save one on the dashboard, or build a new filter here.</span></div>';
     }
-    return '<div class="ar-seg-saved">' + SFILTERS.map(function (sf) {
+    return '<div class="ar-seg-saved">' + list.map(function (sf) {
       var on = sf.id === d.savedId ? ' on' : '';
       return '<button type="button" class="ar-segc' + on + '" data-seg-saved="' + esc(sf.id) + '">' +
         '<span class="ar-segc-top"><strong>' + esc(sf.name) + '</strong></span>' +
@@ -3105,30 +3183,89 @@
     }).join('') + '</div>';
   }
 
+  function parseLeadCsv(text) {
+    var rows = [];
+    var row = [];
+    var cell = '';
+    var quoted = false;
+    text = String(text || '').replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    for (var i = 0; i < text.length; i++) {
+      var c = text.charAt(i);
+      if (quoted) {
+        if (c === '"') {
+          if (text.charAt(i + 1) === '"') { cell += '"'; i += 1; }
+          else quoted = false;
+        } else cell += c;
+      } else if (c === '"') quoted = true;
+      else if (c === ',') { row.push(cell); cell = ''; }
+      else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += c;
+    }
+    if (cell.length || row.length) { row.push(cell); rows.push(row); }
+    rows = rows.filter(function (r) { return r.some(function (value) { return String(value).trim(); }); });
+    if (!rows.length) return { headers: [], rows: [] };
+    return {
+      headers: rows[0].map(function (h, i) { return String(h || '').trim() || ('Column ' + (i + 1)); }),
+      rows: rows.slice(1),
+    };
+  }
+
+  function guessCsvCol(headers, words) {
+    var found = '';
+    headers.forEach(function (h, i) {
+      if (found !== '') return;
+      var key = String(h || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (words.indexOf(key) !== -1) found = String(i);
+    });
+    return found;
+  }
+
+  function segMapSelect(id, headers, current) {
+    return '<select id="' + id + '"><option value="">Choose a column</option>' + headers.map(function (h, i) {
+      return '<option value="' + i + '"' + (String(current) === String(i) ? ' selected' : '') + '>' + esc(h) + '</option>';
+    }).join('') + '</select>';
+  }
+
+  function segUploadHtml(d) {
+    var up = d.upload;
+    var ready = up && up.headers && up.headers.length;
+    var file = '<div class="ar-seg-file"><div><strong>' + esc(ready ? up.fileName : 'Upload a CSV') + '</strong><span>' +
+      (ready ? up.rows.length + ' row' + (up.rows.length === 1 ? '' : 's') : 'The first row should be the column names.') + '</span></div>' +
+      '<label class="btn btn-secondary btn-sm">' + (ready ? 'Replace file' : 'Choose file') + '<input type="file" id="seg-csv" accept=".csv,text/csv" hidden></label></div>';
+    if (!ready) return '<div class="ar-seg-upload">' + file + '</div>';
+    return '<div class="ar-seg-upload">' + file +
+      '<p class="ar-seg-note">Match the file columns to the student.</p>' +
+      fieldWrap('Name', segMapSelect('seg-map-name', up.headers, up.map.name), true) +
+      fieldWrap('Email', segMapSelect('seg-map-email', up.headers, up.map.email), true) +
+      fieldWrap('Phone number', segMapSelect('seg-map-phone', up.headers, up.map.phone), true) +
+      '</div>';
+  }
+
   function openSegForm() {
     var d = segEditor;
     if (!d.filters) d.filters = blankFilters();
-    if (!d.filterTab) d.filterTab = SFILTERS.length ? 'saved' : 'new';
+    if (!d.filterTab) d.filterTab = 'new';
     var prefs = prefsFor(d.program);
     if (!prefs.some(function (p) { return p.id === d.prefId; })) d.prefId = prefs[0] ? prefs[0].id : '';
     var pref = prefs.filter(function (p) { return p.id === d.prefId; })[0] || prefs[0];
+    var kept = savedFilterById(d.savedId);
+    if (kept && (kept.program !== d.program || (kept.prefId && kept.prefId !== d.prefId))) d.savedId = '';
     var tab = d.filterTab;
-    var tabs = '<div class="ar-fsheet-tabs" role="tablist">' +
-      '<button type="button" role="tab" data-seg-ftab="saved" class="' + (tab === 'saved' ? 'active' : '') + '">Saved filters</button>' +
-      '<button type="button" role="tab" data-seg-ftab="new" class="' + (tab === 'new' ? 'active' : '') + '">New filter</button></div>';
-    var filterBody = tab === 'saved'
-      ? segSavedPickHtml(d)
-      : fieldWrap('Course', '<select id="seg-program">' + PROGRAMS.map(function (p) {
-          return '<option value="' + esc(p.id) + '"' + (p.id === d.program ? ' selected' : '') + '>' + esc(p.name) + '</option>';
-        }).join('') + '</select>', true) +
-        fieldWrap('Preference', '<select id="seg-pref">' + prefs.map(function (p) {
-          return '<option value="' + esc(p.id) + '"' + (p.id === d.prefId ? ' selected' : '') + '>' + esc(p.name) + '</option>';
-        }).join('') + '</select>', true) +
-        '<div class="ar-seg-filters">' + filterFieldsHtml(pref, d.filters) + '</div>';
+    var modeBtn = function (id, label) {
+      return '<button type="button" class="ar-seg-btn' + (tab === id ? ' active' : '') + '" data-seg-ftab="' + id + '">' + label + '</button>';
+    };
+    var mode = '<div class="ar-seg ar-seg-form-mode">' + modeBtn('new', 'New filter') + modeBtn('saved', 'Saved filters') + modeBtn('upload', 'Upload leads') + '</div>';
+    var course = '<div class="ar-seg-course">' + fieldWrap('Course', '<select id="seg-program">' + PROGRAMS.map(function (p) {
+      return '<option value="' + esc(p.id) + '"' + (p.id === d.program ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+    }).join('') + '</select>', true) +
+      fieldWrap('Preference', '<select id="seg-pref">' + prefs.map(function (p) {
+        return '<option value="' + esc(p.id) + '"' + (p.id === d.prefId ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+      }).join('') + '</select>', true) + '</div>';
+    var filterBody = tab === 'upload' ? segUploadHtml(d) : tab === 'saved' ? segSavedPickHtml(d) : '<div class="ar-seg-filters">' + filterFieldsHtml(pref, d.filters) + '</div>';
     var scroll = $('drawer-body') && !$('drawer').hidden ? $('drawer-body').scrollTop : 0;
     openDrawer(
       'Create segment',
-      fieldWrap('Segment name', textInput('seg-name', d.name, 'CSE around Gurugram'), true) + tabs + filterBody,
+      fieldWrap('Segment name', textInput('seg-name', d.name, 'CSE around Gurugram'), true) + course + mode + filterBody,
       '<button type="button" class="btn btn-ghost btn-sm" data-seg-cancel>Cancel</button>' +
       '<button type="button" class="btn btn-primary btn-sm btn-icon" data-seg-save>' + ico('check') + 'Create segment</button>',
       true
@@ -3141,6 +3278,12 @@
     if ($('seg-name')) segEditor.name = $('seg-name').value;
     if ($('seg-program')) segEditor.program = $('seg-program').value;
     if ($('seg-pref')) segEditor.prefId = $('seg-pref').value;
+    if (segEditor.upload) {
+      ['name', 'email', 'phone'].forEach(function (key) {
+        var el = $('seg-map-' + key);
+        if (el) segEditor.upload.map[key] = el.value;
+      });
+    }
     if (!segEditor.filters) segEditor.filters = blankFilters();
   }
 
@@ -5691,9 +5834,12 @@
       program: PROGRAMS[0].id, prefId: '', savedFilter: '', matchScore: '0',
       audience: { mode: 'own', segmentId: '', program: PROGRAMS[0].id, prefId: '', minScore: '0', stage: '', intake: '', savedFilter: '' },
       description: '', coverImage: '', galleryImages: [],
-      hasMeetingLink: false, startDate: '', startTime: '', time24: false, timezone: 'IST (GMT +05:30)',
-      endMode: 'duration', days: '00', hours: '01', minutes: '00',
+      venueName: '', venueAddress: '', pin: '', city: '', country: '', mapLink: '', capacity: '', meetingLink: '',
+      hasMeetingLink: false, startDate: '', startTime: '', startPeriod: 'AM', time24: false, timezone: 'IST (GMT +05:30)',
+      endMode: 'duration', days: '00', hours: '01', minutes: '00', endDate: '', endTime: '', endPeriod: 'AM',
+      extras: { language: false, virtualLink: true, noAge: false, regCloses: false, lift: false, washroom: false, water: false, wheelchair: false, pets: false },
       registration: 'link', formLink: '', keepOpen: false, formBuilt: false,
+      regEndDate: '', regEndTime: '',
       flows: [],
       messages: {
         before: { on: false, mode: 'offset', offset: '24h', date: '', time: '', channel: 'email', text: '' },
@@ -5719,7 +5865,8 @@
     var d = evDraft();
     if (!d) return;
     ['name', 'category', 'kind', 'program', 'prefId', 'savedFilter', 'matchScore', 'description', 'startDate', 'startTime', 'timezone',
-      'days', 'hours', 'minutes', 'registration', 'formLink'].forEach(function (k) {
+      'venueName', 'venueAddress', 'pin', 'mapLink', 'capacity', 'meetingLink', 'days', 'hours', 'minutes', 'endDate', 'endTime',
+      'registration', 'formLink', 'regEndDate', 'regEndTime'].forEach(function (k) {
       var el = $('evc-' + k);
       if (el) d[k] = el.value;
     });
@@ -5729,6 +5876,18 @@
     d.kind = EVENT_CATEGORY_KIND[d.category] || d.kind || 'webinar';
     var checked = document.querySelector('[name="evc-format"]:checked');
     if (checked) d.format = checked.value;
+    var endMode = document.querySelector('[name="evc-end"]:checked');
+    if (endMode) d.endMode = endMode.value;
+    if ($('evc-pin')) {
+      var pinPlace = eventPinPlace(d.pin);
+      d.city = pinPlace.city;
+      d.country = pinPlace.country;
+    }
+    if (!d.extras) d.extras = { language: false, virtualLink: true, noAge: false, regCloses: false, lift: false, washroom: false, water: false, wheelchair: false, pets: false };
+    Object.keys(d.extras).forEach(function (k) {
+      var extra = $('evc-x-' + k);
+      if (extra) d.extras[k] = extra.checked;
+    });
     if ($('cga-program') || document.querySelector('#events-create-page [name="cg-aud-mode"]')) readEventAudience();
     ['cover', 'gallery', 'hasMeetingLink', 'time24', 'keepOpen'].forEach(function (k) {
       var el = $('evc-' + k);
@@ -5771,10 +5930,19 @@
   }
 
   function stepperHtml() {
+    var reached = Math.max(evCreate.step, evCreate.max || 0);
     return '<div class="ar-evc-stepper">' + EVENT_CREATE_STEPS.map(function (step, i) {
       var cls = i < evCreate.step ? ' done' : i === evCreate.step ? ' active' : '';
-      return '<span class="' + cls + '"><i>' + (i < evCreate.step ? ico('check') : String(i + 1)) + '</i><b>' + esc(step.name) + '</b></span>';
+      return '<button type="button" class="' + cls + '" data-ev-step="' + i + '"' + (i > reached ? ' disabled' : '') + '><i>' + (i < evCreate.step ? ico('check') : String(i + 1)) + '</i><b>' + esc(step.name) + '</b></button>';
     }).join('') + '</div>';
+  }
+
+  function evCol(wide, title, note, body) {
+    return '<div class="ar-evc-col ' + (wide ? 'main' : 'side') + '"><div class="ar-evc-col-head"><h3>' + title + '</h3><p>' + note + '</p></div>' + body + '</div>';
+  }
+
+  function evSplit(left, right) {
+    return '<div class="ar-evc-split-page">' + left + right + '</div>';
   }
 
   function fieldWrap(label, html, req) {
@@ -5846,31 +6014,35 @@
         ico(f.icon) + '<span>' + esc(f.name) + '</span></label>';
     }).join('');
     var gallery = d.galleryImages.map(function (src, i) {
-      return '<div><img src="' + esc(src) + '" alt="Gallery preview"><button type="button" data-evc-remove-gallery="' + i + '" aria-label="Remove gallery image">×</button></div>';
+      return '<div class="ar-evc-slot has"><img src="' + esc(src) + '" alt="Gallery preview"><button type="button" data-evc-remove-gallery="' + i + '" aria-label="Remove gallery image">×</button></div>';
     }).join('');
-    return '<div class="ar-evc-sections">' +
-      '<section class="ar-evc-block"><h3>Event</h3><p>The name, category and format students see first.</p>' +
-      '<div class="ar-evc-row ar-evc-two">' +
-      fieldWrap('Event name', textInput('evc-name', d.name, 'Name your event'), true) +
+    var emptySlot = '<span class="ar-evc-slot">' + ico('image') + '</span>';
+    var pad = d.galleryImages.length;
+    var details = '<div class="ar-evc-namecat">' +
+      fieldWrap('Event name', textInput('evc-name', d.name, 'e.g. Inside our AI & robotics lab'), true) +
       fieldWrap('Event category', selectHtml('evc-category', d.category, EVENT_CATEGORIES) +
-        (d.category === 'Other' ? '<input type="text" id="evc-category-custom" value="' + esc(d.categoryCustom || '') + '" placeholder="Your category">' : ''), true) + '</div>' +
-      '<div class="ar-evc-field"><span>Format<em>*</em></span><div class="ar-evc-formats">' + formats + '</div></div></section>' +
-      '<section class="ar-evc-block"><h3>Description</h3><p>Why a student should attend.</p>' +
-      '<textarea id="evc-description" rows="4" placeholder="Why should a student attend?">' + esc(d.description) + '</textarea></section>' +
-      '<section class="ar-evc-block"><h3>Images</h3><p>The cover is the main photo. Gallery photos are extra.</p>' +
-      '<div class="ar-evc-split ar-evc-images">' +
-      '<div class="ar-evc-media"><span>Cover image</span><div class="ar-evc-cover k-' + d.kind + '">' +
-      (d.coverImage ? '<img src="' + esc(d.coverImage) + '" alt="Event cover preview"><button type="button" data-evc-remove-cover aria-label="Remove image">×</button>' : ico(kindById(d.kind).icon)) +
-      '</div><input type="file" id="evc-coverFile" accept="image/*" hidden>' +
-      '<label class="ar-link" for="evc-coverFile">' + (d.coverImage ? 'Change image' : 'Upload image') + '</label></div>' +
-      '<div class="ar-evc-gallery"><span>Gallery</span><div class="ar-evc-gallery-grid">' + gallery + '</div>' +
+        (d.category === 'Other' ? '<input class="ar-evc-custom" type="text" id="evc-category-custom" value="' + esc(d.categoryCustom || '') + '" placeholder="Your category">' : ''), true) +
+      '</div>' +
+      '<div class="ar-evc-field"><span>Format<em>*</em></span><div class="ar-evc-formats">' + formats + '</div></div>' +
+      fieldWrap('Description', '<textarea id="evc-description" rows="4" placeholder="Why should a student attend?">' + esc(d.description) + '</textarea>');
+    var images = '<div class="ar-evc-field"><span>Cover image</span>' +
+      '<div class="ar-evc-drop">' +
+      (d.coverImage ? '<img src="' + esc(d.coverImage) + '" alt="Event cover preview"><button type="button" data-evc-remove-cover aria-label="Remove image">×</button>' : '<span class="ar-evc-drop-ico">' + ico('upload') + '</span>') +
+      '<input type="file" id="evc-coverFile" accept="image/*" hidden>' +
+      '<label class="ar-link" for="evc-coverFile">' + (d.coverImage ? 'Change image' : 'Upload image') + '</label></div></div>' +
+      '<div class="ar-evc-field"><div class="ar-evc-gal-head"><span>Gallery</span>' +
       '<input type="file" id="evc-galleryFiles" accept="image/*" multiple hidden>' +
-      '<label class="ar-link" for="evc-galleryFiles">' + ico('add') + (d.galleryImages.length ? 'Add more' : 'Add images') + '</label></div></div></section></div>';
+      '<label class="ar-link" for="evc-galleryFiles">' + ico('add') + 'Add images</label></div>' +
+      '<div class="ar-evc-slots">' + gallery + (pad < 1 ? emptySlot : '') + (pad < 2 ? emptySlot : '') + (pad < 3 ? emptySlot : '') + '</div></div>';
+    return evSplit(
+      evCol(true, 'Event details', 'The name, category and format students see first.', details),
+      evCol(false, 'Images', 'The cover is the main photo. Gallery photos are extra.', images)
+    );
   }
 
   function createAudienceHtml() {
     var d = evDraft();
-    return '<div class="ar-evc-sections">' + cgAudienceStepHtml({ audience: ensureEventAudience(d) }) + '</div>';
+    return '<div class="ar-evc-pad">' + cgAudienceStepHtml({ audience: ensureEventAudience(d) }) + '</div>';
   }
 
   function offsetPills(key, offsets, current) {
@@ -5908,6 +6080,7 @@
     return '<article class="ar-flow" data-flow="' + esc(flow.id) + '">' +
       '<div class="ar-flow-head"><div class="ar-evc-formats ar-flow-ch">' + ch('email', 'mail', 'Email') + ch('whatsapp', 'forum', 'WhatsApp') + '</div>' +
       '<button type="button" class="ar-icon-btn" data-flow-remove="' + esc(flow.id) + '" aria-label="Remove message">' + ico('close') + '</button></div>' +
+      '<p class="ar-flow-sentence">' + esc(flowSentence(flow)) + '</p>' +
       '<div class="ar-flow-eq"><span class="ar-flow-word">Send</span>' +
       '<input type="number" min="0" id="evc-flow-amount-' + flow.id + '" value="' + esc(String(flow.amount)) + '" aria-label="Amount">' +
       flowSelect('evc-flow-unit-' + flow.id, flow.unit, [['days', 'days'], ['hours', 'hours'], ['minutes', 'minutes']]) +
@@ -5918,30 +6091,121 @@
       '</article>';
   }
 
+  function flowSentence(flow) {
+    var anchor = { registration: 'registration', start: 'the event starts', end: 'the event ends' }[flow.anchor] || 'registration';
+    var unit = flow.unit || 'days';
+    var n = Number(flow.amount) || 0;
+    var word = n === 1 ? unit.replace(/s$/, '') : unit;
+    var tpl = tplById(flow.template);
+    return (flow.channel === 'whatsapp' ? 'WhatsApp' : 'Email') + ' · ' + n + ' ' + word + ' ' + (flow.when || 'after') + ' ' + anchor + (tpl ? ' · ' + tpl.name : '');
+  }
+
   function createMessagesHtml() {
     var d = evDraft();
     if (!d.flows) d.flows = [];
-    return '<div class="ar-evc-sections"><section class="ar-evc-block"><h3>Post-registration messages</h3>' +
-      '<p>Add a message for people who register. Pick the channel, when it goes out, and the template.</p>' +
-      (d.flows.length ? d.flows.map(flowCard).join('') : '<p class="ar-muted">No messages yet.</p>') +
-      '<button type="button" class="btn btn-secondary btn-sm btn-icon ar-flow-add" data-flow-add>' + ico('add') + 'Add a message</button></section></div>';
+    var add = '<button type="button" class="btn btn-secondary btn-sm btn-icon ar-flow-add" data-flow-add>' + ico('add') + (d.flows.length ? 'Add another message' : 'Add a message') + '</button>';
+    var empty = '<button type="button" class="ar-flow-empty" data-flow-add>' + ico('add') + '<b>Add a message</b><small>Choose Email or WhatsApp, then set when it goes out and which template to use.</small></button>';
+    var preview = d.flows.length
+      ? '<ol class="ar-evc-flow-preview">' + d.flows.map(function (flow) { return '<li>' + esc(flowSentence(flow)) + '</li>'; }).join('') + '</ol>'
+      : '<p class="ar-evc-side-note">Messages you add show up here, in the order students receive them.</p>';
+    return evSplit(
+      evCol(true, 'Post-registration messages', 'Tell people what happens around registration, the start, and the end.', d.flows.length ? d.flows.map(flowCard).join('') + add : empty),
+      evCol(false, 'What students get', 'Email or WhatsApp, timed from registration, the start, or the end.', preview)
+    );
+  }
+
+  function eventPinPlace(pin) {
+    var digits = String(pin || '').replace(/\D/g, '');
+    if (digits.length < 6) return { city: '', country: '' };
+    var three = {
+      '122': 'Gurugram', '110': 'New Delhi', '201': 'Noida', '400': 'Mumbai', '411': 'Pune',
+      '560': 'Bengaluru', '600': 'Chennai', '700': 'Kolkata', '302': 'Jaipur', '226': 'Lucknow',
+      '141': 'Ludhiana', '160': 'Chandigarh', '500': 'Hyderabad', '380': 'Ahmedabad',
+    };
+    var two = { '11': 'New Delhi', '12': 'Haryana', '13': 'Haryana', '14': 'Punjab', '20': 'Maharashtra', '40': 'Maharashtra', '30': 'Rajasthan', '56': 'Karnataka', '60': 'Tamil Nadu', '50': 'Telangana', '70': 'West Bengal', '22': 'Uttar Pradesh' };
+    return { city: three[digits.slice(0, 3)] || two[digits.slice(0, 2)] || '', country: 'India' };
+  }
+
+  function eventCounted(id, value, placeholder, max) {
+    var text = value || '';
+    return '<input type="text" id="' + id + '" maxlength="' + max + '" value="' + esc(text) + '" placeholder="' + esc(placeholder) + '">' +
+      '<small class="ar-evc-count">' + String(text).length + ' / ' + max + ' characters</small>';
+  }
+
+  function eventClock(id, value, period, time24) {
+    if (time24) return '<input type="text" id="' + id + '" value="' + esc(value || '') + '" placeholder="HH:MM" maxlength="5" inputmode="numeric">';
+    var pm = period === 'PM';
+    return '<div class="ar-evc-clock"><input type="text" id="' + id + '" value="' + esc(value || '') + '" placeholder="HH:MM" maxlength="5" inputmode="numeric">' +
+      '<div class="ar-evc-ampm"><button type="button" data-evc-period="' + id + ':AM" class="' + (pm ? '' : 'on') + '">AM</button>' +
+      '<button type="button" data-evc-period="' + id + ':PM" class="' + (pm ? 'on' : '') + '">PM</button></div></div>';
+  }
+
+  function eventExtraRow(id, icon, label, on) {
+    return '<label class="ar-evc-extra-row"><span>' + ico(icon) + esc(label) + '</span>' +
+      '<input type="checkbox" id="evc-x-' + id + '"' + (on ? ' checked' : '') + '><i class="ar-evm-switch" aria-hidden="true"></i></label>';
   }
 
   function createVenueHtml() {
     var d = evDraft();
+    if (!d.extras) d.extras = { language: false, virtualLink: true, noAge: false, regCloses: false, lift: false, washroom: false, water: false, wheelchair: false, pets: false };
     var online = d.format !== 'offline';
-    return '<div class="ar-evc-sections">' +
-      '<section class="ar-evc-block"><h3>Venue</h3><p>' + (online ? 'Meeting details go out to people who register.' : 'Where people should come.') + '</p>' +
-      (online ? toggleField('evc-hasMeetingLink', d.hasMeetingLink, 'Do you have the meeting link?', 'Turn this on if attendees should see the meeting link after registration.') : '') + '</section>' +
-      '<section class="ar-evc-block"><h3>When it starts</h3>' +
-      '<div class="ar-evc-time-row">' + fieldWrap('Start date', '<input type="date" id="evc-startDate" value="' + esc(d.startDate) + '">', false) +
-      fieldWrap('Start time', '<input type="time" id="evc-startTime" value="' + esc(d.startTime) + '">', true) +
+    var onsite = d.format !== 'online';
+    var zones = ['IST (GMT +05:30)', 'GMT', 'EST (GMT -05:00)', 'PST (GMT -08:00)'];
+    var hours = ['00', '01', '02', '03', '04', '05', '06', '08', '12'];
+    var meeting = online
+      ? (onsite ? '<h4>Meeting link</h4>' : '') +
+        '<div class="ar-evc-meet' + (d.hasMeetingLink ? ' on' : '') + '">' +
+        toggleField('evc-hasMeetingLink', d.hasMeetingLink, 'Do you have the meeting link?', 'Turn this on if attendees should see the meeting link.') +
+        '</div>' +
+        (d.hasMeetingLink ? fieldWrap('Meeting link', textInput('evc-meetingLink', d.meetingLink || '', 'Meeting URL'), true) : '')
+      : '';
+    var venue = onsite
+      ? (online ? '<h4>Place</h4>' : '') +
+        fieldWrap('Venue name', eventCounted('evc-venueName', d.venueName, 'Enter venue name', 200), true) +
+        fieldWrap('Pin code', eventCounted('evc-pin', d.pin, 'Enter pin code', 10), true) +
+        fieldWrap('City', '<input type="text" id="evc-city" readonly value="' + esc(d.city || '') + '" placeholder="Auto-filled from pin code">', true) +
+        fieldWrap('Map location', eventCounted('evc-mapLink', d.mapLink, 'Paste map link', 500), true) +
+        fieldWrap('Country', '<input type="text" id="evc-country" readonly value="' + esc(d.country || '') + '" placeholder="Auto-filled from pin code">', true) +
+        fieldWrap('Address', '<textarea id="evc-venueAddress" rows="3" placeholder="Enter full address">' + esc(d.venueAddress || '') + '</textarea>', true) +
+        fieldWrap('Max. capacity', '<input type="number" min="0" id="evc-capacity" value="' + esc(d.capacity || '') + '" placeholder="eg, 300"><small class="ar-evc-hint">This is used only for university metrics, and will not be visible to the students. Overbooking is enabled.</small>')
+      : '';
+    var duration = d.endMode !== 'time';
+    var endChoice = function (id, label) {
+      var on = (duration ? 'duration' : 'time') === id;
+      return '<label><input type="radio" name="evc-end" value="' + id + '"' + (on ? ' checked' : '') + '> ' + label + '</label>';
+    };
+    var endBody = duration
+      ? '<div class="ar-evc-row">' + fieldWrap('Days', selectHtml('evc-days', d.days, ['00', '01', '02', '03', '07'])) +
+        fieldWrap('Hours', selectHtml('evc-hours', d.hours, hours)) +
+        fieldWrap('Minutes', selectHtml('evc-minutes', d.minutes, ['00', '15', '30', '45'])) + '</div>'
+      : fieldWrap('End date', '<input type="date" id="evc-endDate" value="' + esc(d.endDate || '') + '">') +
+        fieldWrap('End time', eventClock('evc-endTime', d.endTime, d.endPeriod, d.time24), true);
+    var x = d.extras;
+    var basic = eventExtraRow('language', 'translate', 'Language — English', x.language) +
+      (online ? eventExtraRow('virtualLink', 'link', 'Virtual joining link shared on email', x.virtualLink) : '') +
+      eventExtraRow('noAge', 'family_restroom', 'No age restriction', x.noAge) +
+      eventExtraRow('regCloses', 'hourglass_bottom', 'Registration closes 2 hours before the event', x.regCloses);
+    var amenities = onsite
+      ? '<p class="ar-evc-kicker">Amenities</p>' +
+        eventExtraRow('lift', 'elevator', 'Lift available', x.lift) +
+        eventExtraRow('washroom', 'wc', 'Washroom available', x.washroom) +
+        eventExtraRow('water', 'water_drop', 'Drinking water', x.water) +
+        eventExtraRow('wheelchair', 'accessible', 'Wheelchair friendly', x.wheelchair) +
+        eventExtraRow('pets', 'pets', 'Pets not allowed', x.pets)
+      : '';
+    var where = (meeting || venue || '<p class="ar-evc-side-note">Pick a format on Event basics to set a place.</p>');
+    var when = '<div class="ar-evc-stack"><h4>Start</h4>' +
+      fieldWrap('Start date', '<input type="date" id="evc-startDate" value="' + esc(d.startDate) + '">') +
+      '<div class="ar-evc-when">' +
+      fieldWrap('Start time', eventClock('evc-startTime', d.startTime, d.startPeriod, d.time24), true) +
       toggleField('evc-time24', d.time24, '24 hour format', '') +
-      fieldWrap('Timezone', selectHtml('evc-timezone', d.timezone, ['IST (GMT +05:30)', 'GMT', 'EST (GMT -05:00)', 'PST (GMT -08:00)']), true) + '</div></section>' +
-      '<section class="ar-evc-block"><h3>When it ends</h3><div class="ar-evc-radio-row"><label><input type="radio" name="evc-end" checked> Event duration</label><label><input type="radio" name="evc-end"> Event end time</label></div>' +
-      '<div class="ar-evc-row">' + fieldWrap('Days', selectHtml('evc-days', d.days, ['00', '01', '02'])) +
-      fieldWrap('Hours', selectHtml('evc-hours', d.hours, ['00', '01', '02', '03', '04'])) +
-      fieldWrap('Minutes', selectHtml('evc-minutes', d.minutes, ['00', '15', '30', '45'])) + '</div></section></div>';
+      fieldWrap('Timezone', selectHtml('evc-timezone', d.timezone, zones), true) +
+      '</div><h4>End</h4><div class="ar-evc-radio-row">' + endChoice('duration', 'Event duration') + endChoice('time', 'Event end time') + '</div>' +
+      endBody + '</div>';
+    return evSplit(
+      evCol(true, onsite ? 'Venue details' : 'Meeting link', online && onsite ? 'A link for people joining online, and a place for people who come in.' : (online ? 'Meeting credentials go out by email after registration.' : 'Where people should come.'), where + '<div class="ar-evc-extra"><p class="ar-evc-kicker">Additional info</p>' + basic + amenities + '</div>'),
+      evCol(false, 'When', 'Start, then how long it runs or when it ends.', when)
+    );
   }
 
   function createRegistrationHtml() {
@@ -5950,33 +6214,86 @@
       return '<label class="ar-evc-reg ' + (d.registration === id ? 'on' : '') + '" data-evc-registration="' + id + '"><input type="radio" name="evc-registration" value="' + id + '"' + (d.registration === id ? ' checked' : '') + '>' +
         '<span><b>' + title + '</b>' + (body || '') + '</span></label>';
     };
-    return '<div class="ar-evc-sections"><section class="ar-evc-block"><h3>Registration</h3>' +
-      option('link', 'Add your registration form link', d.registration === 'link' ? fieldWrap('Registration form link', textInput('evc-formLink', d.formLink, 'https://'), true) : '') +
+    var methods = option('link', 'Add your registration form link', d.registration === 'link' ? fieldWrap('Registration form link', textInput('evc-formLink', d.formLink, 'https://'), true) : '') +
       option('new', 'Create a new form', d.formBuilt ? '<small>A form already exists. You can edit it.</small><button type="button" class="btn btn-secondary btn-sm" data-ev-form-builder>' + ico('edit') + 'Edit</button>' : '<small>Click Next step to open form builder.</small>') +
-      option('template', 'Choose a template', d.registration === 'template' ? '<div class="ar-evc-template">Default Registration Template</div><button type="button" class="btn btn-primary btn-sm" data-ev-apply-template>Apply template to continue</button>' : '') +
-      '<h3>Set registration deadline</h3><p class="ar-evc-note">Complete one registration method above to finalize and validate this deadline.</p>' +
-      '<div class="ar-evc-time-row">' + fieldWrap('End date', '<input type="date">', false) +
-      fieldWrap('End time', '<input type="time">', true) +
-      toggleField('evc-time24', d.time24, '24 hour format', '') +
-      fieldWrap('Timezone', selectHtml('evc-timezone', d.timezone, ['IST (GMT +05:30)', 'GMT']), true) + '</div>' +
-      '<label class="ar-check"><input type="checkbox" id="evc-keepOpen"' + (d.keepOpen ? ' checked' : '') + '> Keep registrations open until event starts</label>' +
-      '</section></div>';
+      option('template', 'Choose a template', d.registration === 'template' ? '<div class="ar-evc-template">Default Registration Template</div><button type="button" class="btn btn-primary btn-sm" data-ev-apply-template>Apply template to continue</button>' : '');
+    var deadline = '<div class="ar-evc-stack">' + fieldWrap('End date', '<input type="date" id="evc-regEndDate" value="' + esc(d.regEndDate || '') + '">') +
+      fieldWrap('End time', '<input type="time" id="evc-regEndTime" value="' + esc(d.regEndTime || '') + '">', true) +
+      fieldWrap('Timezone', selectHtml('evc-timezone', d.timezone, ['IST (GMT +05:30)', 'GMT', 'EST (GMT -05:00)', 'PST (GMT -08:00)']), true) +
+      '<label class="ar-check"><input type="checkbox" id="evc-keepOpen"' + (d.keepOpen ? ' checked' : '') + '> Keep registrations open until event starts</label></div>';
+    return evSplit(
+      evCol(true, 'Registration', 'How a student signs up.', methods),
+      evCol(false, 'Deadline', 'Registration closes at this time, unless you keep it open until the event starts.', deadline)
+    );
+  }
+
+  function eventDateLabel(value) {
+    if (!value) return '';
+    var parts = String(value).split('-');
+    if (parts.length !== 3) return value;
+    var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return (months[Number(parts[1]) - 1] || parts[1]) + ' ' + Number(parts[2]) + ', ' + parts[0];
+  }
+
+  function eventWhenLine(d) {
+    var start = eventDateLabel(d.startDate);
+    if (d.startTime) start = (start ? start + ' at ' : '') + d.startTime + (d.time24 ? '' : ' ' + (d.startPeriod || 'AM'));
+    if (!start) start = 'Start not set';
+    var end = '';
+    if (d.endMode === 'time') {
+      end = eventDateLabel(d.endDate);
+      if (d.endTime) end = (end ? end + ' at ' : '') + d.endTime + (d.time24 ? '' : ' ' + (d.endPeriod || 'AM'));
+      end = end ? 'Ends ' + end : 'End not set';
+    } else {
+      var bits = [];
+      if (Number(d.days)) bits.push(Number(d.days) + 'd');
+      if (Number(d.hours)) bits.push(Number(d.hours) + 'h');
+      if (Number(d.minutes)) bits.push(Number(d.minutes) + 'm');
+      end = 'Lasts ' + (bits.join(' ') || '0m');
+    }
+    return start + ' · ' + end + (d.timezone ? ' · ' + d.timezone : '');
+  }
+
+  function eventPlaceLine(d) {
+    var bits = [];
+    if (d.format !== 'online') bits.push([d.venueName, d.venueAddress, d.city, d.pin].filter(Boolean).join(', ') || 'Venue not set');
+    if (d.format !== 'offline') bits.push(d.hasMeetingLink && d.meetingLink ? d.meetingLink : 'Online');
+    return bits.join(' · ');
+  }
+
+  function eventRegLine(d) {
+    var method = d.registration === 'link' ? (d.formLink || 'Form link not added') : d.registration === 'template' ? 'Template form' : (d.formBuilt ? 'Custom form' : 'New form, not built yet');
+    if (d.keepOpen) return method + ' · open until the event starts';
+    if (d.regEndDate || d.regEndTime) return method + ' · closes ' + (eventDateLabel(d.regEndDate) || 'on the deadline') + (d.regEndTime ? ' at ' + d.regEndTime : '');
+    return method;
   }
 
   function createReviewHtml() {
     var d = evDraft();
     var program = programById(d.program);
-    var pref = d.prefId ? findPref(d.program, d.prefId) : null;
-    return '<section class="ar-evc-review"><div class="ar-evc-phone">' +
-      '<div class="ar-evc-mobile-card k-' + d.kind + '">' + ico(kindById(d.kind).icon) + '<span>' + esc(d.category === 'Other' ? ((d.categoryCustom || '').trim() || 'Other') : d.category) + '</span><h3>' + esc(d.name || 'Untitled event') + '</h3><p>' + esc(program.name) + '</p></div>' +
-      '<div class="ar-seg ar-evc-theme"><button type="button" class="ar-seg-btn active">Dark mode</button><button type="button" class="ar-seg-btn">Light mode</button></div></div>' +
-      '<div class="ar-evc-review-copy"><h3>Scroll and <span>review</span> your event in this prototype</h3><p>Choose the page you want to view</p>' +
-      '<label><input type="radio" checked> Event card</label><label><input type="radio"> Event details</label><label><input type="radio"> Registration form</label>' +
-      '<div class="ar-evc-review-actions"><button type="button" class="btn btn-secondary" data-ev-publish="draft">Save event as draft</button>' +
-      '<button type="button" class="btn btn-primary" data-ev-publish="publish">Publish event</button></div>' +
-      '<small>Built with ' + (d.registration === 'link' ? 'external form link' : d.registration === 'template' ? 'template form' : 'custom form') + '</small>' +
-      '<small>Audience: ' + esc(d.audience ? cgTargetChips(d.audience).join(' · ') : (pref ? pref.name : 'All ' + program.name + ' students')) + '</small>' +
-      '<small>Messages: ' + esc((d.messages ? ['before', 'start', 'end'].filter(function (k) { return d.messages[k].on; }) : []).join(', ') || 'none scheduled') + '</small></div></section>';
+    var format = formatById(d.format);
+    var cat = d.category === 'Other' ? ((d.categoryCustom || '').trim() || 'Other') : d.category;
+    var flows = d.flows || [];
+    var block = function (label, body) {
+      return '<article class="ar-ev-rev-block"><h4>' + esc(label) + '</h4>' + body + '</article>';
+    };
+    var messages = flows.length
+      ? '<ul>' + flows.map(function (flow) { return '<li>' + esc(flowSentence(flow)) + '</li>'; }).join('') + '</ul>'
+      : '<p>No messages yet.</p>';
+    return '<section class="ar-evc-review">' +
+      '<header class="ar-ev-rev-head"><div><h3>Review & publish</h3><p>Check the event, then save a draft or publish it.</p></div>' +
+      '<div class="ar-evc-review-actions"><button type="button" class="btn btn-secondary" data-ev-publish="draft">Save as draft</button>' +
+      '<button type="button" class="btn btn-primary" data-ev-publish="publish">Publish event</button></div></header>' +
+      '<div class="ar-ev-rev-body"><aside class="ar-ev-sum-side"><div class="ar-ev-sum-cover k-' + d.kind + '">' +
+      (d.coverImage ? '<img src="' + esc(d.coverImage) + '" alt="">' : ico(kindById(d.kind).icon)) +
+      '</div><div class="ar-ev-sum-meta"><span>' + esc(cat) + '</span><h3>' + esc(d.name || 'Untitled event') + '</h3><p>' + esc(format.name) + ' · ' + esc(program.name) + '</p></div></aside>' +
+      '<div class="ar-ev-rev-groups">' +
+      block('When', '<p>' + esc(eventWhenLine(d)) + '</p>') +
+      block('Where', '<p>' + esc(eventPlaceLine(d)) + '</p>') +
+      block('Audience', '<p>' + esc(d.audience ? cgTargetChips(d.audience).join(' · ') : program.name) + '</p>') +
+      block('Registration', '<p>' + esc(eventRegLine(d)) + '</p>') +
+      block('Messages', messages) +
+      '</div></div></section>';
   }
 
   function renderEventCreate() {
@@ -6015,7 +6332,10 @@
       toast('Form builder added a default form.');
       return;
     }
-    if (evCreate.step < EVENT_CREATE_STEPS.length - 1) evCreate.step += 1;
+    if (evCreate.step < EVENT_CREATE_STEPS.length - 1) {
+      evCreate.step += 1;
+      evCreate.max = Math.max(evCreate.max || 0, evCreate.step);
+    }
     renderEventCreate();
   }
 
@@ -7465,7 +7785,7 @@
   function cgStepperHtml() {
     return '<div class="ar-evc-stepper">' + CG_STEPS.map(function (n, i) {
       var cls = i < cgForm.step ? ' done' : i === cgForm.step ? ' active' : '';
-      return '<span class="' + cls + '"><i>' + (i < cgForm.step ? ico('check') : '') + '</i><b>' + esc(n) + '</b></span>';
+      return '<span class="' + cls + '"><i>' + (i < cgForm.step ? ico('check') : String(i + 1)) + '</i><b>' + esc(n) + '</b></span>';
     }).join('') + '</div>';
   }
 
@@ -7568,21 +7888,23 @@
     var ch = channelById(d.channel);
     var n = cgAudience(d.audience).length;
     var test = cgTestMeta(d.channel);
-    return '<section class="ar-cg-review">' +
-      '<div class="ar-cg-review-grid">' +
-      cgReviewBlock('Campaign', 0, '<div class="ar-cg-kv">' + detailKV('Name', d.name) + detailKV('Channel', ch.name) + detailKV('Description', d.description) + '</div>') +
-      cgReviewBlock('Audience', 1, '<div class="ar-cg-kv">' + detailKV('Recipients', n.toLocaleString() + ' students') + '</div><div class="ar-cg-chips">' + cgChipsHtml(d.audience) + '</div>') +
-      '</div>' +
-      cgReviewBlock('Message', 2, '<div class="ar-cg-preview-box">' + cgPreviewHtml(d, cgSample(d)) + '</div>') +
-      '<div class="ar-cg-test"><div><h3>Send a test</h3><p>Check this ' + esc(test.noun) + ' before you launch it.</p></div>' +
-      '<label class="ar-evc-field"><span>' + esc(test.label) + '</span><div class="ar-cg-test-row">' +
-      '<input type="text" id="cg-test" placeholder="' + esc(test.placeholder) + '" autocomplete="off">' +
-      '<button type="button" class="btn btn-secondary btn-sm btn-icon" data-cg-test>' + ico('science') + 'Send test</button></div></label></div>' +
-      '<div class="ar-cg-launch"><div><h3>Ready to send?</h3><p>' + n.toLocaleString() + ' student' + (n === 1 ? '' : 's') + ' will get this ' +
-      esc(ch.id === 'whatsapp' ? ch.name : ch.name.toLowerCase()) + ' message right away. You can’t edit a campaign after launch.</p></div>' +
-      '<div class="ar-cg-launch-actions"><button type="button" class="btn btn-secondary btn-sm" data-cg-save-draft>Save as draft</button>' +
-      '<button type="button" class="btn btn-primary btn-sm btn-icon" data-cg-launch>' + ico('send') + 'Launch campaign</button></div></div>' +
-      '</section>';
+    var block = function (label, step, body) {
+      return '<article class="ar-ev-rev-block"><h4>' + esc(label) + '</h4><div class="ar-cg-rev-body">' + body + '</div>' +
+        '<button type="button" class="ar-link" data-cg-step="' + step + '">' + ico('edit') + 'Edit</button></article>';
+    };
+    return '<section class="ar-cg-review ar-ev-rev">' +
+      '<header class="ar-ev-rev-head"><div><h3>Review & launch</h3><p>' + n.toLocaleString() + ' student' + (n === 1 ? '' : 's') + ' will get this ' +
+      esc(ch.id === 'whatsapp' ? ch.name : ch.name.toLowerCase()) + '. You can’t edit a campaign after launch.</p></div>' +
+      '<div class="ar-evc-review-actions"><button type="button" class="btn btn-secondary btn-sm" data-cg-save-draft>Save as draft</button>' +
+      '<button type="button" class="btn btn-primary btn-sm btn-icon" data-cg-launch>' + ico('send') + 'Launch campaign</button></div></header>' +
+      '<div class="ar-ev-rev-groups">' +
+      block('Campaign', 0, '<p>' + esc(d.name || 'Untitled campaign') + '</p><small>' + esc(ch.name) + (d.description ? ' · ' + esc(d.description) : '') + '</small>') +
+      block('Audience', 1, '<p>' + n.toLocaleString() + ' students</p><small>' + esc(cgTargetChips(d.audience).join(' · ')) + '</small>') +
+      block('Message', 2, '<div class="ar-cg-preview-box">' + cgPreviewHtml(d, cgSample(d)) + '</div>') +
+      '<article class="ar-ev-rev-block ar-cg-rev-test"><h4>Send a test</h4><div class="ar-cg-rev-body"><p>Check this ' + esc(test.noun) + ' before you launch it.</p>' +
+      '<div class="ar-cg-test-row"><input type="text" id="cg-test" placeholder="' + esc(test.placeholder) + '" autocomplete="off" aria-label="' + esc(test.label) + '">' +
+      '<button type="button" class="btn btn-secondary btn-sm btn-icon" data-cg-test>' + ico('science') + 'Send test</button></div></div></article>' +
+      '</div></section>';
   }
 
   function updateCampaignPreview() {
@@ -7607,7 +7929,7 @@
     showCampaignsPage('form');
     var d = cgForm.draft;
     $('cg-form-title').textContent = cgForm.id ? 'Edit campaign' : 'Create campaign';
-    $('cg-form-sub').textContent = cgForm.id ? (d.name || 'Untitled campaign') + ' · Draft' : 'Reach the right students by email, WhatsApp or text';
+    $('cg-form-sub').textContent = CG_STEPS[cgForm.step];
     $('cg-form-body').innerHTML = cgStepperHtml() + [cgDetailsStepHtml, cgAudienceStepHtml, cgMessageStepHtml, cgReviewStepHtml][cgForm.step](d);
     $('cg-form-foot').innerHTML = '<button type="button" class="btn btn-ghost btn-sm" data-cg-prev>' + (cgForm.step ? 'Previous step' : 'Cancel') + '</button>' +
       (cgForm.step < 3 ? '<div class="ar-cg-foot-right"><button type="button" class="btn btn-secondary btn-sm" data-cg-save-draft>Save draft</button>' +
@@ -7997,7 +8319,7 @@
     if (t.closest('#seg-create')) {
       var first = PROGRAMS[0];
       var firstPref = prefsFor(first.id)[0];
-      segEditor = { name: '', program: first.id, prefId: firstPref ? firstPref.id : '', shortlisted: 'any', filters: blankFilters(), filterTab: SFILTERS.length ? 'saved' : 'new', savedId: SFILTERS[0] ? SFILTERS[0].id : '' };
+      segEditor = { name: '', program: first.id, prefId: firstPref ? firstPref.id : '', shortlisted: 'any', filters: blankFilters(), filterTab: 'new', savedId: '' };
       openSegForm();
       return;
     }
@@ -8006,6 +8328,15 @@
     if (segPick) {
       segPage.id = segPick.getAttribute('data-seg-pick');
       renderSegments();
+      return;
+    }
+
+    var segSource = t.closest('[data-seg-source]');
+    if (segSource) {
+      segPage.source = segSource.getAttribute('data-seg-source');
+      renderSegments();
+      var sourceBox = $('seg-search');
+      if (sourceBox) sourceBox.focus();
       return;
     }
 
@@ -8047,26 +8378,44 @@
       segReadEditor();
       var segName = segEditor.name.trim();
       if (!segName) { toast('Give the segment a name.'); if ($('seg-name')) $('seg-name').focus(); return; }
+      var made;
+      if (segEditor.filterTab === 'upload') {
+        var up = segEditor.upload;
+        if (!up || !up.rows || !up.rows.length) { toast('Upload a CSV of leads.'); return; }
+        var map = up.map || {};
+        if (map.name === '' || map.email === '' || map.phone === '') { toast('Map name, email and phone number.'); return; }
+        var leads = [];
+        up.rows.forEach(function (row) {
+          var lead = {
+            name: String(row[map.name] || '').trim(),
+            email: String(row[map.email] || '').trim(),
+            phone: String(row[map.phone] || '').trim(),
+          };
+          if (lead.name || lead.email || lead.phone) leads.push(lead);
+        });
+        if (!leads.length) { toast('No leads in that file.'); return; }
+        made = { id: 'seg-' + Date.now(), name: segName, source: 'upload', leads: leads, createdAt: Date.now() };
+      } else {
       var segProgram = segEditor.program;
       var segPref = segEditor.prefId;
       var segFilters = JSON.parse(JSON.stringify(segEditor.filters || blankFilters()));
       if (segEditor.filterTab === 'saved') {
         var pickedFilter = savedFilterById(segEditor.savedId);
         if (!pickedFilter) { toast('Choose a saved filter.'); return; }
-        segProgram = pickedFilter.program;
-        segPref = pickedFilter.prefId;
         segFilters = JSON.parse(JSON.stringify(pickedFilter.filters || blankFilters()));
         segFilters.intake = pickedFilter.intake || '';
       }
-      var made = {
+      made = {
         id: 'seg-' + Date.now(),
         name: segName,
+        source: 'graded',
         program: segProgram,
         prefId: segPref,
         shortlisted: 'any',
         filters: segFilters,
         createdAt: Date.now(),
       };
+      }
       SEGMENTS.unshift(made);
       segPage.id = made.id;
       segEditor = null;
@@ -8749,6 +9098,27 @@
       return;
     }
 
+    var periodPick = t.closest('[data-evc-period]');
+    if (periodPick && evCreate) {
+      readEventCreate();
+      var periodBits = periodPick.getAttribute('data-evc-period').split(':');
+      if (periodBits[0] === 'evc-startTime') evCreate.draft.startPeriod = periodBits[1];
+      if (periodBits[0] === 'evc-endTime') evCreate.draft.endPeriod = periodBits[1];
+      renderEventCreate();
+      return;
+    }
+
+    var stepJump = t.closest('[data-ev-step]');
+    if (stepJump && evCreate) {
+      var jump = Number(stepJump.getAttribute('data-ev-step'));
+      if (jump <= Math.max(evCreate.step, evCreate.max || 0) && jump !== evCreate.step) {
+        readEventCreate();
+        evCreate.step = jump;
+        renderEventCreate();
+      }
+      return;
+    }
+
     if (t.closest('[data-flow-add]') && evCreate) {
       readEventCreate();
       if (!evCreate.draft.flows) evCreate.draft.flows = [];
@@ -9272,6 +9642,29 @@
   document.addEventListener('change', function (e) {
     if (!segEditor || !e.target || !e.target.closest('#drawer')) return;
     segReadEditor();
+    if (e.target.id === 'seg-csv') {
+      var file = e.target.files && e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        var parsed = parseLeadCsv(reader.result);
+        if (!parsed.headers.length || !parsed.rows.length) { toast('That CSV needs a header row and at least one lead.'); return; }
+        segEditor.upload = {
+          fileName: file.name,
+          headers: parsed.headers,
+          rows: parsed.rows,
+          map: {
+            name: guessCsvCol(parsed.headers, ['name', 'studentname', 'fullname', 'student']),
+            email: guessCsvCol(parsed.headers, ['email', 'emailaddress', 'mail', 'studentemail']),
+            phone: guessCsvCol(parsed.headers, ['phone', 'phonenumber', 'phoneno', 'mobile', 'mobilenumber', 'contact', 'whatsapp']),
+          },
+        };
+        segEditor.filterTab = 'upload';
+        openSegForm();
+      };
+      reader.readAsText(file);
+      return;
+    }
     var bag = segEditor.filters;
     if (e.target.id === 'seg-program' || e.target.id === 'seg-pref') {
       if (e.target.id === 'seg-program') {
@@ -9689,6 +10082,15 @@
   $('events-create-page').addEventListener('input', function (e) {
     if (!evCreate) return;
     if (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type !== 'file')) readEventCreate();
+    var count = e.target.parentElement && e.target.parentElement.querySelector('.ar-evc-count');
+    if (count && e.target.maxLength > 0) count.textContent = e.target.value.length + ' / ' + e.target.maxLength + ' characters';
+    if (e.target.id === 'evc-pin' && evCreate) {
+      var pinNow = eventPinPlace(e.target.value);
+      evCreate.draft.city = pinNow.city;
+      evCreate.draft.country = pinNow.country;
+      if ($('evc-city')) $('evc-city').value = pinNow.city;
+      if ($('evc-country')) $('evc-country').value = pinNow.country;
+    }
     syncEventSaveBar();
   });
 
