@@ -6038,7 +6038,7 @@
   }
 
   function tplStartName(d) {
-    if (d.start === 'html') return d.htmlName || 'Upload HTML';
+    if (d.start === 'html') return d.htmlName || '';
     if (d.start === 'scratch') return 'Start from scratch';
     var picked = tplById(d.start);
     return picked ? picked.name : '';
@@ -7344,9 +7344,6 @@
         openTplEditor('', 'create');
         return;
       }
-      tplDraft.draft.start = startKind;
-      tplDraft.draft.applied = false;
-      renderTemplates();
       if (startKind === 'html' && $('tpl-file')) $('tpl-file').click();
       return;
     }
