@@ -5954,15 +5954,15 @@
     var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
     var date = d.getDate() + ' ' + months[d.getMonth()];
     if (d.getFullYear() !== new Date().getFullYear()) date += ' ' + d.getFullYear();
-    return date + ', ' + fmtTime(d);
+    return date;
   }
 
   function tplWhenHtml(t) {
     if (!t.createdAt && !t.updatedAt) return '';
     var parts = [];
-    if (t.createdAt) parts.push('<span><b>Created</b>' + esc(tplStamp(t.createdAt)) + '</span>');
-    if (t.updatedAt) parts.push('<span><b>Updated</b>' + esc(tplStamp(t.updatedAt)) + '</span>');
-    return '<small class="ar-tpl-when">' + parts.join('') + '</small>';
+    if (t.createdAt) parts.push('Created ' + tplStamp(t.createdAt));
+    if (t.updatedAt) parts.push('Updated ' + tplStamp(t.updatedAt));
+    return '<small class="ar-tpl-when">' + ico('schedule') + '<span>' + esc(parts.join(' · ')) + '</span></small>';
   }
 
   function tplCard(t, on, yours) {
