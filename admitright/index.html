@@ -10,7 +10,7 @@
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=tok1" />
   <link rel="stylesheet" href="css/tokens.css?v=tok1" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar321" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar327" />
 </head>
 <body class="ar ar-locked">
   <section class="ar-gate" id="gate-login" hidden>
@@ -69,6 +69,9 @@
         </a>
         <a class="ar-rail-item" href="#/saved" data-go="saved" title="Leads" aria-label="Leads">
           <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
+        </a>
+        <a class="ar-rail-item" href="#/segments" data-go="segments" title="Segment" aria-label="Segment">
+          <span class="material-symbols-rounded" aria-hidden="true">segment</span>
         </a>
         <a class="ar-rail-item" href="#/events" data-go="events" title="Events" aria-label="Events">
           <span class="material-symbols-rounded" aria-hidden="true">event</span>
@@ -271,6 +274,24 @@
         </div>
       </div>
 
+      <!-- Segment -->
+      <div id="view-segments" hidden>
+        <header class="topbar">
+          <div class="ar-title">
+            <img class="ar-uni-logo" src="img/udit.png" alt="" />
+            <h1 data-uni></h1>
+            <span class="ar-sub">Segment</span>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-primary btn-sm btn-icon" id="seg-create">
+              <span class="material-symbols-rounded" aria-hidden="true">add</span>
+              Create segment
+            </button>
+          </div>
+        </header>
+        <div class="content ar-segpage" id="seg-body"></div>
+      </div>
+
       <!-- Events -->
       <div id="view-events" hidden>
         <header class="topbar" id="events-list-head">
@@ -385,10 +406,6 @@
 
         <div class="content ar-content" id="cg-list-content">
           <section class="ar-cg-insights" id="cg-insights">
-            <div class="panel">
-              <div class="panel-head"><h2>Campaign activity</h2><span class="ar-cg-range" id="cg-chart-range"></span></div>
-              <div class="ar-trend-chart" id="cg-chart"></div>
-            </div>
             <div id="cg-overview"></div>
           </section>
           <div class="ar-cg-toolbar">
@@ -642,6 +659,6 @@
   <div class="ar-toast" id="toast" hidden></div>
 
   <script src="data/students-data.js?v=ar259"></script>
-  <script src="js/admitright.js?v=ar322"></script>
+  <script src="js/admitright.js?v=ar327"></script>
 </body>
 </html>

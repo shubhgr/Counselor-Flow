@@ -2293,13 +2293,16 @@
     return '<div class="ar-pick">' + chips + menu + '</div>';
   }
 
+  var filterWriteBag = null;
+
   function filterMultiHtml(id, v) {
     var selected = v.vals && v.vals.length ? v.vals.slice() : (v.val ? [v.val] : []);
     if (id === 'board') {
       var norm = normalizeBoardValues(selected);
+      var dest = filterWriteBag || state.filters;
       if (norm.join('\n') !== selected.join('\n')) {
-        if (norm.length) state.filters.vals.board = { vals: norm };
-        else delete state.filters.vals.board;
+        if (norm.length) dest.vals.board = { vals: norm };
+        else delete dest.vals.board;
       }
       return filterChipSelect(id, boardOffers(), norm, BOARD_LABELS, 'Add a board');
     }
@@ -2311,15 +2314,16 @@
     return filterChipSelect(id, known.concat(extra), selected, null, id === 'stream' ? 'Add a subject' : 'Add an activity');
   }
 
-  function filterLocationHtml(v, id) {
+  function filterLocationHtml(v, id, pfx) {
     id = id || 'location';
+    pfx = pfx || 'ff';
     var pref = id === 'preferred';
     var mode = v.mode || '';
     var places = v.places || [];
     var modes = [['', 'Any'], ['city', 'In ' + CAMPUS.city], ['state', 'In ' + CAMPUS.state], ['custom', 'Custom']];
-    var modeName = pref ? 'ff-pref-mode' : 'ff-loc-mode';
-    var qId = pref ? 'ff-pref-q' : 'ff-place-q';
-    var listId = pref ? 'ff-pref-list' : 'ff-place-list';
+    var modeName = pfx + (pref ? '-pref-mode' : '-loc-mode');
+    var qId = pfx + (pref ? '-pref-q' : '-place-q');
+    var listId = pfx + (pref ? '-pref-list' : '-place-list');
     var addAttr = pref ? 'data-ff-add-pref' : 'data-ff-add-place';
     var removeAttr = pref ? 'data-ff-remove-pref' : 'data-ff-remove-place';
     var html = '<div class="ar-loc-modes" role="radiogroup" aria-label="' + (pref ? 'Preferred location' : 'Location of student') + '">' + modes.map(function (m) {
@@ -2335,12 +2339,15 @@
       '<div class="ar-place-list" id="' + listId + '" hidden></div></div>';
   }
 
-  function openFilterPlaces(id) {
+  function openFilterPlaces(id, from) {
     var pref = id === 'preferred';
-    var list = $(pref ? 'ff-pref-list' : 'ff-place-list');
-    var box = $(pref ? 'ff-pref-q' : 'ff-place-q');
+    var inSeg = from && from.closest && from.closest('#drawer');
+    var pfx = inSeg ? 'sg' : 'ff';
+    var list = $(pfx + (pref ? '-pref-list' : '-place-list'));
+    var box = $(pfx + (pref ? '-pref-q' : '-place-q'));
     if (!list || !box) return;
-    var places = (state.filters.vals[pref ? 'preferred' : 'location'] && state.filters.vals[pref ? 'preferred' : 'location'].places) || [];
+    var host = inSeg && segEditor ? segEditor.filters : state.filters;
+    var places = (host.vals[pref ? 'preferred' : 'location'] && host.vals[pref ? 'preferred' : 'location'].places) || [];
     list.innerHTML = placeListHtml(box.value, places, pref ? 'data-ff-add-pref' : 'data-ff-add-place');
     list.hidden = false;
   }
@@ -2677,9 +2684,325 @@
     openDrawer('Recharge history', '<div class="ar-bill-pays">' + rows + '</div>', '', true);
   }
 
+  function blankFilters() {
+    return { min: '', max: '', intake: '', vals: {} };
+  }
+
+  var SEGMENTS = [
+    { id: 'seg-cse-ggm', name: 'CSE around Gurugram', program: 'btech-cse', prefName: 'Eligibility', shortlisted: 'any', filters: { min: '', max: '', intake: '', vals: { location: { mode: 'city', places: [] } } }, createdAt: new Date(2026, 8, 18).getTime() },
+    { id: 'seg-ai-short', name: 'Shortlisted AI & ML', program: 'btech-ai', prefName: 'Eligibility', shortlisted: 'yes', filters: { min: '', max: '', intake: '', vals: {} }, createdAt: new Date(2026, 9, 3).getTime() },
+    { id: 'seg-bcom', name: 'CBSE commerce above 80', program: 'bcom', prefName: 'Eligibility', shortlisted: 'any', filters: { min: '', max: '', intake: '', vals: { board: { vals: ['CBSE'] }, academic: { min: '80' } } }, createdAt: new Date(2026, 9, 8).getTime() },
+    { id: 'seg-bdes', name: 'Design leads in Haryana', program: 'bdes', prefName: 'Eligibility', shortlisted: 'any', filters: { min: '', max: '', intake: '', vals: { location: { mode: 'state', places: [] } } }, createdAt: new Date(2026, 9, 14).getTime() },
+  ];
+
+  var segPage = { id: SEGMENTS[0].id, q: '', treat: 'all' };
+  var segEditor = null;
+  var segCache = {};
+
+  function segById(id) {
+    return SEGMENTS.filter(function (s) { return s.id === id; })[0] || SEGMENTS[0];
+  }
+
+  function segPref(seg) {
+    var list = prefsFor(seg.program);
+    if (!list.length) return null;
+    if (seg.prefId) return findPref(seg.program, seg.prefId);
+    return list.filter(function (p) { return p.name === seg.prefName; })[0] || list[0];
+  }
+
+  function passesBag(s, bag, score) {
+    if (!bag) return true;
+    if (bag.intake && intakeYear(s) !== String(bag.intake)) return false;
+    if (bag.min !== '' && bag.min != null && (score === null || score < Number(bag.min))) return false;
+    if (bag.max !== '' && bag.max != null && (score === null || score > Number(bag.max))) return false;
+    var vals = bag.vals || {};
+    var ids = Object.keys(vals).filter(function (id) { return filterActive(id, vals[id]); });
+    for (var i = 0; i < ids.length; i++) {
+      var id = ids[i];
+      var v = vals[id];
+      if (id === 'test') {
+        var ranges = testRanges(v);
+        var names = Object.keys(ranges);
+        for (var ti = 0; ti < names.length; ti++) {
+          var range = ranges[names[ti]] || {};
+          if ((range.min === undefined || range.min === '') && (range.max === undefined || range.max === '')) continue;
+          var taken = s.tests.filter(function (x) { return x.name.toLowerCase() === names[ti].toLowerCase(); })[0];
+          if (!taken || !within(taken.value, range)) return false;
+        }
+      } else if (id === 'budget') {
+        if (v.min !== undefined && v.min !== '' && s.budget[1] < Number(v.min)) return false;
+      } else if (id === 'location') {
+        if (!studentInLocation(s, v)) return false;
+      } else if (id === 'preferred') {
+        if (!cityMatch(s.preferredCity || s.city, v)) return false;
+      } else if (ENGAGE_FILTERS[id]) {
+        if (!s.engage || s.engage[id] < ENGAGE_FILTERS[id].steps.indexOf(v.val) + 1) return false;
+      } else if (RANGE_FILTERS[id]) {
+        if (!within(RANGE_FILTERS[id].get(s), v)) return false;
+      } else if (id === 'board') {
+        var boards = v.vals && v.vals.length ? v.vals : (v.val ? [v.val] : []);
+        if (boards.length && !boardAccepted(boards, s.board)) return false;
+      } else if (PICK_FILTERS[id]) {
+        var picked = v.vals && v.vals.length ? v.vals : (v.val ? [v.val] : []);
+        if (picked.length && !picked.some(function (w) {
+          return PICK_FILTERS[id](s).some(function (a) { return String(a).toLowerCase() === String(w).toLowerCase(); });
+        })) return false;
+      }
+    }
+    return true;
+  }
+
+  function segStudent(s, seg, score) {
+    if (s.program !== seg.program) return false;
+    if (seg.shortlisted === 'yes' && !(s.actions && s.actions.shortlisted)) return false;
+    if (seg.shortlisted === 'no' && s.actions && s.actions.shortlisted) return false;
+    return passesBag(s, seg.filters, score);
+  }
+
+  function segRows(seg) {
+    if (segCache[seg.id]) return segCache[seg.id];
+    var pref = segPref(seg);
+    var rows = [];
+    STUDENTS.forEach(function (s) {
+      if (s.program !== seg.program) return;
+      var score = pref ? scoreAgainst(s, pref).score : null;
+      if (!segStudent(s, seg, score)) return;
+      rows.push({ s: s, score: score });
+    });
+    segCache[seg.id] = rows;
+    return rows;
+  }
+
+  function segChips(seg) {
+    var pref = segPref(seg);
+    var bag = seg.filters || blankFilters();
+    var bits = [programById(seg.program).name];
+    if (pref) bits.push(pref.name);
+    if (seg.shortlisted === 'yes') bits.push('Shortlisted');
+    if (seg.shortlisted === 'no') bits.push('Not shortlisted');
+    if (bag.min !== '' || bag.max !== '') {
+      var range = bag.min !== '' && bag.max !== '' ? bag.min + '–' + bag.max + '%' : bag.min !== '' ? bag.min + '%+' : 'up to ' + bag.max + '%';
+      bits.push('Match ' + range);
+    }
+    Object.keys(bag.vals || {}).forEach(function (id) {
+      if (filterActive(id, bag.vals[id])) bits.push(filterChipText(id, bag.vals[id], pref || { criteria: { test: { tests: [] } } }));
+    });
+    if (bag.intake) bits.push('Intake ' + bag.intake);
+    return bits.map(function (b) { return '<span>' + esc(b) + '</span>'; }).join('');
+  }
+
+  function segLeadHtml(row) {
+    var s = row.s;
+    var score = row.score === null ? '—' : row.score + '%';
+    return '<article class="ar-segl" data-student="' + esc(s.id) + '">' +
+      '<div class="avatar">' + esc(s.initials) + '</div>' +
+      '<div class="ar-segl-who"><strong>' + esc(s.name) + '</strong><small>' + esc(s.id) + ' · ' + esc(s.city) + ' · Class 12 ' + s.class12 + '%</small></div>' +
+      '<b class="ar-segl-score">' + score + '</b>' +
+      stagePill(s) +
+      cardChatHtml(s.id) + cardSaveHtml(s.id) +
+      '</article>';
+  }
+
+  function renderSegments() {
+    var body = $('seg-body');
+    if (!body) return;
+    var seg = segById(segPage.id);
+    segPage.id = seg.id;
+    var rows = segRows(seg);
+    var q = segPage.q.trim().toLowerCase();
+    var shown = rows.filter(function (row) {
+      var s = row.s;
+      if (segPage.treat === 'meet' && (row.score === null || row.score < MATCH_MIN)) return false;
+      if (segPage.treat === 'short' && !(s.actions && s.actions.shortlisted)) return false;
+      if (!q) return true;
+      return (s.name + ' ' + s.id + ' ' + s.city).toLowerCase().indexOf(q) !== -1;
+    });
+    var treat = function (id, label) {
+      return '<button type="button" class="ar-tpl-chip' + (segPage.treat === id ? ' on' : '') + '" data-seg-treat="' + id + '">' + label + '</button>';
+    };
+    body.innerHTML =
+      '<section class="panel ar-segtreat">' +
+        '<div class="panel-head"><h2>Lead treatment</h2><span class="ar-meta">' + shown.length + ' of ' + rows.length + '</span></div>' +
+        '<p class="ar-seg-note">Leads in <strong>' + esc(seg.name) + '</strong>. Filter this list without changing the segment.</p>' +
+        '<div class="ar-seg-tools">' +
+          '<label class="ar-search"><span class="material-symbols-rounded" aria-hidden="true">search</span>' +
+          '<input type="search" id="seg-search" placeholder="Search name, GR ID, city" value="' + esc(segPage.q) + '" /></label>' +
+          '<div class="ar-seg-treat">' + treat('all', 'All') + treat('meet', 'Meets preference') + treat('short', 'Shortlisted') + '</div>' +
+        '</div>' +
+        '<div class="ar-seg-scroll">' +
+          (shown.length ? shown.slice(0, 200).map(segLeadHtml).join('') : '<p class="ar-muted">No leads match this segment.</p>') +
+          (shown.length > 200 ? '<p class="ar-muted">Showing the first 200.</p>' : '') +
+        '</div>' +
+      '</section>' +
+      '<section class="panel ar-seglist">' +
+        '<div class="panel-head"><h2>Segment</h2><span class="ar-meta">' + SEGMENTS.length + '</span></div>' +
+        '<p class="ar-seg-note">A segment is the course, preference, and filters you saved. Every lead on the left already passed it.</p>' +
+        '<div class="ar-seg-scroll">' + SEGMENTS.map(function (item) {
+          var n = segRows(item).length;
+          var on = item.id === seg.id ? ' on' : '';
+          return '<button type="button" class="ar-segc' + on + '" data-seg-pick="' + esc(item.id) + '">' +
+            '<span class="ar-segc-top"><strong>' + esc(item.name) + '</strong><b>' + n + '</b></span>' +
+            '<span class="ar-segc-chips">' + segChips(item) + '</span>' +
+            '<small>' + ico('schedule') + 'Created ' + esc(tplStamp(item.createdAt)) + '</small>' +
+            '</button>';
+        }).join('') + '</div>' +
+      '</section>';
+  }
+
+  function filterFieldsHtml(pref, bag) {
+    if (!pref) return '';
+    var f = bag;
+    var crit = function (id) { return CRITERIA.filter(function (c) { return c.id === id; })[0]; };
+    var numAttr = function (id) { return function (k) { return 'data-fnum="' + id + ':' + k + '"'; }; };
+    var span = function (ext, unit) {
+      if (ext[0] === '') return '';
+      return 'In data: ' + ext[0] + '–' + ext[1] + (unit === '%' ? '%' : unit ? ' ' + unit : '');
+    };
+    var row = function (labelHtml, control) {
+      return '<div class="ar-ffield">' + labelHtml + control + '</div>';
+    };
+    var label = function (text, hint) {
+      return '<span class="ar-flabel"' + (hint ? ' title="' + esc(hint) + '"' : '') + '>' + esc(text) + '</span>';
+    };
+    var field = function (id) {
+      var v = f.vals[id] || {};
+      var name = crit(id).label;
+      if (id === 'test') {
+        var ranges = testRanges(v);
+        return (pref.criteria.test.tests || []).map(function (rq) {
+          var tv = ranges[rq.name] || {};
+          var unit = testUnit(rq);
+          return row(label(rq.name), rangeInputs(function (k) {
+            return 'data-fnum="test:' + encodeURIComponent(rq.name) + ':' + k + '"';
+          }, tv, unit));
+        }).join('');
+      }
+      if (id === 'budget') {
+        return row(label(name),
+          '<label class="ar-fin"><span>₹</span><input type="number" placeholder="Minimum" data-fnum="budget:min" value="' +
+          (v.min === undefined ? '' : v.min) + '" aria-label="Minimum fee budget"><span>L</span></label>');
+      }
+      if (id === 'location' || id === 'preferred') return row(label(name), filterLocationHtml(v, id, 'sg'));
+      if (PICK_FILTERS[id]) return row(label(name), filterMultiHtml(id, v));
+      if (RANGE_FILTERS[id]) {
+        var u = RANGE_FILTERS[id].unit;
+        return row(label(name, span(extent(RANGE_FILTERS[id].get), u)), rangeInputs(numAttr(id), v, u));
+      }
+      return '';
+    };
+    filterWriteBag = bag;
+    var html =
+      row(label('Match score'), rangeInputs(function (k) { return 'data-fscore="' + k + '" min="0" max="100"'; }, f, '%')) +
+      FILTER_ORDER.filter(function (id) {
+        var critRow = pref.criteria[id];
+        if (!critRow) return false;
+        return id === 'preferred' || critRow.weight > 0;
+      }).map(field).join('') +
+      Object.keys(ENGAGE_FILTERS).map(function (id) {
+        var cur = (f.vals[id] || {}).val || '';
+        return row(label(ENGAGE_FILTERS[id].label, 'Each step includes students who went further'),
+          '<div class="ar-fchips" role="radiogroup" aria-label="' + esc(ENGAGE_FILTERS[id].label) + '">' +
+          [''].concat(ENGAGE_FILTERS[id].steps).map(function (st) {
+            var on = cur === st;
+            return '<button type="button" role="radio" aria-checked="' + on + '" class="' + (on ? 'active' : '') + '" data-fchip="' + id + ':' + esc(st) + '">' + (st || 'Any') + '</button>';
+          }).join('') + '</div>');
+      }).join('') +
+      row(label('Intake'), '<select class="ar-fselect" data-fintake aria-label="Intake">' +
+        [['', 'All intakes'], ['2026', '2026'], ['2027', '2027'], ['2028', '2028'], ['2029', '2029']].map(function (o) {
+          return '<option value="' + o[0] + '"' + (String(bag.intake || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+        }).join('') + '</select>');
+    filterWriteBag = null;
+    return html;
+  }
+
+  function openSegForm() {
+    var d = segEditor;
+    if (!d.filters) d.filters = blankFilters();
+    var prefs = prefsFor(d.program);
+    if (!prefs.some(function (p) { return p.id === d.prefId; })) d.prefId = prefs[0] ? prefs[0].id : '';
+    var pref = prefs.filter(function (p) { return p.id === d.prefId; })[0] || prefs[0];
+    var scroll = $('drawer-body') && !$('drawer').hidden ? $('drawer-body').scrollTop : 0;
+    openDrawer(
+      'Create segment',
+      fieldWrap('Segment name', textInput('seg-name', d.name, 'CSE around Gurugram'), true) +
+      fieldWrap('Course', '<select id="seg-program">' + PROGRAMS.map(function (p) {
+        return '<option value="' + esc(p.id) + '"' + (p.id === d.program ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+      }).join('') + '</select>', true) +
+      fieldWrap('Preference', '<select id="seg-pref">' + prefs.map(function (p) {
+        return '<option value="' + esc(p.id) + '"' + (p.id === d.prefId ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+      }).join('') + '</select>', true) +
+      fieldWrap('Shortlisted', '<select id="seg-short">' +
+        '<option value="any"' + (d.shortlisted === 'any' ? ' selected' : '') + '>Any lead</option>' +
+        '<option value="yes"' + (d.shortlisted === 'yes' ? ' selected' : '') + '>Shortlisted</option>' +
+        '<option value="no"' + (d.shortlisted === 'no' ? ' selected' : '') + '>Not shortlisted</option></select>') +
+      '<div class="ar-seg-filters"><h3>Filters</h3>' + filterFieldsHtml(pref, d.filters) + '</div>',
+      '<button type="button" class="btn btn-ghost btn-sm" data-seg-cancel>Cancel</button>' +
+      '<button type="button" class="btn btn-primary btn-sm btn-icon" data-seg-save>' + ico('check') + 'Create segment</button>',
+      true
+    );
+    if ($('drawer-body')) $('drawer-body').scrollTop = scroll;
+  }
+
+  function segReadEditor() {
+    if (!segEditor) return;
+    if ($('seg-name')) segEditor.name = $('seg-name').value;
+    if ($('seg-program')) segEditor.program = $('seg-program').value;
+    if ($('seg-pref')) segEditor.prefId = $('seg-pref').value;
+    if ($('seg-short')) segEditor.shortlisted = $('seg-short').value;
+    if (!segEditor.filters) segEditor.filters = blankFilters();
+  }
+
+  function segRefreshForm() {
+    segReadEditor();
+    openSegForm();
+  }
+
+  function segDrawerFilterClick(t) {
+    if (!segEditor || !t.closest('#drawer')) return false;
+    var bag = segEditor.filters || (segEditor.filters = blankFilters());
+    var ffChip = t.closest('[data-ff-remove]');
+    if (ffChip) {
+      var ffId = ffChip.getAttribute('data-ff-remove');
+      var ffCur = ((bag.vals[ffId] && bag.vals[ffId].vals) || []).filter(function (x) {
+        return x !== ffChip.getAttribute('data-ff-value');
+      });
+      if (ffCur.length) bag.vals[ffId] = { vals: ffCur };
+      else delete bag.vals[ffId];
+      segRefreshForm();
+      return true;
+    }
+    var ffAdd = t.closest('[data-ff-add-place], [data-ff-add-pref]');
+    var ffRemove = t.closest('[data-ff-remove-place], [data-ff-remove-pref]');
+    if (ffAdd || ffRemove) {
+      var ffLoc = (ffAdd && ffAdd.hasAttribute('data-ff-add-pref')) || (ffRemove && ffRemove.hasAttribute('data-ff-remove-pref')) ? 'preferred' : 'location';
+      var loc = bag.vals[ffLoc] || { mode: 'custom', places: [] };
+      var nextPlaces = (loc.places || []).slice();
+      if (ffAdd) {
+        var placeName = ffAdd.getAttribute(ffLoc === 'preferred' ? 'data-ff-add-pref' : 'data-ff-add-place');
+        if (nextPlaces.indexOf(placeName) === -1) nextPlaces.push(placeName);
+      } else {
+        nextPlaces = nextPlaces.filter(function (p) { return p !== ffRemove.getAttribute(ffLoc === 'preferred' ? 'data-ff-remove-pref' : 'data-ff-remove-place'); });
+      }
+      bag.vals[ffLoc] = { mode: 'custom', places: nextPlaces };
+      segRefreshForm();
+      var ffBox = $(ffLoc === 'preferred' ? 'sg-pref-q' : 'sg-place-q');
+      if (ffBox) { ffBox.focus(); openFilterPlaces(ffLoc, ffBox); }
+      return true;
+    }
+    var fchip = t.closest('[data-fchip]');
+    if (fchip) {
+      var chipBits = fchip.getAttribute('data-fchip').split(':');
+      if (chipBits[1]) bag.vals[chipBits[0]] = { val: chipBits[1] };
+      else delete bag.vals[chipBits[0]];
+      segRefreshForm();
+      return true;
+    }
+    return false;
+  }
+
   function setView(view, fromRoute) {
     state.view = view;
-    $('view-dashboard').hidden = view === 'programs' || view === 'chats' || view === 'events' || view === 'campaigns' || view === 'templates' || view === 'billing' || view === 'settings';
+    $('view-dashboard').hidden = view === 'programs' || view === 'chats' || view === 'events' || view === 'campaigns' || view === 'templates' || view === 'billing' || view === 'settings' || view === 'segments';
     $('view-dashboard').classList.toggle('ar-saved-view', view === 'saved');
     $('view-programs').hidden = view !== 'programs';
     $('view-chats').hidden = view !== 'chats';
@@ -2688,6 +3011,7 @@
     $('view-templates').hidden = view !== 'templates';
     $('view-billing').hidden = view !== 'billing';
     $('view-settings').hidden = view !== 'settings';
+    $('view-segments').hidden = view !== 'segments';
     document.querySelectorAll('.ar-rail-item[data-go]').forEach(function (a) {
       a.classList.toggle('active', a.getAttribute('data-go') === view);
     });
@@ -2698,6 +3022,7 @@
     else if (view === 'templates') renderTemplates();
     else if (view === 'billing') renderBilling();
     else if (view === 'settings') renderSettings();
+    else if (view === 'segments') renderSegments();
     else renderDashboard();
     window.scrollTo(0, 0);
     if (!fromRoute) goTo(viewPath(view));
@@ -2721,7 +3046,7 @@
       try { return decodeURIComponent(p); } catch (err) { return p; }
     });
     var view = parts[0] || 'dashboard';
-    if (['dashboard', 'programs', 'saved', 'events', 'campaigns', 'templates', 'billing', 'chats', 'settings'].indexOf(view) < 0) view = 'dashboard';
+    if (['dashboard', 'programs', 'saved', 'segments', 'events', 'campaigns', 'templates', 'billing', 'chats', 'settings'].indexOf(view) < 0) view = 'dashboard';
     var page = 'list';
     var id = null;
     var tab = null;
@@ -5927,26 +6252,39 @@
       tplMenuItem(t.id, 'delete', 'delete', 'Delete', true) + '</div>';
   }
 
-  function openTplEditor(id, mode) {
+  function openTplEditor(id, mode, htmlUpload) {
     var t = id ? tplById(id) : null;
-    if (mode !== 'create' && !t) return;
+    if (mode !== 'create' && !t && !htmlUpload) return;
     tplMenuId = '';
-    tplNameBox = { id: id || '', mode: mode };
-    var name = mode === 'dup' ? 'Copy of ' + t.name : mode === 'edit' ? t.name : '';
+    var isHtml = !!(htmlUpload || (t && t.html));
+    var html = htmlUpload ? htmlUpload.html : (isHtml && t ? t.text || '' : '');
+    tplNameBox = { id: id || '', mode: mode, html: isHtml ? html : '' };
+    var name = htmlUpload
+      ? String(htmlUpload.name || '').replace(/\.html?$/i, '').replace(/[-_]+/g, ' ').trim()
+      : mode === 'dup' ? 'Copy of ' + t.name : mode === 'edit' ? t.name : '';
     var title = mode === 'edit' ? 'Edit template' : mode === 'dup' ? 'Duplicate template' : 'Create template';
+    var message = isHtml
+      ? '<div class="ar-evc-field"><span>Preview</span><iframe class="ar-tpl-html-preview" id="tpl-html-preview" sandbox title="HTML preview"></iframe></div>' +
+        '<p class="ar-cm-note">' + ico('visibility') + 'This is a preview of the uploaded HTML. It can’t be edited here.</p>'
+      : fieldWrap('Message', '<textarea id="tpl-edit-text" rows="8" placeholder="Start typing here. Use {first}, {program} and {university}.">' + esc(t ? t.text || '' : '') + '</textarea>') +
+        '<p class="ar-cm-note">' + ico('auto_fix_high') + '{first}, {program} and {university} are filled in for each student.</p>';
     openDrawer(
       title,
       fieldWrap('Template name', textInput('tpl-name-input', name, 'MBA Application 2025'), true) +
       fieldWrap('Template description', '<textarea id="tpl-edit-note" rows="3" placeholder="Brief description of when to use this template">' + esc(t ? t.note || '' : '') + '</textarea>', true) +
       '<p class="ar-tpl-hint">Give your template a descriptive name and description for easy identification.</p>' +
-      fieldWrap('Message', '<textarea id="tpl-edit-text" rows="8" placeholder="Start typing here. Use {first}, {program} and {university}.">' + esc(t ? t.text || '' : '') + '</textarea>') +
-      '<p class="ar-cm-note">' + ico('auto_fix_high') + '{first}, {program} and {university} are filled in for each student.</p>',
+      message,
       '<button type="button" class="btn btn-ghost btn-sm" data-tpl-name-cancel>Cancel</button>' +
       '<button type="button" class="btn btn-primary btn-sm btn-icon" data-tpl-name-save>' + ico('check') + 'Save template</button>',
       true
     );
     $('drawer').classList.add('ar-tpl-modal');
-    if ($('tpl-name-input')) $('tpl-name-input').focus();
+    var frame = $('tpl-html-preview');
+    if (frame) frame.srcdoc = html;
+    if ($('tpl-name-input')) {
+      $('tpl-name-input').focus();
+      if (htmlUpload) $('tpl-name-input').select();
+    }
   }
 
   function tplStamp(ts) {
@@ -6011,7 +6349,8 @@
     var noteEl = $('tpl-edit-note');
     var name = input ? input.value.trim() : '';
     var note = noteEl ? noteEl.value.trim() : '';
-    var text = ($('tpl-edit-text') && $('tpl-edit-text').value) || '';
+    var text = tplNameBox.html ? tplNameBox.html : (($('tpl-edit-text') && $('tpl-edit-text').value) || '');
+    var isHtml = !!tplNameBox.html;
     if (!name) { toast('Enter a template name.'); if (input) input.focus(); return; }
     if (!note) { toast('Enter a description.'); if (noteEl) noteEl.focus(); return; }
     if (mode === 'edit') {
@@ -6020,15 +6359,18 @@
       mine.name = name;
       mine.note = note;
       mine.text = text;
+      if (isHtml) mine.html = true;
       if (!mine.createdAt) mine.createdAt = Date.now();
       mine.updatedAt = Date.now();
       saveMyTemplates();
     } else if (mode === 'create' || src) {
-      MY_TEMPLATES.unshift({
+      var row = {
         id: storeId('mt'), name: name, note: note,
         subject: src ? src.subject || '' : '', text: text,
         createdAt: Date.now(),
-      });
+      };
+      if (isHtml || (src && src.html)) row.html = true;
+      MY_TEMPLATES.unshift(row);
       saveMyTemplates();
       if (tplFilter === 'pre' || mode === 'create') tplFilter = 'mine';
     }
@@ -6413,6 +6755,7 @@
   }
 
   function renderCampaignInsights() {
+    if (!$('cg-chart')) return;
     var series = cgMonthSeries();
     var root = getComputedStyle(document.documentElement);
     var brand = root.getPropertyValue('--brand').trim() || '#782bff';
@@ -6675,11 +7018,12 @@
     var drafts = CAMPAIGN_LIST.length - launched.length;
     var individuals = individualRows().length;
     $('cg-overview').innerHTML =
-      '<section class="panel ar-cg-kpis"><div class="panel-head"><h2>Overview</h2></div>' +
+      '<section class="panel ar-cg-kpis"><div class="panel-head"><h2>Overview</h2></div><div class="ar-cg-kpi-row">' +
       cgKpi('campaign', 'Total campaigns', CAMPAIGN_LIST.length, launched.length + ' launched · ' + drafts + ' draft' + (drafts === 1 ? '' : 's')) +
       cgKpi('person', 'Individual sends', individuals.toLocaleString(), 'One student at a time') +
       cgKpi('groups', 'Total students', t.sent.toLocaleString(), 'from ' + launched.length + ' launched') +
-      '</section>';
+      cgKpi('mark_email_read', 'Open rate', cgPct(t.opened, t.delivered) + '%', t.opened.toLocaleString() + ' opened') +
+      '</div></section>';
   }
 
   function openCampaignPreview(id) {
@@ -7255,6 +7599,60 @@
       }
       if (view === 'chats') state.chatId = null;
       goTo(view);
+      return;
+    }
+
+    if (t.closest('#seg-create')) {
+      var first = PROGRAMS[0];
+      var firstPref = prefsFor(first.id)[0];
+      segEditor = { name: '', program: first.id, prefId: firstPref ? firstPref.id : '', shortlisted: 'any', filters: blankFilters() };
+      openSegForm();
+      return;
+    }
+
+    var segPick = t.closest('[data-seg-pick]');
+    if (segPick) {
+      segPage.id = segPick.getAttribute('data-seg-pick');
+      renderSegments();
+      return;
+    }
+
+    var segTreat = t.closest('[data-seg-treat]');
+    if (segTreat) {
+      segPage.treat = segTreat.getAttribute('data-seg-treat');
+      renderSegments();
+      var segBox = $('seg-search');
+      if (segBox) segBox.focus();
+      return;
+    }
+
+    if (t.closest('[data-seg-cancel]')) {
+      segEditor = null;
+      closeDrawer();
+      return;
+    }
+
+    if (segDrawerFilterClick(t)) return;
+
+    if (t.closest('[data-seg-save]')) {
+      segReadEditor();
+      var segName = segEditor.name.trim();
+      if (!segName) { toast('Give the segment a name.'); if ($('seg-name')) $('seg-name').focus(); return; }
+      var made = {
+        id: 'seg-' + Date.now(),
+        name: segName,
+        program: segEditor.program,
+        prefId: segEditor.prefId,
+        shortlisted: segEditor.shortlisted,
+        filters: JSON.parse(JSON.stringify(segEditor.filters || blankFilters())),
+        createdAt: Date.now(),
+      };
+      SEGMENTS.unshift(made);
+      segPage.id = made.id;
+      segEditor = null;
+      closeDrawer();
+      renderSegments();
+      toast('Segment created.');
       return;
     }
 
@@ -8227,7 +8625,9 @@
     if (cardSave) {
       var savedNow = toggleSaved(cardSave.getAttribute('data-card-save'));
       toast(savedNow ? 'Lead shortlisted.' : 'Removed from the shortlist.');
-      renderStudents();
+      segCache = {};
+      if (state.view === 'segments') renderSegments();
+      else renderStudents();
       return;
     }
 
@@ -8360,6 +8760,86 @@
     }
   });
 
+  document.addEventListener('change', function (e) {
+    if (!segEditor || !e.target || !e.target.closest('#drawer')) return;
+    segReadEditor();
+    var bag = segEditor.filters;
+    if (e.target.id === 'seg-program' || e.target.id === 'seg-pref') {
+      if (e.target.id === 'seg-program') {
+        var prefsNow = prefsFor(segEditor.program);
+        segEditor.prefId = prefsNow[0] ? prefsNow[0].id : '';
+      }
+      openSegForm();
+      return;
+    }
+    var ffAdd = e.target.getAttribute('data-ff-add');
+    if (ffAdd) {
+      var ffValue = e.target.value;
+      if (!ffValue) return;
+      var ffCur = ((bag.vals[ffAdd] && bag.vals[ffAdd].vals) || []).slice();
+      if (ffCur.indexOf(ffValue) === -1) ffCur.push(ffValue);
+      bag.vals[ffAdd] = { vals: ffCur };
+      segRefreshForm();
+      return;
+    }
+    if (e.target.name === 'sg-loc-mode' || e.target.name === 'sg-pref-mode') {
+      var ffKey = e.target.name === 'sg-pref-mode' ? 'preferred' : 'location';
+      if (!e.target.value) delete bag.vals[ffKey];
+      else {
+        var prevLoc = bag.vals[ffKey] || {};
+        bag.vals[ffKey] = { mode: e.target.value, places: prevLoc.places || [] };
+      }
+      segRefreshForm();
+      return;
+    }
+    if (e.target.hasAttribute('data-fintake')) bag.intake = e.target.value;
+  });
+
+  document.addEventListener('input', function (e) {
+    if (!segEditor || !e.target || !e.target.closest('#drawer')) return;
+    var bag = segEditor.filters || (segEditor.filters = blankFilters());
+    if (e.target.id === 'sg-place-q') { openFilterPlaces('location', e.target); return; }
+    if (e.target.id === 'sg-pref-q') { openFilterPlaces('preferred', e.target); return; }
+    var v = e.target.value.trim();
+    var key = e.target.getAttribute('data-fscore');
+    if (key) {
+      bag[key] = v === '' ? '' : String(Math.max(0, Math.min(100, Math.round(Number(v)) || 0)));
+      return;
+    }
+    var num = e.target.getAttribute('data-fnum');
+    if (!num) return;
+    var bits = num.split(':');
+    var vals = bag.vals;
+    if (bits[0] === 'test') {
+      var slot = bits.pop();
+      var testName = decodeURIComponent(bits.slice(1).join(':'));
+      var next = {};
+      var prevRanges = testRanges(vals.test);
+      Object.keys(prevRanges).forEach(function (n) { next[n] = { min: prevRanges[n].min || '', max: prevRanges[n].max || '' }; });
+      next[testName] = next[testName] || { min: '', max: '' };
+      next[testName][slot] = v === '' || isNaN(Number(v)) ? '' : v;
+      Object.keys(next).forEach(function (n) {
+        if (!next[n].min && !next[n].max) delete next[n];
+      });
+      if (Object.keys(next).length) vals.test = { tests: next };
+      else delete vals.test;
+      return;
+    }
+    vals[bits[0]] = vals[bits[0]] || {};
+    vals[bits[0]][bits[1]] = v === '' || isNaN(Number(v)) ? '' : v;
+  });
+
+  document.addEventListener('input', function (e) {
+    if (!e.target || e.target.id !== 'seg-search') return;
+    segPage.q = e.target.value;
+    var segPos = e.target.selectionStart;
+    renderSegments();
+    var segBox = $('seg-search');
+    if (!segBox) return;
+    segBox.focus();
+    if (segPos != null) segBox.setSelectionRange(segPos, segPos);
+  });
+
   document.addEventListener('input', function (e) {
     if (!e.target || e.target.id !== 'tpl-search') return;
     tplQuery = e.target.value;
@@ -8386,12 +8866,10 @@
       if (!/\.html?$/i.test(htmlName) && htmlFile.type !== 'text/html') { toast('Choose an HTML file.'); return; }
       var htmlReader = new FileReader();
       htmlReader.onload = function () {
+        var html = String(htmlReader.result || '');
+        if (!html.trim()) { toast('That HTML file is empty.'); return; }
         ensureTplDraft();
-        tplDraft.draft.start = 'html';
-        tplDraft.draft.applied = false;
-        tplDraft.draft.htmlName = htmlName;
-        tplDraft.draft.html = String(htmlReader.result || '');
-        renderTemplates();
+        openTplEditor('', 'create', { name: htmlName, html: html });
       };
       htmlReader.readAsText(htmlFile);
       return;
