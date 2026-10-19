@@ -10,7 +10,7 @@
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=tok1" />
   <link rel="stylesheet" href="css/tokens.css?v=tok1" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar327" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar347" />
 </head>
 <body class="ar ar-locked">
   <section class="ar-gate" id="gate-login" hidden>
@@ -201,7 +201,6 @@
                     <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
                   </button>
                   <div class="ar-menu" id="intake-menu" hidden>
-                    <button type="button" class="ar-menu-item" data-intake="">All intakes</button>
                     <button type="button" class="ar-menu-item" data-intake="2026">2026</button>
                     <button type="button" class="ar-menu-item active" data-intake="2027">2027</button>
                     <button type="button" class="ar-menu-item" data-intake="2028">2028</button>
@@ -504,8 +503,9 @@
       <div id="view-billing" hidden>
         <header class="topbar">
           <div class="ar-title">
-            <h1>Billing</h1>
-            <span class="ar-sub">Wallet balance and what this period costs</span>
+            <img class="ar-uni-logo" src="img/udit.png" alt="" />
+            <h1 data-uni></h1>
+            <span class="ar-sub">Billing</span>
           </div>
           <div class="actions">
             <div class="ar-menu-wrap">
@@ -659,6 +659,6 @@
   <div class="ar-toast" id="toast" hidden></div>
 
   <script src="data/students-data.js?v=ar259"></script>
-  <script src="js/admitright.js?v=ar327"></script>
+  <script src="js/admitright.js?v=ar347"></script>
 </body>
 </html>

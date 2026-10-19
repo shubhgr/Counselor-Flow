@@ -1594,11 +1594,73 @@
     return d;
   }
 
-  /** Follows the dashboard date filter; with no filter it spans from the earliest lead to today. Long spans group by week or month. */
+  /** Day, week, month, year, or 3-hour buckets, chosen from the date filter. */
+  function chartGrain(span) {
+    var preset = state.range && state.range.preset;
+    if (preset === 'today' || preset === 'yesterday' || span <= 1) return 'hour3';
+    if (preset === '7' || preset === '30' || preset === 'mtd') return 'day';
+    if (preset === '90') return 'week';
+    if (preset === 'year') return 'month';
+    if (preset === 'all' || !state.range) {
+      if (span <= 45) return 'day';
+      if (span <= 120) return 'week';
+      if (span <= 800) return 'month';
+      return 'year';
+    }
+    if (span <= 45) return 'day';
+    if (span <= 180) return 'week';
+    if (span <= 800) return 'month';
+    return 'year';
+  }
+
+  function buildBuckets(startDay, endDay, grain) {
+    var days = [];
+    var cuts = [];
+    var endCut = addDays(endDay, 1);
+    if (grain === 'hour3') {
+      var base = new Date(startDay.getFullYear(), startDay.getMonth(), startDay.getDate());
+      for (var h = 0; h < 24; h += 3) {
+        days.push(new Date(base.getTime() + h * 3600000));
+        cuts.push(new Date(base.getTime() + (h + 3) * 3600000));
+      }
+      return { days: days, cuts: cuts, unit: 'hour3', step: 1 };
+    }
+    if (grain === 'month') {
+      var cur = new Date(startDay.getFullYear(), startDay.getMonth(), 1);
+      var last = new Date(endDay.getFullYear(), endDay.getMonth(), 1);
+      while (cur <= last) {
+        days.push(new Date(cur));
+        var next = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+        cuts.push(next > endCut ? endCut : next);
+        cur = next;
+      }
+      return { days: days, cuts: cuts, unit: 'month', step: 30 };
+    }
+    if (grain === 'year') {
+      for (var y = startDay.getFullYear(); y <= endDay.getFullYear(); y++) {
+        days.push(new Date(y, 0, 1));
+        var nextY = new Date(y + 1, 0, 1);
+        cuts.push(nextY > endCut ? endCut : nextY);
+      }
+      return { days: days, cuts: cuts, unit: 'year', step: 365 };
+    }
+    var step = grain === 'week' ? 7 : 1;
+    var span = Math.round((endDay - startDay) / 86400000) + 1;
+    var n = Math.ceil(span / step);
+    for (var i = 0; i < n; i++) {
+      var from = addDays(startDay, i * step);
+      var cut = addDays(startDay, (i + 1) * step);
+      if (cut > endCut) cut = endCut;
+      days.push(from);
+      cuts.push(cut);
+    }
+    return { days: days, cuts: cuts, unit: grain === 'week' ? 'week' : 'day', step: step };
+  }
+
+  /** Follows the dashboard date filter; with no filter it spans from the earliest lead to today. */
   function stageSeries(set, snapshot) {
-    var end = dayStart(TODAY);
+    var end = state.range ? dayStart(state.range.to) : dayStart(TODAY);
     var start = state.range ? dayStart(state.range.from) : null;
-    if (state.range) end = dayStart(state.range.to);
     if (!start) {
       start = addDays(end, -29);
       set.forEach(function (s) {
@@ -1607,84 +1669,101 @@
       });
     }
     var span = Math.round((end - start) / 86400000) + 1;
-    var step = span <= 45 ? 1 : span <= 210 ? 7 : 30;
-    var n = Math.ceil(span / step);
-    var data = { days: [], series: STAGES.map(function () { return []; }), step: step };
-    for (var i = 0; i < n; i++) {
-      data.days.push(addDays(start, i * step));
-      data.series.forEach(function (list) { list.push(0); });
-    }
+    var buckets = buildBuckets(start, end, chartGrain(span));
+    var n = buckets.days.length;
+    var data = { days: buckets.days, cuts: buckets.cuts, series: STAGES.map(function () { return []; }), step: buckets.step, unit: buckets.unit, start: start, snapshot: !!snapshot };
+    for (var i = 0; i < n; i++) data.series.forEach(function (list) { list.push(0); });
     var reached = function (s, si) { return si ? s.events[si] : s.events[0] || s.createdOn; };
     if (snapshot) {
-      /* Snapshot: how many students sit at each stage at the end of every bucket. */
-      for (var k = 0; k < n; k++) {
-        var cut = addDays(start, (k + 1) * step);
-        set.forEach(function (s) {
+      set.forEach(function (s) {
+        for (var k = 0; k < n; k++) {
+          var cut = data.cuts[k];
           for (var si = STAGES.length - 1; si >= 0; si--) {
             var d = reached(s, si);
-            if (d && dayStart(d) < cut) { data.series[si][k] += 1; break; }
+            if (d && d < cut) { data.series[si][k] += 1; break; }
           }
-        });
-      }
+        }
+      });
     } else {
       set.forEach(function (s) {
         STAGES.forEach(function (st, si) {
           var d = reached(s, si);
           if (!d) return;
-          var k = Math.floor(Math.round((dayStart(d) - start) / 86400000) / step);
-          if (k >= 0 && k < n) data.series[si][k] += 1;
+          for (var k = 0; k < n; k++) {
+            if (d >= data.days[k] && d < data.cuts[k]) { data.series[si][k] += 1; break; }
+          }
         });
       });
     }
-    data.start = start;
-    data.snapshot = !!snapshot;
     return data;
   }
 
-  /** One stage's own trend for its row, scaled to its own peak so quiet stages still show a shape. */
+  function bucketTitle(d, data) {
+    if (data.unit === 'hour3') {
+      var h = d.getHours();
+      var hr = h % 12 || 12;
+      return fmtShort(d, true) + ', ' + hr + (h >= 12 ? 'pm' : 'am');
+    }
+    if (data.unit === 'week') return 'Week of ' + fmtShort(d, true);
+    if (data.unit === 'month') return MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+    if (data.unit === 'year') return String(d.getFullYear());
+    return fmtShort(d, true);
+  }
+
+  function bucketAxis(d, data) {
+    var multi = data.days[0].getFullYear() !== data.days[data.days.length - 1].getFullYear();
+    if (data.unit === 'hour3') {
+      var h = d.getHours();
+      return (h % 12 || 12) + (h >= 12 ? 'pm' : 'am');
+    }
+    if (data.unit === 'month') {
+      var short = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()];
+      return multi ? short + ' ' + String(d.getFullYear()).slice(2) : short;
+    }
+    if (data.unit === 'year') return String(d.getFullYear());
+    return fmtShort(d, multi);
+  }
+
+  function bucketLabelOn(k, n) {
+    if (n <= 14) return true;
+    var every = Math.ceil(n / 7);
+    if (k % every === 0) return true;
+    return k === n - 1 && (n - 1) % every > 1;
+  }
+
+  /** Snapshot: one stacked bar per time bucket, seven stage sections from Recommendation up to Enrolled. */
   function stageChartHtml(data) {
-    var start = data.start;
-    var step = data.step;
     var n = data.days.length;
     stageChart = data;
-    if (n === 1) {
-      var dayCounts = data.series.map(function (list) { return list[0]; });
-      var colMax = Math.max.apply(null, dayCounts.concat([1]));
-      return '<div class="ar-dcols">' + STAGES.map(function (st, si) {
-        return '<button type="button" class="ar-dcol' + (state.stage !== null && state.stage !== si ? ' dim' : '') + '" data-stage="' + si + '" title="' + esc(st.name) + ': ' + dayCounts[si] + '">' +
-          '<b>' + dayCounts[si] + '</b><span class="ar-dcol-track"><i style="height:' + Math.max(2, Math.round((dayCounts[si] / colMax) * 100)) + '%;background:' + CHART_COLORS[si] + '"></i></span>' +
-          '<small>' + esc(st.name) + '</small></button>';
-      }).join('') + '</div>';
+    var totals = [];
+    for (var k = 0; k < n; k++) {
+      var sum = 0;
+      data.series.forEach(function (list) { sum += list[k]; });
+      totals.push(sum);
     }
-    var ticks = [];
-    [0, 0.25, 0.5, 0.75, 1].forEach(function (f) {
-      var k = Math.round(f * (n - 1));
-      if (ticks.indexOf(data.days[k]) < 0) ticks.push(data.days[k]);
-    });
-    var ticksHtml = '<div class="ar-achart-ticks">' + ticks.map(function (d) { return '<span>' + esc(fmtShort(d)) + '</span>'; }).join('') + '</div>';
-    var W = 600;
-    var H = 200;
-    var only = state.stage;
-    var shownSeries = data.series.filter(function (list, si) { return only === null || si === only; });
-    var max = Math.max.apply(null, [].concat.apply([1], shownSeries)) * 1.15;
-    var x = function (k) { return n === 1 ? W / 2 : (k / (n - 1)) * W; };
-    var y = function (v) { return H - (v / max) * (H - 8); };
-    var areas = data.series.map(function (list, si) {
-      if (only !== null && si !== only) return '';
-      var line = smoothPath(list.map(function (v, k) { return [x(k), y(v)]; }), H);
-      return '<path d="' + line + 'L' + W + ',' + H + 'L0,' + H + 'Z" fill="url(#ar-fill-' + si + ')"/>' +
-        '<path d="' + line + '" fill="none" stroke="' + CHART_COLORS[si] + '" stroke-width="1.4" vector-effect="non-scaling-stroke"/>';
+    var max = Math.max.apply(null, totals.concat([1]));
+    var bars = data.days.map(function (day, k) {
+      var segs = '';
+      for (var si = STAGES.length - 1; si >= 0; si--) {
+        var v = data.series[si][k];
+        if (!v) continue;
+        var dim = state.stage !== null && state.stage !== si;
+        segs += '<i style="flex:' + v + ' 1 0;background:' + CHART_COLORS[si] + (dim ? ';opacity:.28' : '') + '"></i>';
+      }
+      var h = totals[k] ? Math.max(2, (totals[k] / max) * 100).toFixed(1) : 0;
+      var tip = '<em class="ar-stack-tip"><strong>' + esc(bucketTitle(day, data)) + '</strong>' + STAGES.map(function (st, si) {
+        return '<span><i style="background:' + CHART_COLORS[si] + '"></i>' + esc(st.name) + '<b>' + data.series[si][k] + '</b></span>';
+      }).join('') + '</em>';
+      return '<button type="button" data-k="' + k + '" style="--h:' + h + '%" aria-label="' + esc(bucketTitle(day, data)) + '">' +
+        tip + (segs ? '<span class="ar-stack">' + segs + '</span>' : '<span class="ar-stack empty"></span>') + '</button>';
     }).join('');
-    return '<div class="ar-achart">' +
-      '<div class="ar-achart-plot">' +
-      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs>' + STAGES.map(function (st, si) {
-        return '<linearGradient id="ar-fill-' + si + '" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stop-color="' + CHART_COLORS[si] + '" stop-opacity="0.14"/>' +
-          '<stop offset="95%" stop-color="' + CHART_COLORS[si] + '" stop-opacity="0.02"/></linearGradient>';
-      }).join('') + '</defs>' +
-      [0.25, 0.5, 0.75].map(function (f) {
-        return '<line x1="0" x2="' + W + '" y1="' + H * f + '" y2="' + H * f + '" stroke="#ece9f5" vector-effect="non-scaling-stroke"/>';
-      }).join('') + areas + '</svg>' +
-      '<span class="ar-achart-cursor" hidden></span><div class="ar-achart-tip" hidden></div></div>' + ticksHtml + '</div>';
+    var labels = data.days.map(function (day, k) {
+      return '<span>' + (bucketLabelOn(k, n) ? esc(bucketAxis(day, data)) : '') + '</span>';
+    }).join('');
+    return '<div class="ar-stackchart' + (n > 16 ? ' dense' : '') + '">' +
+      '<div class="ar-stackchart-plot"><div class="ar-stackchart-grid" aria-hidden="true"><i></i><i></i><i></i><i></i></div>' +
+      '<div class="ar-stackchart-bars">' + bars + '</div></div>' +
+      '<div class="ar-stackchart-labels">' + labels + '</div></div>';
   }
 
   /** Funnel mode: one bar per stage, sized against the biggest stage. */
@@ -1732,15 +1811,15 @@
 
   /** The bucket under the pointer, matching the hover tooltip. */
   function chartBucketAt(e) {
-    var plot = e.target.closest('.ar-achart-plot');
-    if (!plot || !stageChart || stageChart.days.length < 2) return null;
-    var box = plot.getBoundingClientRect();
-    var n = stageChart.days.length;
-    var k = Math.max(0, Math.min(n - 1, Math.round(((e.clientX - box.left) / box.width) * (n - 1))));
+    var col = e.target.closest('[data-k]');
+    if (!col || !stageChart || !col.closest('#trend-chart')) return null;
+    var k = Number(col.getAttribute('data-k'));
+    if (k < 0 || k >= stageChart.days.length) return null;
     var from = dayStart(stageChart.days[k]);
-    var to = stageChart.step === 1 ? from : addDays(from, stageChart.step - 1);
+    var to = dayStart(new Date(stageChart.cuts[k].getTime() - 1));
     var cap = state.range ? dayStart(state.range.to) : dayStart(TODAY);
     if (to > cap) to = cap;
+    if (to < from) to = from;
     return { from: from, to: to };
   }
 
@@ -1889,8 +1968,8 @@
   }
 
   /** Without a picked program there's no shared preference, so cards show profile facts instead of a score. */
-  function cardHtml(s) {
-    var all = state.program === 'all';
+  function cardHtml(s, scored) {
+    var all = scored === true ? false : scored === false ? true : state.program === 'all';
     var facts = [s.stream, 'Class 12 ' + s.class12 + '%', headlineTest(s)].map(function (f) {
       return '<span class="ar-attr none">' + esc(f) + '</span>';
     }).join('');
@@ -2689,10 +2768,12 @@
   }
 
   var SEGMENTS = [
+    { id: 'seg-bba', name: 'BBA leads', program: 'bba', prefName: 'Eligibility', shortlisted: 'any', filters: { min: '', max: '', intake: '', vals: {} }, createdAt: new Date(2026, 8, 4).getTime() },
     { id: 'seg-cse-ggm', name: 'CSE around Gurugram', program: 'btech-cse', prefName: 'Eligibility', shortlisted: 'any', filters: { min: '', max: '', intake: '', vals: { location: { mode: 'city', places: [] } } }, createdAt: new Date(2026, 8, 18).getTime() },
     { id: 'seg-ai-short', name: 'Shortlisted AI & ML', program: 'btech-ai', prefName: 'Eligibility', shortlisted: 'yes', filters: { min: '', max: '', intake: '', vals: {} }, createdAt: new Date(2026, 9, 3).getTime() },
     { id: 'seg-bcom', name: 'CBSE commerce above 80', program: 'bcom', prefName: 'Eligibility', shortlisted: 'any', filters: { min: '', max: '', intake: '', vals: { board: { vals: ['CBSE'] }, academic: { min: '80' } } }, createdAt: new Date(2026, 9, 8).getTime() },
     { id: 'seg-bdes', name: 'Design leads in Haryana', program: 'bdes', prefName: 'Eligibility', shortlisted: 'any', filters: { min: '', max: '', intake: '', vals: { location: { mode: 'state', places: [] } } }, createdAt: new Date(2026, 9, 14).getTime() },
+    { id: 'seg-cse-tight', name: 'CSE, Haryana, CBSE, 85%+', program: 'btech-cse', prefName: 'Eligibility', shortlisted: 'any', filters: { min: '80', max: '', intake: '2027', vals: { location: { mode: 'state', places: [] }, board: { vals: ['CBSE'] }, academic: { min: '85' }, campaign: { val: 'Opened' } } }, createdAt: new Date(2026, 9, 16).getTime() },
   ];
 
   var segPage = { id: SEGMENTS[0].id, q: '', treat: 'all' };
@@ -2791,16 +2872,27 @@
     return bits.map(function (b) { return '<span>' + esc(b) + '</span>'; }).join('');
   }
 
-  function segLeadHtml(row) {
-    var s = row.s;
-    var score = row.score === null ? '—' : row.score + '%';
-    return '<article class="ar-segl" data-student="' + esc(s.id) + '">' +
-      '<div class="avatar">' + esc(s.initials) + '</div>' +
-      '<div class="ar-segl-who"><strong>' + esc(s.name) + '</strong><small>' + esc(s.id) + ' · ' + esc(s.city) + ' · Class 12 ' + s.class12 + '%</small></div>' +
-      '<b class="ar-segl-score">' + score + '</b>' +
-      stagePill(s) +
-      cardChatHtml(s.id) + cardSaveHtml(s.id) +
-      '</article>';
+  function segTableHtml(rows) {
+    var body = rows.slice(0, TABLE_LIMIT).map(function (row) {
+      var s = row.s;
+      return '<tr data-student="' + esc(s.id) + '">' +
+        '<td class="ar-td-student"><div class="ar-who"><span class="avatar sm">' + esc(s.initials) + '</span>' +
+        '<div><span class="ar-name">' + esc(s.name) + '</span><small class="ar-cell-sub">' + esc(s.id) + '</small></div></div></td>' +
+        '<td>' + (row.score === null ? '—' : row.score + '%') + '</td>' +
+        '<td>' + stagePill(s) + '</td>' +
+        '<td>' + esc(s.stream) + '</td>' +
+        '<td>' + esc(markNote(s.mark12)) + '</td>' +
+        '<td>' + esc(headlineTest(s)) + '</td>' +
+        '<td>' + esc(s.city) + '</td>' +
+        '<td>' + esc(s.intake) + '</td></tr>';
+    }).join('');
+    return '<div class="ar-table-scroll"><table class="ar-table ar-table-fit ar-seg-table"><colgroup>' +
+      '<col class="ar-seg-col-student"><col class="ar-seg-col-match"><col class="ar-seg-col-stage"><col class="ar-seg-col-stream">' +
+      '<col class="ar-seg-col-class"><col class="ar-seg-col-test"><col class="ar-seg-col-loc"><col class="ar-seg-col-intake">' +
+      '</colgroup><thead><tr>' +
+      '<th>Student</th><th>Match</th><th>Stage</th><th>Stream</th><th>Class 12</th><th>Test</th><th>Location</th><th>Intake</th>' +
+      '</tr></thead><tbody>' + body + '</tbody></table></div>' +
+      (rows.length > TABLE_LIMIT ? '<p class="ar-muted">Showing ' + TABLE_LIMIT + ' of ' + rows.length + '.</p>' : '');
   }
 
   function renderSegments() {
@@ -2810,34 +2902,17 @@
     segPage.id = seg.id;
     var rows = segRows(seg);
     var q = segPage.q.trim().toLowerCase();
-    var shown = rows.filter(function (row) {
-      var s = row.s;
-      if (segPage.treat === 'meet' && (row.score === null || row.score < MATCH_MIN)) return false;
-      if (segPage.treat === 'short' && !(s.actions && s.actions.shortlisted)) return false;
+    var segs = SEGMENTS.filter(function (item) {
       if (!q) return true;
-      return (s.name + ' ' + s.id + ' ' + s.city).toLowerCase().indexOf(q) !== -1;
+      var program = programById(item.program);
+      return (item.name + ' ' + (program ? program.name : '')).toLowerCase().indexOf(q) !== -1;
     });
-    var treat = function (id, label) {
-      return '<button type="button" class="ar-tpl-chip' + (segPage.treat === id ? ' on' : '') + '" data-seg-treat="' + id + '">' + label + '</button>';
-    };
     body.innerHTML =
-      '<section class="panel ar-segtreat">' +
-        '<div class="panel-head"><h2>Lead treatment</h2><span class="ar-meta">' + shown.length + ' of ' + rows.length + '</span></div>' +
-        '<p class="ar-seg-note">Leads in <strong>' + esc(seg.name) + '</strong>. Filter this list without changing the segment.</p>' +
-        '<div class="ar-seg-tools">' +
-          '<label class="ar-search"><span class="material-symbols-rounded" aria-hidden="true">search</span>' +
-          '<input type="search" id="seg-search" placeholder="Search name, GR ID, city" value="' + esc(segPage.q) + '" /></label>' +
-          '<div class="ar-seg-treat">' + treat('all', 'All') + treat('meet', 'Meets preference') + treat('short', 'Shortlisted') + '</div>' +
-        '</div>' +
-        '<div class="ar-seg-scroll">' +
-          (shown.length ? shown.slice(0, 200).map(segLeadHtml).join('') : '<p class="ar-muted">No leads match this segment.</p>') +
-          (shown.length > 200 ? '<p class="ar-muted">Showing the first 200.</p>' : '') +
-        '</div>' +
-      '</section>' +
       '<section class="panel ar-seglist">' +
-        '<div class="panel-head"><h2>Segment</h2><span class="ar-meta">' + SEGMENTS.length + '</span></div>' +
-        '<p class="ar-seg-note">A segment is the course, preference, and filters you saved. Every lead on the left already passed it.</p>' +
-        '<div class="ar-seg-scroll">' + SEGMENTS.map(function (item) {
+        '<div class="panel-head"><h2>Segment</h2><span class="ar-meta">' + segs.length + '</span></div>' +
+        '<label class="ar-search ar-seg-find"><span class="material-symbols-rounded" aria-hidden="true">search</span>' +
+        '<input type="search" id="seg-search" placeholder="Search segments" value="' + esc(segPage.q) + '" /></label>' +
+        '<div class="ar-seg-scroll">' + (segs.length ? segs.map(function (item) {
           var n = segRows(item).length;
           var on = item.id === seg.id ? ' on' : '';
           return '<button type="button" class="ar-segc' + on + '" data-seg-pick="' + esc(item.id) + '">' +
@@ -2845,7 +2920,13 @@
             '<span class="ar-segc-chips">' + segChips(item) + '</span>' +
             '<small>' + ico('schedule') + 'Created ' + esc(tplStamp(item.createdAt)) + '</small>' +
             '</button>';
-        }).join('') + '</div>' +
+        }).join('') : '<p class="ar-muted">No segments match.</p>') + '</div>' +
+      '</section>' +
+      '<section class="panel ar-segleads">' +
+        '<div class="panel-head"><h2>' + rows.length.toLocaleString() + '</h2></div>' +
+        '<div class="ar-seg-scroll">' +
+          (rows.length ? segTableHtml(rows) : '<p class="ar-muted">No leads match this segment.</p>') +
+        '</div>' +
       '</section>';
   }
 
@@ -2915,27 +2996,43 @@
     return html;
   }
 
+  function segSavedPickHtml(d) {
+    if (!SFILTERS.length) {
+      return '<div class="ar-fsaved-empty">' + ico('bookmark') + '<strong>No saved filters yet</strong>' +
+        '<span>Save a filter on the dashboard, or create a new one here.</span></div>';
+    }
+    return '<div class="ar-seg-saved">' + SFILTERS.map(function (sf) {
+      var on = sf.id === d.savedId ? ' on' : '';
+      return '<button type="button" class="ar-segc' + on + '" data-seg-saved="' + esc(sf.id) + '">' +
+        '<span class="ar-segc-top"><strong>' + esc(sf.name) + '</strong></span>' +
+        '<small>' + esc(savedFilterSummary(sf)) + '</small></button>';
+    }).join('') + '</div>';
+  }
+
   function openSegForm() {
     var d = segEditor;
     if (!d.filters) d.filters = blankFilters();
+    if (!d.filterTab) d.filterTab = SFILTERS.length ? 'saved' : 'new';
     var prefs = prefsFor(d.program);
     if (!prefs.some(function (p) { return p.id === d.prefId; })) d.prefId = prefs[0] ? prefs[0].id : '';
     var pref = prefs.filter(function (p) { return p.id === d.prefId; })[0] || prefs[0];
+    var tab = d.filterTab;
+    var tabs = '<div class="ar-fsheet-tabs" role="tablist">' +
+      '<button type="button" role="tab" data-seg-ftab="saved" class="' + (tab === 'saved' ? 'active' : '') + '">Saved filters</button>' +
+      '<button type="button" role="tab" data-seg-ftab="new" class="' + (tab === 'new' ? 'active' : '') + '">New filter</button></div>';
+    var filterBody = tab === 'saved'
+      ? segSavedPickHtml(d)
+      : fieldWrap('Course', '<select id="seg-program">' + PROGRAMS.map(function (p) {
+          return '<option value="' + esc(p.id) + '"' + (p.id === d.program ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+        }).join('') + '</select>', true) +
+        fieldWrap('Preference', '<select id="seg-pref">' + prefs.map(function (p) {
+          return '<option value="' + esc(p.id) + '"' + (p.id === d.prefId ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+        }).join('') + '</select>', true) +
+        '<div class="ar-seg-filters">' + filterFieldsHtml(pref, d.filters) + '</div>';
     var scroll = $('drawer-body') && !$('drawer').hidden ? $('drawer-body').scrollTop : 0;
     openDrawer(
       'Create segment',
-      fieldWrap('Segment name', textInput('seg-name', d.name, 'CSE around Gurugram'), true) +
-      fieldWrap('Course', '<select id="seg-program">' + PROGRAMS.map(function (p) {
-        return '<option value="' + esc(p.id) + '"' + (p.id === d.program ? ' selected' : '') + '>' + esc(p.name) + '</option>';
-      }).join('') + '</select>', true) +
-      fieldWrap('Preference', '<select id="seg-pref">' + prefs.map(function (p) {
-        return '<option value="' + esc(p.id) + '"' + (p.id === d.prefId ? ' selected' : '') + '>' + esc(p.name) + '</option>';
-      }).join('') + '</select>', true) +
-      fieldWrap('Shortlisted', '<select id="seg-short">' +
-        '<option value="any"' + (d.shortlisted === 'any' ? ' selected' : '') + '>Any lead</option>' +
-        '<option value="yes"' + (d.shortlisted === 'yes' ? ' selected' : '') + '>Shortlisted</option>' +
-        '<option value="no"' + (d.shortlisted === 'no' ? ' selected' : '') + '>Not shortlisted</option></select>') +
-      '<div class="ar-seg-filters"><h3>Filters</h3>' + filterFieldsHtml(pref, d.filters) + '</div>',
+      fieldWrap('Segment name', textInput('seg-name', d.name, 'CSE around Gurugram'), true) + tabs + filterBody,
       '<button type="button" class="btn btn-ghost btn-sm" data-seg-cancel>Cancel</button>' +
       '<button type="button" class="btn btn-primary btn-sm btn-icon" data-seg-save>' + ico('check') + 'Create segment</button>',
       true
@@ -2948,7 +3045,6 @@
     if ($('seg-name')) segEditor.name = $('seg-name').value;
     if ($('seg-program')) segEditor.program = $('seg-program').value;
     if ($('seg-pref')) segEditor.prefId = $('seg-pref').value;
-    if ($('seg-short')) segEditor.shortlisted = $('seg-short').value;
     if (!segEditor.filters) segEditor.filters = blankFilters();
   }
 
@@ -4807,6 +4903,7 @@
     { id: 'coffee', name: 'Coffee chat', icon: 'local_cafe' },
     { id: 'expert', name: 'Ask the expert', icon: 'psychology' },
     { id: 'openhouse', name: 'Open house', icon: 'apartment' },
+    { id: 'workshop', name: 'Workshop', icon: 'co_present' },
   ];
   var EVENT_FORMATS = [
     { id: 'online', name: 'Online', icon: 'language' },
@@ -4851,6 +4948,10 @@
     ['AI lab open house', 'openhouse', 'hybrid', 'btech-ai', 0, '2027', 140, 120, CAMPUS.city, CAMPUS.venue, 'Zoom', 640, 150, false, 'Faculty of Engineering'],
     ['BBA campus open house', 'openhouse', 'offline', 'bba', null, '2028', 260, 150, CAMPUS.city, CAMPUS.venue, '', 420, 96, false, 'School of Management'],
     ['Design studio open house', 'openhouse', 'hybrid', 'bdes', 0, '2027', -200, 120, CAMPUS.city, CAMPUS.venue, 'Google Meet', 510, 118, false, 'Faculty of Design'],
+    ['Commerce careers after B.Com', 'webinar', 'online', 'bcom', 0, '2027', 36, 60, '', '', 'Zoom', 540, 128, false, 'School of Management'],
+    ['CA foundation workshop', 'workshop', 'offline', 'bcom', null, '2027', 150, 120, CAMPUS.city, CAMPUS.venue, '', 390, 86, false, 'Faculty of Commerce'],
+    ['Excel for finance workshop', 'workshop', 'online', 'bcom', null, '2028', 210, 90, '', '', 'Microsoft Teams', 260, 64, false, 'School of Management'],
+    ['Design thinking workshop', 'workshop', 'hybrid', 'bdes', 0, '2027', 80, 90, CAMPUS.city, CAMPUS.venue, 'Zoom', 470, 102, false, 'Faculty of Design'],
   ];
 
   var EVENTS = (function () {
@@ -5062,7 +5163,7 @@
   }
 
   function topFive(rows) {
-    return rows.slice().sort(function (a, b) { return b.n - a.n || b.regs - a.regs; }).slice(0, 5);
+    return rows.slice().sort(function (a, b) { return b.n - a.n || b.regs - a.regs; }).slice(0, 6);
   }
 
   var evPieFocus = '';
@@ -5130,20 +5231,42 @@
       '<text class="ar-ev-pie-cap" x="120" y="136" text-anchor="middle">' + esc(current.name) + '</text></svg></div>';
   }
 
+  function evStatCard(r, group, total) {
+    var on = group === 'program' ? EF.program === r.id : EF[group].indexOf(r.id) !== -1;
+    var circ = 188.5;
+    var turn = total ? Math.min(circ, circ * r.n / total).toFixed(2) : '0';
+    var ring = '<span class="ar-faction-ring"><svg viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="30"></circle><circle cx="36" cy="36" r="30" stroke-dasharray="' + turn + ' ' + circ + '"></circle></svg>' + ico(r.icon) + '</span>';
+    return '<button type="button" class="ar-ev-stat row' + (on ? ' active' : '') + '" data-ev-facet="' + group + ':' + esc(r.id) + '" aria-pressed="' + on + '">' +
+      ring +
+      '<span class="ar-ev-stat-copy"><span class="ar-ev-stat-name">' + esc(r.name) + '</span>' +
+      '<span class="ar-ev-stat-count"><strong>' + r.n + '</strong> ' + (r.n === 1 ? 'event' : 'events') + '</span>' +
+      '<small>out of ' + fmtNum(total) + '</small></span></button>';
+  }
+
+  function evStatGroup(label, rows, group, total, cols) {
+    return '<section class="ar-ev-overview-col"><h3>' + label + '</h3>' +
+      (rows.length
+        ? '<div class="ar-ev-stat-grid' + (cols ? ' cols' : '') + '">' + rows.map(function (r) { return evStatCard(r, group, total); }).join('') + '</div>'
+        : '<p class="ar-muted ar-ev-none">No events here with these filters.</p>') +
+      '</section>';
+  }
+
   function renderEventInsights() {
-    var programs = topFive(tally(EVENTS.filter(function (e) { return eventPasses(e, 'program'); }),
+    var programEvents = EVENTS.filter(function (e) { return eventPasses(e, 'program'); });
+    var kindEvents = EVENTS.filter(function (e) { return eventPasses(e, 'kinds'); });
+    var formatEvents = EVENTS.filter(function (e) { return eventPasses(e, 'formats'); });
+    var programs = topFive(tally(programEvents,
       PROGRAMS.map(function (p) { return { id: p.id, name: p.name, icon: 'school' }; }), function (e) { return [e.program]; })
       .filter(function (r) { return r.n; }));
-    var kinds = topFive(tally(EVENTS.filter(function (e) { return eventPasses(e, 'kinds'); }), EVENT_KINDS, function (e) { return [e.kind]; })
+    var kinds = topFive(tally(kindEvents, EVENT_KINDS, function (e) { return [e.kind]; })
       .filter(function (r) { return r.n; }));
-    var formats = tally(EVENTS.filter(function (e) { return eventPasses(e, 'formats'); }), EVENT_FORMATS, function (e) { return [e.format]; })
-      .sort(function (a, b) { return b.n - a.n || b.regs - a.regs; });
+    var formats = tally(formatEvents, EVENT_FORMATS, function (e) { return [e.format]; });
 
     $('ev-insights').innerHTML =
-      '<div class="ar-ev-panels">' +
-      '<div class="panel ar-ev-panel"><div class="panel-head"><h2>Events by program</h2></div>' + insightRows(programs, 'program', maxN(programs)) + '</div>' +
-      '<div class="panel ar-ev-panel"><div class="panel-head"><h2>Kind of event</h2></div>' + insightRows(kinds, 'kinds', maxN(kinds)) + '</div>' +
-      '<div class="panel ar-ev-panel ar-ev-pie-panel">' + formatPieHtml(formats) + '</div>' +
+      '<div class="ar-ev-overview-cols">' +
+      evStatGroup('Program', programs, 'program', programEvents.length, true) +
+      evStatGroup('Kind of event', kinds, 'kinds', kindEvents.length, true) +
+      evStatGroup('Format', formats, 'formats', formatEvents.length) +
       '</div>';
   }
 
@@ -6261,21 +6384,25 @@
     tplNameBox = { id: id || '', mode: mode, html: isHtml ? html : '' };
     var name = htmlUpload
       ? String(htmlUpload.name || '').replace(/\.html?$/i, '').replace(/[-_]+/g, ' ').trim()
-      : mode === 'dup' ? 'Copy of ' + t.name : mode === 'edit' ? t.name : '';
-    var title = mode === 'edit' ? 'Edit template' : mode === 'dup' ? 'Duplicate template' : 'Create template';
+      : mode === 'dup' ? 'Copy of ' + t.name : (t ? t.name : '');
+    var title = htmlUpload || mode === 'preview' ? 'Preview' : mode === 'edit' ? 'Edit template' : mode === 'dup' ? 'Duplicate template' : 'Create template';
+    var bodyText = htmlUpload ? html : (t ? t.text || '' : '');
     var message = isHtml
-      ? '<div class="ar-evc-field"><span>Preview</span><iframe class="ar-tpl-html-preview" id="tpl-html-preview" sandbox title="HTML preview"></iframe></div>' +
-        '<p class="ar-cm-note">' + ico('visibility') + 'This is a preview of the uploaded HTML. It can’t be edited here.</p>'
-      : fieldWrap('Message', '<textarea id="tpl-edit-text" rows="8" placeholder="Start typing here. Use {first}, {program} and {university}.">' + esc(t ? t.text || '' : '') + '</textarea>') +
+      ? '<div class="ar-evc-field"><span>Preview</span><iframe class="ar-tpl-html-preview" id="tpl-html-preview" sandbox="allow-scripts" title="HTML preview"></iframe></div>'
+      : fieldWrap('Message', '<textarea id="tpl-edit-text" rows="8" placeholder="Start typing here. Use {first}, {program} and {university}.">' + esc(bodyText) + '</textarea>') +
         '<p class="ar-cm-note">' + ico('auto_fix_high') + '{first}, {program} and {university} are filled in for each student.</p>';
+    var foot = mode === 'preview'
+      ? '<button type="button" class="btn btn-secondary btn-sm btn-icon" data-tpl-preview-dup>' + ico('content_copy') + 'Duplicate</button>' +
+        '<button type="button" class="btn btn-primary btn-sm btn-icon" data-tpl-preview-edit>' + ico('edit') + 'Edit</button>'
+      : '<button type="button" class="btn btn-ghost btn-sm" data-tpl-name-cancel>Cancel</button>' +
+        '<button type="button" class="btn btn-primary btn-sm btn-icon" data-tpl-name-save>' + ico('check') + 'Save template</button>';
     openDrawer(
       title,
       fieldWrap('Template name', textInput('tpl-name-input', name, 'MBA Application 2025'), true) +
       fieldWrap('Template description', '<textarea id="tpl-edit-note" rows="3" placeholder="Brief description of when to use this template">' + esc(t ? t.note || '' : '') + '</textarea>', true) +
       '<p class="ar-tpl-hint">Give your template a descriptive name and description for easy identification.</p>' +
       message,
-      '<button type="button" class="btn btn-ghost btn-sm" data-tpl-name-cancel>Cancel</button>' +
-      '<button type="button" class="btn btn-primary btn-sm btn-icon" data-tpl-name-save>' + ico('check') + 'Save template</button>',
+      foot,
       true
     );
     $('drawer').classList.add('ar-tpl-modal');
@@ -6309,9 +6436,8 @@
       'mt-nudge': 'edit_note', 'mt-visit': 'location_on',
     };
     return '<div class="ar-tpl-card-wrap">' +
-      '<button type="button" class="ar-tpl-card' + (on ? ' on' : '') + '" data-tpl-pick="' + esc(t.id) + '">' +
+      '<button type="button" class="ar-tpl-card" data-tpl-pick="' + esc(t.id) + '">' +
       '<span class="ar-tpl-thumb"><span class="ar-tpl-ico">' + ico(icons[t.id] || 'description') + '</span>' +
-      (on ? '<span class="ar-tpl-check">' + ico('check') + '</span>' : '') +
       '<span class="ar-tpl-mail"><i></i><i></i><i></i></span></span>' +
       '<span class="ar-tpl-tx"><span class="ar-tpl-name">' + esc(t.name) + '</span>' +
       '<small>' + esc(t.note || '') + '</small>' +
@@ -6355,7 +6481,7 @@
     if (!note) { toast('Enter a description.'); if (noteEl) noteEl.focus(); return; }
     if (mode === 'edit') {
       var mine = MY_TEMPLATES.filter(function (item) { return item.id === id; })[0];
-      if (!mine) return;
+      if (mine) {
       mine.name = name;
       mine.note = note;
       mine.text = text;
@@ -6363,7 +6489,13 @@
       if (!mine.createdAt) mine.createdAt = Date.now();
       mine.updatedAt = Date.now();
       saveMyTemplates();
-    } else if (mode === 'create' || src) {
+      tplNameBox = null;
+      closeDrawer();
+      renderTemplates();
+      return;
+      }
+    }
+    if (mode === 'create' || mode === 'edit' || mode === 'dup' || src) {
       var row = {
         id: storeId('mt'), name: name, note: note,
         subject: src ? src.subject || '' : '', text: text,
@@ -6381,9 +6513,7 @@
 
   function tplStartName(d) {
     if (d.start === 'html') return d.htmlName || '';
-    if (d.start === 'scratch') return 'Start from scratch';
-    var picked = tplById(d.start);
-    return picked ? picked.name : '';
+    return '';
   }
 
   function tplChooseHtml(d) {
@@ -6416,7 +6546,7 @@
       '<label class="ar-search"><span class="material-symbols-rounded" aria-hidden="true">search</span>' +
       '<input type="search" id="tpl-search" placeholder="Search templates" value="' + esc(tplQuery) + '" /></label></div>' +
       '<div class="ar-tpl-grid">' + (shown.length ? shown.map(function (t) {
-        return tplCard(t, d.start === t.id, TPL_PREBUILT.indexOf(t) < 0);
+        return tplCard(t, false, TPL_PREBUILT.indexOf(t) < 0);
       }).join('') : '<p class="ar-muted">' + (q ? 'No templates match that search.' : 'Nothing in this list yet.') + '</p>') + '</div></div></div>';
   }
 
@@ -6944,7 +7074,6 @@
     var launched = c.status === 'launched';
     var m = cgMetrics(c);
     var id = esc(c.id);
-    var openRate = cgPct(m.opened, m.delivered);
     var clickRate = cgPct(m.clicked, m.opened);
     var tools = launched
       ? cgTool('data-cg-view="' + id + '"', 'open_in_new', 'View campaign details') + cgTool('data-cg-duplicate="' + id + '"', 'content_copy', 'Duplicate')
@@ -6956,7 +7085,7 @@
       '<div class="ar-cg-stats">' +
       cgStat('Recipients', m.sent.toLocaleString() + (m.sent === 1 ? ' student' : ' students')) +
       cgStat(launched ? 'Sent on' : 'Last edited', cgStamp(launched ? c.sentAt : c.updated)) +
-      (launched ? cgStat('Open rate', openRate + '%', openRate) + cgStat('Click to open', clickRate + '%', clickRate) : '') +
+      (launched ? cgStat('Click to open', clickRate + '%', clickRate) : '') +
       '</div>' +
       '<div class="ar-cg-card-actions"><button type="button" class="btn btn-secondary btn-sm btn-icon" data-cg-preview="' + id + '">' + ico('visibility') + 'Preview</button>' +
       '<div class="ar-cg-tools">' + tools + '</div></div></article>';
@@ -7022,7 +7151,6 @@
       cgKpi('campaign', 'Total campaigns', CAMPAIGN_LIST.length, launched.length + ' launched · ' + drafts + ' draft' + (drafts === 1 ? '' : 's')) +
       cgKpi('person', 'Individual sends', individuals.toLocaleString(), 'One student at a time') +
       cgKpi('groups', 'Total students', t.sent.toLocaleString(), 'from ' + launched.length + ' launched') +
-      cgKpi('mark_email_read', 'Open rate', cgPct(t.opened, t.delivered) + '%', t.opened.toLocaleString() + ' opened') +
       '</div></section>';
   }
 
@@ -7605,7 +7733,7 @@
     if (t.closest('#seg-create')) {
       var first = PROGRAMS[0];
       var firstPref = prefsFor(first.id)[0];
-      segEditor = { name: '', program: first.id, prefId: firstPref ? firstPref.id : '', shortlisted: 'any', filters: blankFilters() };
+      segEditor = { name: '', program: first.id, prefId: firstPref ? firstPref.id : '', shortlisted: 'any', filters: blankFilters(), filterTab: SFILTERS.length ? 'saved' : 'new', savedId: SFILTERS[0] ? SFILTERS[0].id : '' };
       openSegForm();
       return;
     }
@@ -7632,19 +7760,47 @@
       return;
     }
 
+    var segTab = t.closest('[data-seg-ftab]');
+    if (segTab && segEditor) {
+      segReadEditor();
+      segEditor.filterTab = segTab.getAttribute('data-seg-ftab');
+      openSegForm();
+      return;
+    }
+
+    var segSaved = t.closest('[data-seg-saved]');
+    if (segSaved && segEditor) {
+      segReadEditor();
+      segEditor.savedId = segSaved.getAttribute('data-seg-saved');
+      segEditor.filterTab = 'saved';
+      openSegForm();
+      return;
+    }
+
     if (segDrawerFilterClick(t)) return;
 
     if (t.closest('[data-seg-save]')) {
       segReadEditor();
       var segName = segEditor.name.trim();
       if (!segName) { toast('Give the segment a name.'); if ($('seg-name')) $('seg-name').focus(); return; }
+      var segProgram = segEditor.program;
+      var segPref = segEditor.prefId;
+      var segFilters = JSON.parse(JSON.stringify(segEditor.filters || blankFilters()));
+      if (segEditor.filterTab === 'saved') {
+        var pickedFilter = savedFilterById(segEditor.savedId);
+        if (!pickedFilter) { toast('Choose a saved filter.'); return; }
+        segProgram = pickedFilter.program;
+        segPref = pickedFilter.prefId;
+        segFilters = JSON.parse(JSON.stringify(pickedFilter.filters || blankFilters()));
+        segFilters.intake = pickedFilter.intake || '';
+      }
       var made = {
         id: 'seg-' + Date.now(),
         name: segName,
-        program: segEditor.program,
-        prefId: segEditor.prefId,
-        shortlisted: segEditor.shortlisted,
-        filters: JSON.parse(JSON.stringify(segEditor.filters || blankFilters())),
+        program: segProgram,
+        prefId: segPref,
+        shortlisted: 'any',
+        filters: segFilters,
         createdAt: Date.now(),
       };
       SEGMENTS.unshift(made);
@@ -7748,11 +7904,14 @@
 
     var tplPick = t.closest('[data-tpl-pick]');
     if (tplPick) {
-      ensureTplDraft();
-      var pickId = tplPick.getAttribute('data-tpl-pick');
-      tplDraft.draft.start = tplDraft.draft.start === pickId ? '' : pickId;
-      tplDraft.draft.applied = false;
-      renderTemplates();
+      openTplEditor(tplPick.getAttribute('data-tpl-pick'), 'preview');
+      return;
+    }
+
+    if (t.closest('[data-tpl-preview-edit]') || t.closest('[data-tpl-preview-dup]')) {
+      if (!tplNameBox) return;
+      tplNameBox.mode = t.closest('[data-tpl-preview-dup]') ? 'dup' : 'edit';
+      tplSaveNameBox();
       return;
     }
 
