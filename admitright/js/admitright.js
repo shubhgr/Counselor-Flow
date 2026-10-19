@@ -261,7 +261,8 @@
     { id: 'test', label: 'Test score', icon: 'quiz' },
     { id: 'stream', label: 'Subjects', icon: 'science', binary: true },
     { id: 'board', label: 'Class 12 board', icon: 'account_balance', binary: true },
-    { id: 'location', label: 'Location', icon: 'location_on', binary: true },
+    { id: 'location', label: 'Location of student', icon: 'location_on', binary: true },
+    { id: 'preferred', label: 'Preferred location', icon: 'explore', binary: true },
     { id: 'budget', label: 'Fee budget', icon: 'payments' },
     { id: 'activities', label: 'Extracurricular', icon: 'sports_soccer', binary: true },
   ];
@@ -469,6 +470,8 @@
     var extras = STREAM_EXTRAS[s.stream] || [];
     var seed = String(s.id).split('').reduce(function (n, ch) { return n + ch.charCodeAt(0); }, 0);
     s.subjects = (STREAM_SUBJECTS[s.stream] || []).concat(extras.length ? [extras[seed % extras.length]] : []);
+    var prefCities = CITIES.map(function (c) { return c[0]; });
+    s.preferredCity = prefCities[hashOf(String(s.id) + ':prefplace') % prefCities.length];
     var eh = hashOf(s.id + ':engage');
     var cr = eh % 100;
     var er = (eh >>> 8) % 100;
@@ -516,6 +519,7 @@
       stream: { subjects: (STREAM_SUBJECTS[program.stream] || []).slice(), weight: tech ? 30 : 1 },
       board: { values: boardOffers().slice(), weight: 10 },
       location: { mode: 'state', places: [], weight: 20 },
+      preferred: { mode: 'state', places: [], weight: 0, saved: 10 },
       budget: { min: Math.max(5, program.fee - 6), weight: 20 },
       activities: { values: tech ? ['Coding', 'Robotics'] : ['Debate', 'Art', 'MUN'], weight: 10 },
     };
@@ -543,6 +547,7 @@
     }
     if (c.budget) delete c.budget.max;
     if (c.board) c.board.values = normalizeBoardValues(c.board.values);
+    if (!c.preferred) c.preferred = { mode: 'state', places: [], weight: 0, saved: 10 };
     return c;
   }
 
@@ -703,11 +708,15 @@
   function criterionScore(id, s, p) {
     switch (id) {
       case 'location': {
+        var okLoc = cityMatch(s.city, p) ? 1 : 0;
         var st = CITY_STATE[s.city] || '';
-        var okLoc = p.mode === 'city' ? s.city === CAMPUS.city
-          : p.mode === 'state' ? st === CAMPUS.state
-          : (p.places || []).some(function (x) { return x === s.city || x === st; });
-        return { v: okLoc ? 1 : 0, raw: -s.km, note: s.city + (st && st !== s.city ? ', ' + st : '') };
+        return { v: okLoc, raw: -s.km, note: s.city + (st && st !== s.city ? ', ' + st : '') };
+      }
+      case 'preferred': {
+        var prefCity = s.preferredCity || s.city;
+        var okPref = cityMatch(prefCity, p) ? 1 : 0;
+        var prefSt = CITY_STATE[prefCity] || '';
+        return { v: okPref, raw: okPref, note: prefCity + (prefSt && prefSt !== prefCity ? ', ' + prefSt : '') };
       }
       case 'test': {
         var best = null;
@@ -1058,11 +1067,16 @@
     if (typeof v.intake === 'string') state.intake = v.intake;
   })();
 
+  function cityMatch(city, p) {
+    var st = CITY_STATE[city] || '';
+    if (!p || !p.mode) return true;
+    if (p.mode === 'city') return city === CAMPUS.city;
+    if (p.mode === 'state') return st === CAMPUS.state;
+    return (p.places || []).some(function (x) { return x === city || x === st; });
+  }
+
   function studentInLocation(s, v) {
-    var st = CITY_STATE[s.city] || '';
-    if (v.mode === 'city') return s.city === CAMPUS.city;
-    if (v.mode === 'state') return st === CAMPUS.state;
-    return (v.places || []).some(function (x) { return x === s.city || x === st; });
+    return cityMatch(s.city, v);
   }
 
   function within(x, v) {
@@ -1092,6 +1106,8 @@
         if (v.min !== undefined && v.min !== '' && s.budget[1] < Number(v.min)) return false;
       } else if (id === 'location') {
         if (!studentInLocation(s, v)) return false;
+      } else if (id === 'preferred') {
+        if (!cityMatch(s.preferredCity || s.city, v)) return false;
       } else if (ENGAGE_FILTERS[id]) {
         if (s.engage[id] < ENGAGE_FILTERS[id].steps.indexOf(v.val) + 1) return false;
       } else if (RANGE_FILTERS[id]) {
@@ -1146,6 +1162,14 @@
 
   function scoreHtml(s) {
     return s.score === null ? '—' : s.score + '<small>%</small>';
+  }
+
+  function engageScore(s) {
+    if (!s.engage) return null;
+    var camp = Math.min(4, s.engage.campaign || 0) / 4;
+    var ev = Math.min(3, s.engage.event || 0) / 3;
+    var act = ACTIONS.length ? actionsDone(s).length / ACTIONS.length : 0;
+    return Math.round(camp * 50 + ev * 30 + act * 20);
   }
 
   /* ——— Score changes after a preference edit ——— */
@@ -1244,8 +1268,18 @@
   }
 
   function cardScoreBox(s) {
-    return '<div class="ar-card-scorebox"><div class="ar-score-wrap">' + scoreDeltaHtml(s) +
-      '<div class="ar-score ' + scoreClass(s) + '">' + scoreHtml(s) + '</div></div></div>';
+    var eng = engageScore(s);
+    var match = s.score;
+    var matchColor = ['var(--success)', 'var(--yellow-600)', 'var(--danger)', 'var(--muted)'][s.bucket];
+    function meter(label, n, cls, color) {
+      if (n === null || n === undefined) return '';
+      return '<div class="ar-meter"><span>' + label + '</span><b class="' + cls + '">' + n + '%</b><i style="--p:' + n + '%;--c:' + color + '"></i></div>';
+    }
+    return '<div class="ar-card-scorebox">' + scoreDeltaHtml(s) +
+      '<div class="ar-card-meters">' +
+      meter('Match', match, scoreClass(s), matchColor) +
+      meter('Engage', eng, 'ar-engage', 'var(--brand)') +
+      '</div></div>';
   }
 
   function editedHtml(prefId) {
@@ -1305,6 +1339,7 @@
   function criterionLine(id, p) {
     switch (id) {
       case 'location':
+      case 'preferred':
         if (p.mode === 'city') return 'In ' + CAMPUS.city;
         if (p.mode === 'state') return 'In ' + CAMPUS.state;
         return p.places.slice(0, 2).join(', ') + (p.places.length > 2 ? ' +' + (p.places.length - 2) : '') || 'No places';
@@ -1833,10 +1868,10 @@
       '<div class="ar-card" role="button" tabindex="0" data-student="' + s.id + '">' +
       '<div class="ar-card-top"><div class="avatar">' + esc(s.initials) + '</div>' +
       '<div class="ar-card-who"><strong>' + esc(s.name) + '</strong><small>' + esc(s.id) + '</small></div>' +
-      (all ? '' : cardScoreBox(s)) +
       cardChatHtml(s.id) + cardSaveHtml(s.id) + cardMoreHtml(s.id) + '</div>' +
       '<div class="ar-attrs">' + (all ? facts : attrChips(s)) + '</div>' +
       '<div class="ar-card-meta"><span>' + esc(programById(s.program).name) + '</span>' + stagePill(s) + '</div>' +
+      (all ? '' : cardScoreBox(s)) +
       '</div>'
     );
   }
@@ -1844,7 +1879,7 @@
   function cardChatHtml(id) {
     var on = !!(CHATS[id] && CHATS[id].messages.length);
     return '<button type="button" class="ar-card-save ar-card-chat' + (on ? ' on' : '') + '" data-card-chat="' + id + '" aria-label="Chat" data-tip="Chat">' +
-      ico('chat') + '</button>';
+      ico('forum') + '</button>';
   }
 
   function cardSaveHtml(id) {
@@ -1861,9 +1896,9 @@
 
   function bucketDefs() {
     return [
-      { name: 'Matches preference', range: MATCH_MIN + '–100%', color: 'var(--green-500)' },
-      { name: 'Close', range: CLOSE_MIN + '–' + (MATCH_MIN - 1) + '%', color: 'var(--yellow-500)' },
-      { name: 'Below', range: 'Under ' + CLOSE_MIN + '%', color: 'var(--red-500)' },
+      { name: 'Gold', range: MATCH_MIN + '–100%', color: '#C8962E' },
+      { name: 'Silver', range: CLOSE_MIN + '–' + (MATCH_MIN - 1) + '%', color: '#8E97A8' },
+      { name: 'Bronze', range: 'Under ' + CLOSE_MIN + '%', color: '#A86B3C' },
     ];
   }
 
@@ -2044,17 +2079,17 @@
     var pref = state.program === 'all' ? null : findPref(state.program, state.prefId);
     if (!pref) {
       $('table').innerHTML = '<div class="panel ar-table-wrap">' + (list.length
-        ? '<table class="ar-table ar-table-fit"><thead><tr>' + checkHead('all') + '<th class="ar-th-student">Student</th><th>Stage</th><th>Stream</th><th>Class 12</th><th>Test</th><th>Budget</th><th>Location</th><th>Intake</th><th class="ar-th-save"></th></tr></thead><tbody>' +
+        ? '<table class="ar-table ar-table-fit"><thead><tr>' + checkHead('all') + '<th class="ar-th-student">Student</th><th>Stage</th><th>Stream</th><th>Class 12</th><th>Test</th><th>Budget</th><th>Location of student</th><th>Preferred location</th><th>Intake</th><th class="ar-th-save"></th></tr></thead><tbody>' +
           list.slice(0, TABLE_LIMIT).map(function (s) {
             return rowOpen(s) + studentCell(s) + '<td>' + stagePill(s) + '</td><td>' + esc(s.stream) + '</td>' +
               '<td>' + esc(markNote(s.mark12)) + '</td><td>' + esc(headlineTest(s)) + '</td><td>₹' + s.budget[0] + '–' + s.budget[1] + 'L</td>' +
-              '<td>' + esc(s.city) + ' · ' + s.km + ' km</td><td>' + esc(s.intake) + '</td>' + saveCell(s) + '</tr>';
+              '<td>' + esc(s.city) + ' · ' + s.km + ' km</td><td>' + esc(s.preferredCity || '') + '</td><td>' + esc(s.intake) + '</td>' + saveCell(s) + '</tr>';
           }).join('') + '</tbody></table>' + tableMore(list.length)
         : '<div class="ar-col-empty">No students match these filters.</div>') + '</div>';
       return;
     }
     var crits = CRITERIA.filter(function (c) { return c.id !== 'board' && pref.criteria[c.id].weight > 0; });
-    var headCols = '<th class="ar-th-student">Student</th><th class="ar-th-match">Match</th>' + crits.map(function (c) {
+    var headCols = '<th class="ar-th-student">Student</th><th class="ar-th-match">Match</th><th>Engage</th>' + crits.map(function (c) {
       return '<th title="Percentile among ' + esc(programById(state.program).name) + ' applicants on ' + esc(c.label.toLowerCase()) + '">' +
         esc(c.id === 'activities' ? 'Activities' : c.label) + ' <i class="ar-th-weight">' + pref.criteria[c.id].weight + '</i></th>';
     }).join('') + '<th class="ar-th-save"></th></tr>';
@@ -2065,6 +2100,7 @@
       return items.slice(0, TABLE_LIMIT).map(function (s) {
         return rowOpen(s) + studentCell(s) +
           '<td><div class="ar-score-wrap"><span class="ar-score ' + scoreClass(s) + '">' + scoreHtml(s) + '</span>' + scoreDeltaHtml(s) + '</div></td>' +
+          '<td><b class="ar-cell-score ar-engage">' + (engageScore(s) === null ? '—' : engageScore(s) + '<small>%</small>') + '</b></td>' +
           crits.map(function (c) {
             var part = s.parts.filter(function (p) { return p.id === c.id; })[0];
             if (c.binary) {
@@ -2158,10 +2194,11 @@
         return name + ' ≤ ' + r.max + suffix;
       }).filter(Boolean).join(', ');
     }
-    if (id === 'location') {
-      if (v.mode === 'city') return 'Location: in ' + CAMPUS.city;
-      if (v.mode === 'state') return 'Location: in ' + CAMPUS.state;
-      return 'Location: ' + ((v.places || []).join(', ') || 'Custom');
+    if (id === 'location' || id === 'preferred') {
+      var placeLabel = id === 'preferred' ? 'Preferred location' : 'Location of student';
+      if (v.mode === 'city') return placeLabel + ': in ' + CAMPUS.city;
+      if (v.mode === 'state') return placeLabel + ': in ' + CAMPUS.state;
+      return placeLabel + ': ' + ((v.places || []).join(', ') || 'Custom');
     }
     if (PICK_FILTERS[id]) {
       var names = (v.vals && v.vals.length ? v.vals : [v.val]).map(function (x) {
@@ -2211,7 +2248,7 @@
     return Object.keys(seen).sort();
   }
 
-  var FILTER_ORDER = ['academic', 'test', 'stream', 'board', 'location', 'budget', 'activities'];
+  var FILTER_ORDER = ['academic', 'test', 'stream', 'board', 'location', 'preferred', 'budget', 'activities'];
 
   function filterChipSelect(id, all, selected, labels, placeholder) {
     function label(item) { return (labels && labels[item]) || item; }
@@ -2245,28 +2282,37 @@
     return filterChipSelect(id, known.concat(extra), selected, null, id === 'stream' ? 'Add a subject' : 'Add an activity');
   }
 
-  function filterLocationHtml(v) {
+  function filterLocationHtml(v, id) {
+    id = id || 'location';
+    var pref = id === 'preferred';
     var mode = v.mode || '';
     var places = v.places || [];
     var modes = [['', 'Any'], ['city', 'In ' + CAMPUS.city], ['state', 'In ' + CAMPUS.state], ['custom', 'Custom']];
-    var html = '<div class="ar-loc-modes" role="radiogroup" aria-label="Location">' + modes.map(function (m) {
-      return '<label><input type="radio" name="ff-loc-mode" value="' + m[0] + '"' + (mode === m[0] ? ' checked' : '') + ' />' + esc(m[1]) + '</label>';
+    var modeName = pref ? 'ff-pref-mode' : 'ff-loc-mode';
+    var qId = pref ? 'ff-pref-q' : 'ff-place-q';
+    var listId = pref ? 'ff-pref-list' : 'ff-place-list';
+    var addAttr = pref ? 'data-ff-add-pref' : 'data-ff-add-place';
+    var removeAttr = pref ? 'data-ff-remove-pref' : 'data-ff-remove-place';
+    var html = '<div class="ar-loc-modes" role="radiogroup" aria-label="' + (pref ? 'Preferred location' : 'Location of student') + '">' + modes.map(function (m) {
+      return '<label><input type="radio" name="' + modeName + '" value="' + m[0] + '"' + (mode === m[0] ? ' checked' : '') + ' />' + esc(m[1]) + '</label>';
     }).join('') + '</div>';
     if (mode !== 'custom') return html;
-    return html + '<div class="ar-place" id="ff-place">' +
+    return html + '<div class="ar-place" id="' + (pref ? 'ff-pref' : 'ff-place') + '">' +
       (places.length ? '<div class="ar-place-chips">' + places.map(function (p) {
-        return '<span class="ar-place-chip">' + esc(p) + '<button type="button" data-ff-remove-place="' + esc(p) + '" aria-label="Remove ' + esc(p) + '">' + ico('close') + '</button></span>';
+        return '<span class="ar-place-chip">' + esc(p) + '<button type="button" ' + removeAttr + '="' + esc(p) + '" aria-label="Remove ' + esc(p) + '">' + ico('close') + '</button></span>';
       }).join('') + '</div>' : '') +
       '<label class="ar-place-search">' + ico('search') +
-      '<input type="text" id="ff-place-q" placeholder="Search a city or state" autocomplete="off" /></label>' +
-      '<div class="ar-place-list" id="ff-place-list" hidden></div></div>';
+      '<input type="text" id="' + qId + '" placeholder="Search a city or state" autocomplete="off" /></label>' +
+      '<div class="ar-place-list" id="' + listId + '" hidden></div></div>';
   }
 
-  function openFilterPlaces() {
-    var list = $('ff-place-list');
-    if (!list) return;
-    var places = (state.filters.vals.location && state.filters.vals.location.places) || [];
-    list.innerHTML = placeListHtml($('ff-place-q').value, places, 'data-ff-add-place');
+  function openFilterPlaces(id) {
+    var pref = id === 'preferred';
+    var list = $(pref ? 'ff-pref-list' : 'ff-place-list');
+    var box = $(pref ? 'ff-pref-q' : 'ff-place-q');
+    if (!list || !box) return;
+    var places = (state.filters.vals[pref ? 'preferred' : 'location'] && state.filters.vals[pref ? 'preferred' : 'location'].places) || [];
+    list.innerHTML = placeListHtml(box.value, places, pref ? 'data-ff-add-pref' : 'data-ff-add-place');
     list.hidden = false;
   }
 
@@ -2319,7 +2365,7 @@
           '<label class="ar-fin"><span>₹</span><input type="number" placeholder="Minimum" data-fnum="budget:min" value="' +
           (v.min === undefined ? '' : v.min) + '" aria-label="Minimum fee budget"><span>L</span></label>');
       }
-      if (id === 'location') return row(label(name), filterLocationHtml(v));
+      if (id === 'location' || id === 'preferred') return row(label(name), filterLocationHtml(v, id));
       if (PICK_FILTERS[id]) return row(label(name), filterMultiHtml(id, v));
       if (RANGE_FILTERS[id]) {
         var u = RANGE_FILTERS[id].unit;
@@ -2353,7 +2399,11 @@
     $('filter-menu').innerHTML = head +
       '<div class="ar-fmenu-body gr-scroll">' +
       row(label('Match score'), rangeInputs(scoreAttr, f, '%')) +
-      FILTER_ORDER.filter(function (id) { return pref.criteria[id].weight > 0; }).map(field).join('') +
+      FILTER_ORDER.filter(function (id) {
+        var critRow = pref.criteria[id];
+        if (!critRow) return false;
+        return id === 'preferred' || critRow.weight > 0;
+      }).map(field).join('') +
       Object.keys(ENGAGE_FILTERS).map(function (id) {
         var cur = (f.vals[id] || {}).val || '';
         return row(label(ENGAGE_FILTERS[id].label, 'Each step includes students who went further'),
@@ -3594,7 +3644,8 @@
       '<h3>' + esc(s.name) + '</h3><p>' + esc(s.id + ' · ' + program.name) + '</p>' + stagePill(s) + '</div>' +
       (pref
         ? '<div class="ar-cp-score"><div class="ar-ring" style="--p:' + (score || 0) + ';--c:' + color + '"><span>' + score + '%</span></div>' +
-          '<div class="ar-cp-score-text"><span>Match score</span><strong>' + esc(pref.name) + '</strong></div></div>'
+          '<div class="ar-cp-score-text"><span>Match score</span><strong>' + esc(pref.name) + '</strong></div>' +
+          '<div class="ar-cp-score-text"><span>Engagement</span><strong>' + (engageScore(s) === null ? '—' : engageScore(s) + '%') + '</strong></div></div>'
         : '') +
       '<div class="ar-cp-sec ar-cp-ai"><h4><span>' + ico('auto_awesome') + 'AI summary</span></h4><p>' + aiSummary(s) + '</p></div>' +
       '<div class="ar-cp-sec ar-cp-match"><h4>Preference match' + (pref ? ' <small>' + esc(pref.name) + '</small>' : '') + '</h4>' +
@@ -3629,11 +3680,6 @@
     var draft = oldInput && oldInput.getAttribute('data-chat') === id ? oldInput.value : '';
     var first = s.name.split(' ')[0];
     var programName = programById(s.program).name;
-    var quick = [
-      'Hi ' + first + ', thanks for your interest in ' + programName + ' at ' + UNIVERSITY + '!',
-      'Would you like to schedule a call with our admissions team?',
-      'Have you had a chance to start your application?',
-    ];
     var msgs = thread.messages.length ? thread.messages.map(function (m) {
       var ch = m.campaign ? channelById(m.campaign) : null;
       return '<div class="ar-msg ' + (m.from === 'uni' ? 'out' : 'in') + (ch ? ' campaign' : '') + '">' +
@@ -3650,9 +3696,6 @@
       '</div>' +
       '<div class="ar-chat-msgs gr-scroll" id="chat-msgs">' + msgs +
       (thread.typing ? '<div class="ar-msg in typing"><p><i></i><i></i><i></i></p></div>' : '') + '</div>' +
-      (thread.messages.length ? '' : '<div class="ar-chat-quick">' + quick.map(function (q) {
-        return '<button type="button" class="ar-chat-chip" data-chat-quick="' + esc(q) + '">' + esc(q) + '</button>';
-      }).join('') + '</div>') +
       '<form class="ar-chat-compose" id="chat-form">' +
       chatFileChips(id) +
       '<button type="button" class="ar-icon-btn ar-chat-attach" data-chat-attach aria-label="Add media">' + ico('attach_file') + '</button>' +
@@ -3849,7 +3892,9 @@
 
   function profileFactsHtml(s) {
     return factsHtml([
-      ['Location', s.city + ' · ' + s.km + ' km'], ['Stream', s.stream],
+      ['Location of student', s.city + ' · ' + s.km + ' km'],
+      ['Preferred location', s.preferredCity || '—'],
+      ['Stream', s.stream],
       ['Class 10', markNote(s.mark10)], ['Class 12', markNote(s.mark12)],
       ['Fee budget', '₹' + s.budget[0] + '–' + s.budget[1] + 'L'], ['Program (AOI)', programById(s.program).name],
       ['Intake', s.intake], ['GR ID', s.id],
@@ -3884,7 +3929,10 @@
       '<div class="ar-hero"><div class="avatar lg">' + esc(s.initials) + '</div>' +
       '<div class="ar-hero-who"><h3>' + esc(s.name) + '</h3><p>' + esc(s.id) + ' · ' + esc(program.name) + '</p>' +
       '<p style="margin-top:var(--space-1-5)">' + stagePill(s) + '</p></div>' +
-      '<div class="ar-ring" style="--p:' + (s.score || 0) + ';--c:' + scoreColor(s) + '"><span>' + (s.score === null ? '—' : s.score + '%') + '</span></div></div>' +
+      '<button type="button" class="ar-icon-btn ar-hero-chat" data-card-chat="' + s.id + '" aria-label="Chat">' + ico('forum') + '</button>' +
+      '<div class="ar-hero-scores">' +
+      '<div><div class="ar-ring" style="--p:' + (s.score || 0) + ';--c:' + scoreColor(s) + '"><span>' + (s.score === null ? '—' : s.score + '%') + '</span></div><small>Match</small></div>' +
+      '<div><div class="ar-ring" style="--p:' + (engageScore(s) || 0) + ';--c:var(--brand)"><span>' + (engageScore(s) === null ? '—' : engageScore(s) + '%') + '</span></div><small>Engage</small></div></div></div>' +
       profileSection('ai', ico('auto_awesome') + 'AI summary', aiSummary(s), 'ar-ai') +
       profileSection('match', 'Preference match', matchHtml(s, s.pref, { score: s.score, parts: s.parts })) +
       profileSection('profile', 'Profile', profileFactsHtml(s) +
@@ -3899,7 +3947,7 @@
       'Student profile',
       body,
       saveBtnHtml(s.id) +
-      '<button type="button" class="btn btn-primary btn-sm btn-icon" data-card-chat="' + s.id + '">' + ico('chat') + 'Chat</button>'
+      '<button type="button" class="btn btn-primary btn-sm btn-icon" data-card-chat="' + s.id + '">' + ico('forum') + 'Chat</button>'
     );
   }
 
@@ -3998,27 +4046,38 @@
     }).join('');
   }
 
-  function locationEditor(c) {
-    var loc = c.location;
+  function locationEditor(c, kind) {
+    kind = kind || 'location';
+    var loc = c[kind] || { mode: 'state', places: [] };
+    var pref = kind === 'preferred';
+    var modeName = pref ? 'pe-pref-mode' : 'pe-loc-mode';
+    var qId = pref ? 'pe-pref-q' : 'pe-place-q';
+    var listId = pref ? 'pe-pref-list' : 'pe-place-list';
+    var boxId = pref ? 'pe-pref' : 'pe-place';
+    var addAttr = pref ? 'data-add-pref' : 'data-add-place';
+    var removeAttr = pref ? 'data-remove-pref' : 'data-remove-place';
     var modes = [['city', 'In ' + CAMPUS.city], ['state', 'In ' + CAMPUS.state], ['custom', 'Custom']];
-    var html = '<div class="ar-loc-modes" role="radiogroup" aria-label="Location">' + modes.map(function (m) {
-      return '<label><input type="radio" name="pe-loc-mode" value="' + m[0] + '"' + (loc.mode === m[0] ? ' checked' : '') + ' />' + m[1] + '</label>';
+    var html = '<div class="ar-loc-modes" role="radiogroup" aria-label="' + (pref ? 'Preferred location' : 'Location of student') + '">' + modes.map(function (m) {
+      return '<label><input type="radio" name="' + modeName + '" value="' + m[0] + '"' + (loc.mode === m[0] ? ' checked' : '') + ' />' + m[1] + '</label>';
     }).join('') + '</div>';
     if (loc.mode !== 'custom') return html;
     return html +
-      '<div class="ar-place" id="pe-place">' +
+      '<div class="ar-place" id="' + boxId + '">' +
       (loc.places.length ? '<div class="ar-place-chips">' + loc.places.map(function (p) {
-        return '<span class="ar-place-chip">' + esc(p) + '<button type="button" data-remove-place="' + esc(p) + '" aria-label="Remove ' + esc(p) + '">' + ico('close') + '</button></span>';
+        return '<span class="ar-place-chip">' + esc(p) + '<button type="button" ' + removeAttr + '="' + esc(p) + '" aria-label="Remove ' + esc(p) + '">' + ico('close') + '</button></span>';
       }).join('') + '</div>' : '') +
       '<label class="ar-place-search">' + ico('search') +
-      '<input type="text" id="pe-place-q" placeholder="Search a city or state" autocomplete="off" /></label>' +
-      '<div class="ar-place-list" id="pe-place-list" hidden></div></div>';
+      '<input type="text" id="' + qId + '" placeholder="Search a city or state" autocomplete="off" /></label>' +
+      '<div class="ar-place-list" id="' + listId + '" hidden></div></div>';
   }
 
-  function openPlaceList() {
-    var list = $('pe-place-list');
-    if (!list) return;
-    list.innerHTML = placeListHtml($('pe-place-q').value, editing.draft.criteria.location.places);
+  function openPlaceList(kind) {
+    var pref = kind === 'preferred';
+    var list = $(pref ? 'pe-pref-list' : 'pe-place-list');
+    var box = $(pref ? 'pe-pref-q' : 'pe-place-q');
+    if (!list || !box || !editing) return;
+    var taken = (editing.draft.criteria[pref ? 'preferred' : 'location'].places) || [];
+    list.innerHTML = placeListHtml(box.value, taken, pref ? 'data-add-pref' : 'data-add-place');
     list.hidden = false;
   }
 
@@ -4180,7 +4239,8 @@
         row('stream', 'Subjects (Class 11–12)', subjectEditor(c), 'Students must have studied every ticked subject. Leave all unticked to accept any.') +
         row('board', 'Accepted Class 12 boards', boardEditor(c))) +
       group('Location & budget',
-        row('location', 'Location', locationEditor(c), c.location.mode === 'custom' ? 'Students from any picked city or state count as a match.' : '') +
+        row('location', 'Location of student', locationEditor(c, 'location'), c.location.mode === 'custom' ? 'Students who live in any picked city or state count as a match.' : 'Where the student lives now.') +
+        row('preferred', 'Preferred location', locationEditor(c, 'preferred'), (c.preferred && c.preferred.mode === 'custom') ? 'Students who want to study in any picked city or state count as a match.' : 'Where the student wants to study.') +
         row('budget', 'Minimum fee budget',
           '<label class="ar-unit"><b>₹</b><input type="number" min="0" id="pe-bmin" value="' + c.budget.min + '" aria-label="Minimum budget" /><span>lakh or more</span></label>',
           'Program fee is ₹' + program.fee + 'L. Students who can spend at least this much count as a match.')) +
@@ -4207,6 +4267,8 @@
       }).filter(function (v) { return v; });
     }
     var locMode = body.querySelector('input[name="pe-loc-mode"]:checked');
+    var prefMode = body.querySelector('input[name="pe-pref-mode"]:checked');
+    var prefLoc = d.criteria.preferred || { mode: 'state', places: [] };
     d.name = $('pe-name').value.trim();
     d.criteria = {
       academic: { min: num('pe-academic', d.criteria.academic.min), weight: weight('academic') },
@@ -4228,6 +4290,11 @@
         mode: locMode ? locMode.value : d.criteria.location.mode,
         places: d.criteria.location.places.slice(),
         weight: weight('location'),
+      },
+      preferred: {
+        mode: prefMode ? prefMode.value : prefLoc.mode,
+        places: (prefLoc.places || []).slice(),
+        weight: weight('preferred'),
       },
       budget: { min: num('pe-bmin', d.criteria.budget.min), weight: weight('budget') },
       activities: { values: checked('pe-activity'), weight: weight('activities') },
@@ -7307,21 +7374,25 @@
       return;
     }
 
-    var ffAdd = t.closest('[data-ff-add-place]');
-    var ffRemove = t.closest('[data-ff-remove-place]');
+    var ffAdd = t.closest('[data-ff-add-place], [data-ff-add-pref]');
+    var ffRemove = t.closest('[data-ff-remove-place], [data-ff-remove-pref]');
     if (ffAdd || ffRemove) {
-      var loc = state.filters.vals.location || { mode: 'custom', places: [] };
+      var ffLoc = (ffAdd && ffAdd.hasAttribute('data-ff-add-pref')) || (ffRemove && ffRemove.hasAttribute('data-ff-remove-pref')) ? 'preferred' : 'location';
+      var loc = state.filters.vals[ffLoc] || { mode: 'custom', places: [] };
       var nextPlaces = (loc.places || []).slice();
       if (ffAdd) {
-        var placeName = ffAdd.getAttribute('data-ff-add-place');
+        var placeName = ffAdd.getAttribute(ffLoc === 'preferred' ? 'data-ff-add-pref' : 'data-ff-add-place');
         if (nextPlaces.indexOf(placeName) === -1) nextPlaces.push(placeName);
       } else {
-        nextPlaces = nextPlaces.filter(function (p) { return p !== ffRemove.getAttribute('data-ff-remove-place'); });
+        nextPlaces = nextPlaces.filter(function (p) { return p !== ffRemove.getAttribute(ffLoc === 'preferred' ? 'data-ff-remove-pref' : 'data-ff-remove-place'); });
       }
-      state.filters.vals.location = { mode: 'custom', places: nextPlaces };
+      state.filters.vals[ffLoc] = { mode: 'custom', places: nextPlaces };
       refreshFilterMenu();
       renderStudents();
-      if (ffAdd && $('ff-place-q')) { $('ff-place-q').focus(); openFilterPlaces(); }
+      if (ffAdd) {
+        var ffBox = $(ffLoc === 'preferred' ? 'ff-pref-q' : 'ff-place-q');
+        if (ffBox) { ffBox.focus(); openFilterPlaces(ffLoc); }
+      }
       return;
     }
 
@@ -7923,13 +7994,6 @@
       return;
     }
 
-    var chatQuick = t.closest('[data-chat-quick]');
-    if (chatQuick) {
-      $('chat-input').value = chatQuick.getAttribute('data-chat-quick');
-      $('chat-input').focus();
-      return;
-    }
-
     var cardSave = t.closest('[data-card-save]');
     if (cardSave) {
       var savedNow = toggleSaved(cardSave.getAttribute('data-card-save'));
@@ -8019,13 +8083,25 @@
       }
       var addPlace = t.closest('[data-add-place]');
       var removePlace = t.closest('[data-remove-place]');
-      if (addPlace || removePlace) {
+      var addPref = t.closest('[data-add-pref]');
+      var removePref = t.closest('[data-remove-pref]');
+      if (addPlace || removePlace || addPref || removePref) {
         readEditor();
-        var places = editing.draft.criteria.location.places;
-        if (addPlace) places.push(addPlace.getAttribute('data-add-place'));
-        else places.splice(places.indexOf(removePlace.getAttribute('data-remove-place')), 1);
+        var placeKey = (addPref || removePref) ? 'preferred' : 'location';
+        var places = editing.draft.criteria[placeKey].places;
+        var placeAdded = addPref || addPlace;
+        var placeRemoved = removePref || removePlace;
+        if (placeAdded) places.push(placeAdded.getAttribute(placeKey === 'preferred' ? 'data-add-pref' : 'data-add-place'));
+        else {
+          var placeAt = places.indexOf(placeRemoved.getAttribute(placeKey === 'preferred' ? 'data-remove-pref' : 'data-remove-place'));
+          if (placeAt !== -1) places.splice(placeAt, 1);
+        }
         rerenderEditor();
-        if (addPlace) { $('pe-place-q').focus(); openPlaceList(); }
+        if (placeAdded) {
+          var placeInput = $(placeKey === 'preferred' ? 'pe-pref-q' : 'pe-place-q');
+          if (placeInput) placeInput.focus();
+          openPlaceList(placeKey);
+        }
         return;
       }
       var pickRemove = t.closest('[data-pick-remove]');
@@ -8038,6 +8114,7 @@
         return;
       }
       if ($('pe-place-list') && !t.closest('#pe-place')) $('pe-place-list').hidden = true;
+      if ($('pe-pref-list') && !t.closest('#pe-pref')) $('pe-pref-list').hidden = true;
     }
 
     var action = t.closest('[data-action]');
@@ -8463,10 +8540,11 @@
       updatePreview();
       return;
     }
-    if (e.target.name === 'pe-loc-mode' || e.target.hasAttribute('data-test-mode')) {
+    if (e.target.name === 'pe-loc-mode' || e.target.name === 'pe-pref-mode' || e.target.hasAttribute('data-test-mode')) {
       readEditor();
       rerenderEditor();
       if (e.target.name === 'pe-loc-mode' && $('pe-place-q')) $('pe-place-q').focus();
+      if (e.target.name === 'pe-pref-mode' && $('pe-pref-q')) $('pe-pref-q').focus();
       return;
     }
     var pickAdd = e.target.getAttribute && e.target.getAttribute('data-pick-add');
@@ -8497,24 +8575,30 @@
   }, true);
 
   $('drawer-body').addEventListener('focusin', function (e) {
-    if (editing && e.target.id === 'pe-place-q') openPlaceList();
+    if (!editing) return;
+    if (e.target.id === 'pe-place-q') openPlaceList('location');
+    if (e.target.id === 'pe-pref-q') openPlaceList('preferred');
   });
 
   $('drawer-body').addEventListener('input', function (e) {
-    if (editing && e.target.id === 'pe-place-q') openPlaceList();
+    if (!editing) return;
+    if (e.target.id === 'pe-place-q') openPlaceList('location');
+    if (e.target.id === 'pe-pref-q') openPlaceList('preferred');
   });
 
   $('drawer-body').addEventListener('keydown', function (e) {
-    if (editing && e.target.id === 'pe-place-q' && e.key === 'Escape') {
+    if (editing && (e.target.id === 'pe-place-q' || e.target.id === 'pe-pref-q') && e.key === 'Escape') {
       e.stopPropagation();
-      $('pe-place-list').hidden = true;
+      var placeList = $(e.target.id === 'pe-pref-q' ? 'pe-pref-list' : 'pe-place-list');
+      if (placeList) placeList.hidden = true;
       return;
     }
     if (!editing || e.key !== 'Enter') return;
-    if (e.target.id === 'pe-place-q') {
+    if (e.target.id === 'pe-place-q' || e.target.id === 'pe-pref-q') {
       e.preventDefault();
-      var first = $('pe-place-list').querySelector('[data-add-place]');
-      if (first) first.click();
+      var placeFirst = $(e.target.id === 'pe-pref-q' ? 'pe-pref-list' : 'pe-place-list');
+      var placeHit = placeFirst && placeFirst.querySelector(e.target.id === 'pe-pref-q' ? '[data-add-pref]' : '[data-add-place]');
+      if (placeHit) placeHit.click();
       return;
     }
     if (e.target.id === 'pe-subject-new') {
@@ -8556,7 +8640,8 @@
   });
 
   $('filter-menu').addEventListener('input', function (e) {
-    if (e.target.id === 'ff-place-q') { openFilterPlaces(); return; }
+    if (e.target.id === 'ff-place-q') { openFilterPlaces('location'); return; }
+    if (e.target.id === 'ff-pref-q') { openFilterPlaces('preferred'); return; }
     var v = e.target.value.trim();
     var key = e.target.getAttribute('data-fscore');
     if (key) {
@@ -8590,9 +8675,11 @@
   });
 
   $('filter-menu').addEventListener('keydown', function (e) {
-    if (e.target.id === 'ff-place-q' && e.key === 'Enter') {
+    if ((e.target.id === 'ff-place-q' || e.target.id === 'ff-pref-q') && e.key === 'Enter') {
       e.preventDefault();
-      var firstPlace = $('ff-place-list') && $('ff-place-list').querySelector('[data-ff-add-place]');
+      var placeListId = e.target.id === 'ff-pref-q' ? 'ff-pref-list' : 'ff-place-list';
+      var placeAttr = e.target.id === 'ff-pref-q' ? '[data-ff-add-pref]' : '[data-ff-add-place]';
+      var firstPlace = $(placeListId) && $(placeListId).querySelector(placeAttr);
       if (firstPlace) firstPlace.click();
       return;
     }
@@ -8628,11 +8715,12 @@
       renderStudents();
       return;
     }
-    if (e.target.name === 'ff-loc-mode') {
-      if (!e.target.value) delete state.filters.vals.location;
+    if (e.target.name === 'ff-loc-mode' || e.target.name === 'ff-pref-mode') {
+      var ffKey = e.target.name === 'ff-pref-mode' ? 'preferred' : 'location';
+      if (!e.target.value) delete state.filters.vals[ffKey];
       else {
-        var prevLoc = state.filters.vals.location || {};
-        state.filters.vals.location = { mode: e.target.value, places: prevLoc.places || [] };
+        var prevLoc = state.filters.vals[ffKey] || {};
+        state.filters.vals[ffKey] = { mode: e.target.value, places: prevLoc.places || [] };
       }
       refreshFilterMenu();
       renderStudents();

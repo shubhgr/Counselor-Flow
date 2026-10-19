@@ -1385,11 +1385,65 @@
 }
 
 .ar-card-scorebox {
-  margin-left: auto;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-0-5);
+  margin-top: var(--space-1);
+}
+
+.ar-card-meters {
+  display: flex;
+  gap: var(--space-1-5);
+  width: 100%;
+}
+
+.ar-meter {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  flex: 1;
+  gap: 1px var(--space-2);
+  padding: var(--space-1-5) var(--space-2) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.ar-meter span {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ar-meter b {
+  justify-self: end;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-heavy);
+  font-variant-numeric: tabular-nums;
+}
+
+.ar-meter b.hi { color: var(--success); }
+.ar-meter b.mid { color: var(--yellow-600); }
+.ar-meter b.lo { color: var(--danger); }
+.ar-meter b.none { color: var(--muted); }
+.ar-meter b.ar-engage { color: var(--brand); }
+
+.ar-meter i {
+  grid-column: 1 / -1;
+  display: block;
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--line);
+  position: relative;
+  overflow: hidden;
+}
+
+.ar-meter i::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--p);
+  background: var(--c);
+  border-radius: inherit;
 }
 
 .ar-score-updated {
@@ -1611,7 +1665,48 @@
 .ar-score-wrap {
   display: flex;
   align-items: center;
-  gap: var(--space-1-5);
+  gap: var(--space-2);
+}
+
+.ar-score-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.05;
+}
+
+.ar-score-slot > small {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ar-score.ar-engage,
+.ar-cell-score.ar-engage {
+  color: var(--brand);
+}
+
+.ar-hero-scores {
+  display: flex;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.ar-hero-scores > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.ar-hero-scores small {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .ar-delta {
