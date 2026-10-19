@@ -1560,11 +1560,12 @@
         var n = did.length;
         var of = snapshot ? shownTotal : counts[0];
         var pct = of ? Math.round((n / of) * 100) : 0;
+        var turn = (2 * Math.PI * 16 * pct / 100).toFixed(2);
         return (
-          '<button type="button" class="ar-faction' + (state.action === a.id ? ' active' : '') + (n ? '' : ' zero') + '" data-funnel-action="' + a.id + '" style="--share:' + pct + '">' +
-          '<span class="ar-faction-top">' + ico(a.icon) + '<span class="ar-faction-name">' + esc(a.name) + '</span></span>' +
-          '<span class="ar-faction-stat"><strong>' + n + '</strong><small>' + pct + '% of students</small></span>' +
-          '<span class="ar-faction-meter" aria-hidden="true"><i style="width:' + pct + '%"></i></span></button>'
+          '<button type="button" class="ar-faction' + (state.action === a.id ? ' active' : '') + (n ? '' : ' zero') + '" data-funnel-action="' + a.id + '">' +
+          '<span class="ar-faction-ring"><svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="16"></circle><circle cx="22" cy="22" r="16" stroke-dasharray="' + turn + ' 100.53"></circle></svg>' + ico(a.icon) + '</span>' +
+          '<span class="ar-faction-copy"><span class="ar-faction-name">' + esc(a.name) + '</span>' +
+          '<span class="ar-faction-stat"><strong>' + n + '</strong><small>from ' + fmtNum(of) + ' student' + (of === 1 ? '' : 's') + '</small></span></span></button>'
         );
       }).join('') + '</div>';
   }
@@ -1853,6 +1854,34 @@
     return attrChipsFromParts(s.parts);
   }
 
+  /** Percent tiles for scored criteria, then a yes/no row for the rest. */
+  function cardStatsHtml(s) {
+    if (!s.pref) return '<div class="ar-attrs"><span class="ar-attr none">' + ico('tune') + 'No preference yet</span></div>';
+    var on = s.parts.filter(function (p) { return p.weight > 0; });
+    var academic = academicPart(on);
+    on = on.filter(function (p) { return p.id !== 'class12' && p.id !== 'class10'; });
+    if (academic) on.push(academic);
+    function byOrder(order) {
+      return function (a, b) {
+        var ia = order.indexOf(a.id);
+        var ib = order.indexOf(b.id);
+        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+      };
+    }
+    var tiles = on.filter(function (p) { return !isBinary(p.id); }).sort(byOrder(['test', 'budget', 'academic'])).map(function (p) {
+      var rel = p.rel == null ? 0 : p.rel;
+      var tone = rel >= 75 ? 'hi' : rel >= 40 ? 'mid' : 'lo';
+      var tip = p.tip || p.label + ': ' + p.note + ' · level with or ahead of ' + rel + '% of applicants';
+      return '<div class="ar-stat" title="' + esc(tip) + '"><b class="' + tone + '">' + rel + '%</b><span>' + esc(p.label) + '</span></div>';
+    }).join('');
+    var checks = on.filter(function (p) { return isBinary(p.id); }).sort(byOrder(['board', 'stream', 'location', 'preferred', 'activities'])).map(function (p) {
+      var tip = p.label + ': ' + p.note + ' · ' + (partMet(p) ? 'meets' : 'doesn’t meet') + ' the preference';
+      return '<div class="ar-check" title="' + esc(tip) + '">' + yesNoHtml(p, 'ar-check-yn') + '<span>' + esc(p.label) + '</span></div>';
+    }).join('');
+    return (tiles ? '<div class="ar-card-stats">' + tiles + '</div>' : '') +
+      (checks ? '<div class="ar-card-checks">' + checks + '</div>' : '');
+  }
+
   function stagePill(s) {
     var st = STAGES[s.stage];
     return '<span class="ar-stage-pill">' + ico(st.icon) + esc(st.name) + '</span>';
@@ -1869,9 +1898,8 @@
       '<div class="ar-card-top"><div class="avatar">' + esc(s.initials) + '</div>' +
       '<div class="ar-card-who"><strong>' + esc(s.name) + '</strong><small>' + esc(s.id) + '</small></div>' +
       cardChatHtml(s.id) + cardSaveHtml(s.id) + cardMoreHtml(s.id) + '</div>' +
-      '<div class="ar-attrs">' + (all ? facts : attrChips(s)) + '</div>' +
       '<div class="ar-card-meta"><span>' + esc(programById(s.program).name) + '</span>' + stagePill(s) + '</div>' +
-      (all ? '' : cardScoreBox(s)) +
+      (all ? '<div class="ar-attrs">' + facts + '</div>' : cardStatsHtml(s) + cardScoreBox(s)) +
       '</div>'
     );
   }
