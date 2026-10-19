@@ -3804,7 +3804,7 @@
   /** modal shows a centred popup instead of the side panel. */
   function openDrawer(title, body, foot, modal) {
     $('drawer').classList.toggle('modal', !!modal);
-    $('drawer').classList.remove('ar-confirm-modal', 'ar-campaign-modal', 'ar-event-create-modal', 'ar-event-detail-modal', 'ar-st-user-modal', 'ar-st-role-modal');
+    $('drawer').classList.remove('ar-confirm-modal', 'ar-campaign-modal', 'ar-event-create-modal', 'ar-event-detail-modal', 'ar-st-user-modal', 'ar-st-role-modal', 'ar-tpl-modal');
     $('drawer-title').textContent = title;
     $('drawer-body').innerHTML = body;
     $('drawer-foot').innerHTML = foot || '';
@@ -3819,6 +3819,7 @@
     campaign = null;
     evEditor = null;
     evCreate = null;
+    tplNameBox = null;
   }
 
   function aiSummary(s) {
@@ -5838,8 +5839,23 @@
     ];
     try { localStorage.setItem(TPL_KEY, JSON.stringify(MY_TEMPLATES)); } catch (err2) { /* storage blocked */ }
   }
+  var TPL_HIDE_KEY = 'admitright_hidden_templates_v1';
+  var HIDDEN_TPL = [];
+  try { HIDDEN_TPL = JSON.parse(localStorage.getItem(TPL_HIDE_KEY) || '[]'); } catch (err) { HIDDEN_TPL = []; }
+  if (!Array.isArray(HIDDEN_TPL)) HIDDEN_TPL = [];
   var tplDraft = null;
-  var tplManage = false;
+  var tplFilter = 'all';
+  var tplQuery = '';
+  var tplMenuId = '';
+  var tplNameBox = null;
+
+  function visiblePrebuilt() {
+    return TPL_PREBUILT.filter(function (t) { return HIDDEN_TPL.indexOf(t.id) < 0; });
+  }
+
+  function saveHiddenTpl() {
+    try { localStorage.setItem(TPL_HIDE_KEY, JSON.stringify(HIDDEN_TPL)); } catch (err) { /* storage blocked */ }
+  }
 
   function saveMyTemplates() {
     try { localStorage.setItem(TPL_KEY, JSON.stringify(MY_TEMPLATES)); } catch (err) { /* storage blocked */ }
@@ -5891,39 +5907,150 @@
     if (!d.name.trim()) d.name = picked.name;
   }
 
-  function tplRow(t, on) {
+  function tplMenuItem(id, action, icon, label, danger) {
+    return '<button type="button" class="ar-menu-item' + (danger ? ' danger' : '') + '" role="menuitem" data-tpl-act="' + action + '" data-tpl-id="' + esc(id) + '">' +
+      ico(icon) + '<span>' + label + '</span></button>';
+  }
+
+  function tplMenuHtml(t, yours) {
+    return '<div class="ar-menu ar-tpl-menu" role="menu">' +
+      (yours ? tplMenuItem(t.id, 'edit', 'edit', 'Edit') : '') +
+      tplMenuItem(t.id, 'duplicate', 'content_copy', 'Duplicate') +
+      '<span class="ar-tpl-menu-line"></span>' +
+      tplMenuItem(t.id, 'delete', 'delete', 'Delete', true) + '</div>';
+  }
+
+  function openTplEditor(id, mode) {
+    var t = id ? tplById(id) : null;
+    if (mode !== 'create' && !t) return;
+    tplMenuId = '';
+    tplNameBox = { id: id || '', mode: mode };
+    var name = mode === 'dup' ? 'Copy of ' + t.name : mode === 'edit' ? t.name : '';
+    var title = mode === 'edit' ? 'Edit template' : mode === 'dup' ? 'Duplicate template' : 'Create template';
+    openDrawer(
+      title,
+      fieldWrap('Template name', textInput('tpl-name-input', name, 'MBA Application 2025'), true) +
+      fieldWrap('Template description', '<textarea id="tpl-edit-note" rows="3" placeholder="Brief description of when to use this template">' + esc(t ? t.note || '' : '') + '</textarea>', true) +
+      '<p class="ar-tpl-hint">Give your template a descriptive name and description for easy identification.</p>' +
+      fieldWrap('Message', '<textarea id="tpl-edit-text" rows="8" placeholder="Start typing here. Use {first}, {program} and {university}.">' + esc(t ? t.text || '' : '') + '</textarea>') +
+      '<p class="ar-cm-note">' + ico('auto_fix_high') + '{first}, {program} and {university} are filled in for each student.</p>',
+      '<button type="button" class="btn btn-ghost btn-sm" data-tpl-name-cancel>Cancel</button>' +
+      '<button type="button" class="btn btn-primary btn-sm btn-icon" data-tpl-name-save>' + ico('check') + 'Save template</button>',
+      true
+    );
+    $('drawer').classList.add('ar-tpl-modal');
+    if ($('tpl-name-input')) $('tpl-name-input').focus();
+  }
+
+  function tplCard(t, on, yours) {
     var icons = {
       deadline: 'schedule', welcome: 'mail', followup: 'reply', scholarship: 'school', visit: 'event',
       'mt-nudge': 'edit_note', 'mt-visit': 'location_on',
     };
-    return '<button type="button" class="ar-tpl-row' + (on ? ' on' : '') + '" data-tpl-pick="' + esc(t.id) + '">' +
-      ico(icons[t.id] || 'description') +
-      '<span><b>' + esc(t.name) + '</b><small>' + esc(t.note || '') + '</small></span></button>';
+    return '<div class="ar-tpl-card-wrap">' +
+      '<button type="button" class="ar-tpl-card' + (on ? ' on' : '') + '" data-tpl-pick="' + esc(t.id) + '">' +
+      '<span class="ar-tpl-thumb"><span class="ar-tpl-ico">' + ico(icons[t.id] || 'description') + '</span>' +
+      (on ? '<span class="ar-tpl-check">' + ico('check') + '</span>' : '') +
+      '<span class="ar-tpl-mail"><i></i><i></i><i></i></span></span>' +
+      '<span class="ar-tpl-tx"><span class="ar-tpl-name">' + esc(t.name) +
+      (yours ? '<em>Created</em>' : '') +
+      (t.edited ? '<em class="ar-tpl-edited">Edited</em>' : '') +
+      '</span><small>' + esc(t.note || '') + '</small></span></button>' +
+      '<button type="button" class="ar-tpl-more" data-tpl-more="' + esc(t.id) + '" aria-label="Template actions">' + ico('more_vert') + '</button>' +
+      (tplMenuId === t.id ? tplMenuHtml(t, yours) : '') +
+      '</div>';
+  }
+
+  function tplClosePop() {
+    tplMenuId = '';
+    tplNameBox = null;
+  }
+
+  function tplDrop(id) {
+    if (MY_TEMPLATES.some(function (item) { return item.id === id; })) {
+      MY_TEMPLATES = MY_TEMPLATES.filter(function (item) { return item.id !== id; });
+      saveMyTemplates();
+    } else if (HIDDEN_TPL.indexOf(id) < 0) {
+      HIDDEN_TPL.push(id);
+      saveHiddenTpl();
+    }
+    if (tplDraft && tplDraft.draft.start === id) tplDraft.draft.start = '';
+    tplClosePop();
+    renderTemplates();
+  }
+
+  function tplSaveNameBox() {
+    if (!tplNameBox) return;
+    var src = tplById(tplNameBox.id);
+    var mode = tplNameBox.mode;
+    var id = tplNameBox.id;
+    var input = $('tpl-name-input');
+    var noteEl = $('tpl-edit-note');
+    var name = input ? input.value.trim() : '';
+    var note = noteEl ? noteEl.value.trim() : '';
+    var text = ($('tpl-edit-text') && $('tpl-edit-text').value) || '';
+    if (!name) { toast('Enter a template name.'); if (input) input.focus(); return; }
+    if (!note) { toast('Enter a description.'); if (noteEl) noteEl.focus(); return; }
+    if (mode === 'edit') {
+      var mine = MY_TEMPLATES.filter(function (item) { return item.id === id; })[0];
+      if (!mine) return;
+      mine.name = name;
+      mine.note = note;
+      mine.text = text;
+      mine.edited = true;
+      saveMyTemplates();
+    } else if (mode === 'create' || src) {
+      MY_TEMPLATES.unshift({
+        id: storeId('mt'), name: name, note: note,
+        subject: src ? src.subject || '' : '', text: text,
+      });
+      saveMyTemplates();
+      if (tplFilter === 'pre' || mode === 'create') tplFilter = 'mine';
+    }
+    tplNameBox = null;
+    closeDrawer();
+    renderTemplates();
+  }
+
+  function tplStartName(d) {
+    if (d.start === 'html') return d.htmlName || 'Upload HTML';
+    if (d.start === 'scratch') return 'Start from scratch';
+    var picked = tplById(d.start);
+    return picked ? picked.name : '';
   }
 
   function tplChooseHtml(d) {
     var htmlOn = d.start === 'html';
     var scratchOn = d.start === 'scratch';
-    return '<section class="ar-evc-section"><h3>Starting point</h3>' +
-      '<p class="ar-evc-note">Upload an HTML email, write the message yourself, or use a template.</p>' +
-      '<div class="ar-evc-formats">' +
+    var prebuilt = visiblePrebuilt();
+    var q = tplQuery.trim().toLowerCase();
+    var shown = (tplFilter === 'mine' ? [] : prebuilt).concat(tplFilter === 'pre' ? [] : MY_TEMPLATES).filter(function (t) {
+      return !q || (t.name + ' ' + (t.note || '')).toLowerCase().indexOf(q) >= 0;
+    });
+    function chip(id, label) {
+      return '<button type="button" class="ar-tpl-chip' + (tplFilter === id ? ' on' : '') + '" data-tpl-filter="' + id + '">' + label + '</button>';
+    }
+    return '<div class="ar-tpl-pick">' +
+      '<div class="ar-tpl-start"><h3>Starting point</h3>' +
+      '<p>Upload an HTML email, or write the message yourself.</p>' +
+      '<div class="ar-tpl-opts">' +
       '<input type="file" id="tpl-file" accept=".html,text/html" hidden />' +
-      '<button type="button" class="' + (htmlOn ? 'on' : '') + '" data-tpl-start="html">' +
-      ico('upload') + (d.htmlName ? esc(d.htmlName) : 'Upload HTML') + '</button>' +
-      '<button type="button" class="' + (scratchOn ? 'on' : '') + '" data-tpl-start="scratch">' +
-      ico('edit_note') + 'Start from scratch</button></div>' +
-      '<h3>Templates</h3>' +
-      '<div class="ar-tpl-cols">' +
-      '<div><div class="ar-tpl-col-head"><h4>Pre-built</h4></div>' +
-      TPL_PREBUILT.map(function (t) { return tplRow(t, d.start === t.id); }).join('') + '</div>' +
-      '<div><div class="ar-tpl-col-head"><h4>Yours <small>' + MY_TEMPLATES.length + '</small></h4>' +
-      '<button type="button" class="ar-link" data-tpl-manage>' + (tplManage ? 'Done' : 'Manage') + '</button></div>' +
-      (MY_TEMPLATES.length ? MY_TEMPLATES.map(function (t) {
-        return '<div class="ar-tpl-mine">' + tplRow(t, d.start === t.id) +
-          (tplManage ? '<button type="button" class="ar-icon-btn" data-tpl-delete="' + esc(t.id) + '" aria-label="Delete ' + esc(t.name) + '">' + ico('delete') + '</button>' : '') +
-          '</div>';
-      }).join('') : '<p class="ar-muted">Save a message on the next step and it shows up here.</p>') +
-      '</div></div></section>';
+      '<button type="button" class="ar-tpl-opt' + (htmlOn ? ' on' : '') + '" data-tpl-start="html">' +
+      '<span class="ar-tpl-oi">' + ico('upload') + '</span><span><b>' + (d.htmlName ? esc(d.htmlName) : 'Upload HTML') + '</b><small>Bring an email you have already designed</small></span></button>' +
+      '<button type="button" class="ar-tpl-opt' + (scratchOn ? ' on' : '') + '" data-tpl-start="scratch">' +
+      '<span class="ar-tpl-oi">' + ico('edit') + '</span><span><b>Start from scratch</b><small>Write the message in the editor</small></span></button>' +
+      '</div></div>' +
+      '<div class="ar-tpl-lib"><div class="ar-tpl-lib-head"><div><h3>Templates</h3>' +
+      '<div class="ar-tpl-chips">' +
+      chip('all', 'All ' + (prebuilt.length + MY_TEMPLATES.length)) +
+      chip('pre', 'Pre-built ' + prebuilt.length) +
+      chip('mine', 'Yours ' + MY_TEMPLATES.length) +
+      '</div></div>' +
+      '<label class="ar-search"><span class="material-symbols-rounded" aria-hidden="true">search</span>' +
+      '<input type="search" id="tpl-search" placeholder="Search templates" value="' + esc(tplQuery) + '" /></label></div>' +
+      '<div class="ar-tpl-grid">' + (shown.length ? shown.map(function (t) {
+        return tplCard(t, d.start === t.id, TPL_PREBUILT.indexOf(t) < 0);
+      }).join('') : '<p class="ar-muted">' + (q ? 'No templates match that search.' : 'Nothing in this list yet.') + '</p>') + '</div></div></div>';
   }
 
   function tplDetailsHtml(d) {
@@ -5941,19 +6068,24 @@
     var d = tplDraft.draft;
     var step = tplDraft.step;
     if (step > 0) tplSyncForm();
-    var body = '<div class="ar-evc-stepper">' + TPL_STEPS.map(function (n, i) {
-      var cls = i < step ? ' done' : i === step ? ' active' : '';
-      return '<span class="' + cls + '"><i>' + (i < step ? ico('check') : '') + '</i><b>' + esc(n) + '</b></span>';
-    }).join('') + '</div>';
+    var body = '';
     if (step === 0) body += tplChooseHtml(d);
     else if (step === 1) body += tplDetailsHtml(d);
     else if (step === 2) body += cgAudienceStepHtml(d);
     else body += cgReviewStepHtml(d);
     $('tpl-body').innerHTML = body;
+    var picked = step === 0 ? tplStartName(d) : '';
+    var showBar = step > 0 || !!picked;
+    $('tpl-foot').classList.toggle('on', showBar);
+    $('tpl-foot').setAttribute('aria-hidden', showBar ? 'false' : 'true');
     $('tpl-foot').innerHTML = '<button type="button" class="btn btn-ghost btn-sm" data-tpl-prev>' + (step ? 'Previous step' : 'Cancel') + '</button>' +
-      (step && step < 3 ? '<div class="ar-cg-foot-right"><button type="button" class="btn btn-secondary btn-sm" data-tpl-draft>Save draft</button>' +
-        '<button type="button" class="btn btn-primary btn-sm btn-icon" data-tpl-next>Next step' + ico('arrow_forward') + '</button></div>' :
-        step ? '' : '<button type="button" class="btn btn-primary btn-sm btn-icon" data-tpl-next>Continue' + ico('arrow_forward') + '</button>');
+      (step === 0
+        ? '<div class="ar-tpl-foot-next"><span class="ar-tpl-picked">Selected: <strong>' + esc(picked) + '</strong></span>' +
+          '<button type="button" class="btn btn-primary btn-sm btn-icon" data-tpl-next>Continue' + ico('arrow_forward') + '</button></div>'
+        : step < 3
+          ? '<div class="ar-cg-foot-right"><button type="button" class="btn btn-secondary btn-sm" data-tpl-draft>Save draft</button>' +
+            '<button type="button" class="btn btn-primary btn-sm btn-icon" data-tpl-next>Next step' + ico('arrow_forward') + '</button></div>'
+          : '');
     if (step === 1) updateCampaignPreview();
   }
 
@@ -5993,7 +6125,11 @@
       window.scrollTo(0, 0);
       return;
     }
-    goTo('dashboard');
+    tplDraft.draft.start = '';
+    tplDraft.draft.applied = false;
+    tplDraft.draft.htmlName = '';
+    tplDraft.draft.html = '';
+    renderTemplates();
   }
   var cgCache = {};
   var CGF = { q: '', channel: 'all', program: 'all', sort: 'new' };
@@ -7156,9 +7292,21 @@
       return;
     }
 
+    var tplFilterBtn = t.closest('[data-tpl-filter]');
+    if (tplFilterBtn) {
+      tplFilter = tplFilterBtn.getAttribute('data-tpl-filter');
+      tplClosePop();
+      renderTemplates();
+      return;
+    }
+
     if (t.closest('[data-tpl-start]')) {
       ensureTplDraft();
       var startKind = t.closest('[data-tpl-start]').getAttribute('data-tpl-start');
+      if (startKind === 'scratch') {
+        openTplEditor('', 'create');
+        return;
+      }
       tplDraft.draft.start = startKind;
       tplDraft.draft.applied = false;
       renderTemplates();
@@ -7169,25 +7317,39 @@
     var tplPick = t.closest('[data-tpl-pick]');
     if (tplPick) {
       ensureTplDraft();
-      tplDraft.draft.start = tplPick.getAttribute('data-tpl-pick');
+      var pickId = tplPick.getAttribute('data-tpl-pick');
+      tplDraft.draft.start = tplDraft.draft.start === pickId ? '' : pickId;
       tplDraft.draft.applied = false;
       renderTemplates();
       return;
     }
 
-    if (t.closest('[data-tpl-manage]')) {
-      tplManage = !tplManage;
+    var tplMore = t.closest('[data-tpl-more]');
+    if (tplMore) {
+      var moreId = tplMore.getAttribute('data-tpl-more');
+      tplNameBox = null;
+      tplMenuId = tplMenuId === moreId ? '' : moreId;
       renderTemplates();
       return;
     }
 
-    var tplDel = t.closest('[data-tpl-delete]');
-    if (tplDel) {
-      var dropId = tplDel.getAttribute('data-tpl-delete');
-      MY_TEMPLATES = MY_TEMPLATES.filter(function (item) { return item.id !== dropId; });
-      saveMyTemplates();
-      if (tplDraft && tplDraft.draft.start === dropId) tplDraft.draft.start = '';
-      renderTemplates();
+    var tplAct = t.closest('[data-tpl-act]');
+    if (tplAct) {
+      var actId = tplAct.getAttribute('data-tpl-id');
+      var act = tplAct.getAttribute('data-tpl-act');
+      if (act === 'delete') { tplDrop(actId); return; }
+      openTplEditor(actId, act === 'edit' ? 'edit' : 'dup');
+      return;
+    }
+
+    if (t.closest('[data-tpl-name-cancel]')) {
+      tplClosePop();
+      closeDrawer();
+      return;
+    }
+
+    if (t.closest('[data-tpl-name-save]')) {
+      tplSaveNameBox();
       return;
     }
 
@@ -7742,6 +7904,10 @@
     }
 
     if (!t.closest('.ar-menu') && !t.closest('[data-card-more]')) closeMenus();
+    if ((tplMenuId || tplNameBox) && !t.closest('[data-tpl-more]') && !t.closest('.ar-tpl-menu') && !t.closest('#drawer')) {
+      tplClosePop();
+      if (state.view === 'templates') renderTemplates();
+    }
 
     var evFacet = t.closest('[data-ev-facet]');
     if (evFacet) {
@@ -8158,6 +8324,17 @@
         renderStudents();
       }
     }
+  });
+
+  document.addEventListener('input', function (e) {
+    if (!e.target || e.target.id !== 'tpl-search') return;
+    tplQuery = e.target.value;
+    var pos = e.target.selectionStart;
+    renderTemplates();
+    var box = $('tpl-search');
+    if (!box) return;
+    box.focus();
+    if (pos != null) box.setSelectionRange(pos, pos);
   });
 
   document.addEventListener('submit', function (e) {
