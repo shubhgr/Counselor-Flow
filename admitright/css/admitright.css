@@ -8299,11 +8299,28 @@ label.ar-editor-program:focus-within {
 }
 
 .ar-insights:not(.collapsed) #trend-chart {
-  flex: 1;
+  flex: 0 0 236px;
+  height: 236px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
   margin-top: var(--space-4);
+}
+
+#trend-chart > .ar-achart,
+#trend-chart > .ar-bchart,
+#trend-chart > .ar-dcols {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+#trend-chart .ar-achart-plot,
+#trend-chart .ar-bchart-plot {
+  flex: 1;
+  height: auto;
+  min-height: 0;
 }
 
 /* Stage: a row of stats above the chart */
@@ -8314,9 +8331,9 @@ label.ar-editor-program:focus-within {
 .ar-fstages {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2);
   margin: 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  border: none;
 }
 
 .ar-fstages .ar-frow,
@@ -8325,11 +8342,13 @@ label.ar-editor-program:focus-within {
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
-  gap: var(--space-1-5);
+  gap: var(--space-1);
   min-height: 0;
-  padding: var(--space-3) var(--space-3) var(--space-3-5);
-  border-radius: 0;
-  box-shadow: inset 0 -2px 0 transparent;
+  padding: var(--space-2-5) var(--space-2) var(--space-2);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  box-shadow: none;
   text-align: left;
 }
 
@@ -8339,12 +8358,17 @@ label.ar-editor-program:focus-within {
 }
 
 .ar-fstages .ar-frow:hover {
-  background: var(--bg);
+  background: color-mix(in srgb, var(--st, var(--brand)) 5%, var(--surface));
 }
 
 .ar-fstages .ar-frow.active {
-  background: var(--purple-50);
-  box-shadow: inset 0 -2px 0 var(--brand);
+  background: color-mix(in srgb, var(--st, var(--brand)) 8%, var(--surface));
+  box-shadow: none;
+}
+
+.ar-fstages .ar-frow.active .ar-frow-name {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .ar-fstages .ar-frow-name {
@@ -8363,31 +8387,32 @@ label.ar-editor-program:focus-within {
 
 .ar-frow-dot {
   flex-shrink: 0;
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: var(--radius-pill);
   background: var(--st, var(--brand));
 }
 
 .ar-frow-val {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-1-5);
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .ar-fstages .ar-frow-val strong {
   color: var(--ink);
-  font-size: var(--text-2xl);
+  font-size: var(--text-3xl);
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
-  line-height: 1.1;
+  letter-spacing: -0.02em;
+  line-height: 1;
 }
 
 .ar-frow-val small {
   padding: var(--space-0-5) var(--space-1-5);
   border-radius: var(--radius-xs);
-  background: color-mix(in srgb, var(--st, var(--brand)) 12%, var(--brand-white));
-  color: color-mix(in srgb, var(--st, var(--brand)) 60%, var(--purple-950));
+  background: color-mix(in srgb, var(--st, var(--brand)) 14%, var(--brand-white));
+  color: color-mix(in srgb, var(--st, var(--brand)) 55%, var(--purple-950));
   font-size: var(--text-2xs);
   font-weight: var(--weight-bold);
   font-variant-numeric: tabular-nums;
@@ -8420,20 +8445,24 @@ label.ar-editor-program:focus-within {
 }
 
 .ar-actions-panel .ar-factions {
-  gap: var(--space-2);
-  padding-bottom: var(--space-1);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  padding-bottom: 0;
 }
 
 .ar-actions-panel .ar-faction {
-  flex: 0 0 auto;
+  flex: 1 1 0;
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  gap: var(--space-2);
+  gap: var(--space-3);
   width: 100%;
-  padding: var(--space-3) var(--space-3-5);
+  padding: var(--space-2) var(--space-4);
   border: none;
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   background: var(--bg);
 }
 
@@ -8448,8 +8477,8 @@ label.ar-editor-program:focus-within {
 
 .ar-faction-ring {
   position: relative;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   flex-shrink: 0;
   display: grid;
   place-items: center;
@@ -8458,14 +8487,14 @@ label.ar-editor-program:focus-within {
 .ar-faction-ring svg {
   position: absolute;
   inset: 0;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
 }
 
 .ar-faction-ring circle {
   fill: none;
-  stroke: var(--surface);
-  stroke-width: 4;
+  stroke: #e4e4ea;
+  stroke-width: 6;
 }
 
 .ar-faction-ring circle + circle {
@@ -8498,7 +8527,8 @@ label.ar-editor-program:focus-within {
 }
 
 .ar-actions-panel .ar-faction strong {
-  font-size: var(--text-2xl);
+  font-size: var(--text-3xl);
+  line-height: 1;
 }
 
 .ar-actions-panel .ar-trend-actions {
@@ -9663,21 +9693,22 @@ body:has(#filter-menu:not([hidden]))::after {
 .ar-cmp-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1-5);
 }
 
 .ar-cmp {
-  padding: var(--space-2-5) var(--space-3);
+  padding: var(--space-2) var(--space-2-5);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--surface);
 }
 
 .ar-cmp-head {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  align-items: start;
+  display: flex;
+  align-items: center;
   gap: var(--space-2);
+  margin: 0;
+  padding: 0;
   list-style: none;
   cursor: pointer;
 }
@@ -9709,7 +9740,7 @@ body:has(#filter-menu:not([hidden]))::after {
 .ar-cmp-head > span {
   display: flex;
   flex-direction: column;
-  gap: var(--space-0-5);
+  gap: 0;
   min-width: 0;
   color: var(--ink);
   font-size: var(--text-sm);

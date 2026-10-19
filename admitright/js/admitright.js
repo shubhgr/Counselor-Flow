@@ -1560,10 +1560,11 @@
         var n = did.length;
         var of = snapshot ? shownTotal : counts[0];
         var pct = of ? Math.round((n / of) * 100) : 0;
-        var turn = (2 * Math.PI * 16 * pct / 100).toFixed(2);
+        var circ = 188.5;
+        var turn = (circ * pct / 100).toFixed(2);
         return (
           '<button type="button" class="ar-faction' + (state.action === a.id ? ' active' : '') + (n ? '' : ' zero') + '" data-funnel-action="' + a.id + '">' +
-          '<span class="ar-faction-ring"><svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="16"></circle><circle cx="22" cy="22" r="16" stroke-dasharray="' + turn + ' 100.53"></circle></svg>' + ico(a.icon) + '</span>' +
+          '<span class="ar-faction-ring"><svg viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="30"></circle><circle cx="36" cy="36" r="30" stroke-dasharray="' + turn + ' ' + circ + '"></circle></svg>' + ico(a.icon) + '</span>' +
           '<span class="ar-faction-copy"><span class="ar-faction-name">' + esc(a.name) + '</span>' +
           '<span class="ar-faction-stat"><strong>' + n + '</strong><small>from ' + fmtNum(of) + ' student' + (of === 1 ? '' : 's') + '</small></span></span></button>'
         );
