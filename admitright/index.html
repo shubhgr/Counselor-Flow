@@ -10,7 +10,7 @@
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=tok1" />
   <link rel="stylesheet" href="css/tokens.css?v=tok1" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar309" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar320" />
 </head>
 <body class="ar ar-locked">
   <section class="ar-gate" id="gate-login" hidden>
@@ -83,7 +83,7 @@
           <span class="material-symbols-rounded" aria-hidden="true">account_balance_wallet</span>
         </a>
         <a class="ar-rail-item" href="#/chats" data-go="chats" title="Chats" aria-label="Chats">
-          <span class="material-symbols-rounded" aria-hidden="true">chat</span>
+          <span class="material-symbols-rounded" aria-hidden="true">forum</span>
           <span class="ar-rail-badge" id="chat-badge" hidden></span>
         </a>
       </nav>
@@ -368,45 +368,14 @@
             <span class="ar-sub">Campaigns</span>
           </div>
           <div class="actions ar-cg-actions">
-            <div class="ar-seg ar-cg-tabs" id="cg-tabs" role="tablist" aria-label="Campaign status"></div>
-            <label class="ar-search ar-cg-search">
-              <span class="material-symbols-rounded" aria-hidden="true">search</span>
-              <input type="search" id="cg-search" placeholder="Search campaigns" autocomplete="off" />
-            </label>
-            <div class="ar-cf-wrap" id="cgf-wrap">
-              <button type="button" class="chip-btn ar-picker ar-cf-toggle" id="cgf-toggle" aria-expanded="false" aria-controls="cgf-pop">
-                <span class="material-symbols-rounded" aria-hidden="true">tune</span>
-                <span>Filters</span>
-                <b class="ar-cf-count" id="cgf-count" hidden></b>
-                <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
-              </button>
-              <div class="ar-cf-pop" id="cgf-pop" hidden>
-                <div class="ar-cf-pop-head">
-                  <strong>Filter campaigns</strong>
-                  <button type="button" class="ar-link" id="cgf-clear" hidden>Clear all</button>
-                </div>
-                <div class="ar-cgf-fields">
-                  <label><span>Channel</span>
-                    <select class="ar-cg-select" id="cgf-channel">
-                      <option value="all">All channels</option>
-                      <option value="email">Email</option>
-                      <option value="whatsapp">WhatsApp</option>
-                      <option value="sms">Text</option>
-                    </select>
-                  </label>
-                  <label><span>Program</span>
-                    <select class="ar-cg-select" id="cgf-program"></select>
-                  </label>
-                  <label><span>Sort by</span>
-                    <select class="ar-cg-select" id="cgf-sort">
-                      <option value="new">Newest first</option>
-                      <option value="old">Oldest first</option>
-                      <option value="reach">Most recipients</option>
-                    </select>
-                  </label>
-                </div>
-              </div>
-            </div>
+            <button type="button" class="btn btn-secondary btn-sm btn-icon" data-cg-templates>
+              <span class="material-symbols-rounded" aria-hidden="true">description</span>
+              Manage templates
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm btn-icon" data-cg-export>
+              <span class="material-symbols-rounded" aria-hidden="true">download</span>
+              Export data
+            </button>
             <button type="button" class="btn btn-primary btn-sm btn-icon" id="cg-create">
               <span class="material-symbols-rounded" aria-hidden="true">add</span>
               Create campaign
@@ -417,17 +386,55 @@
         <div class="content ar-content" id="cg-list-content">
           <section class="ar-cg-insights" id="cg-insights">
             <div class="panel">
-              <div class="panel-head"><h2>Campaign activity</h2></div>
+              <div class="panel-head"><h2>Campaign activity</h2><span class="ar-cg-range" id="cg-chart-range"></span></div>
               <div class="ar-trend-chart" id="cg-chart"></div>
             </div>
             <div id="cg-overview"></div>
           </section>
-          <div class="ar-cg-layout">
-            <section class="ar-cg-main">
-              <div class="ar-cg-list" id="cg-list"></div>
-            </section>
-            <aside class="ar-cg-side" id="cg-side"></aside>
+          <div class="ar-cg-toolbar">
+            <div class="ar-seg ar-cg-tabs" id="cg-tabs" role="tablist" aria-label="Campaign status"></div>
+            <div class="ar-cg-toolbar-tools">
+              <label class="ar-search ar-cg-search">
+                <span class="material-symbols-rounded" aria-hidden="true">search</span>
+                <input type="search" id="cg-search" placeholder="Search campaigns" autocomplete="off" />
+              </label>
+              <div class="ar-cf-wrap" id="cgf-wrap">
+                <button type="button" class="chip-btn ar-picker ar-cf-toggle" id="cgf-toggle" aria-expanded="false" aria-controls="cgf-pop">
+                  <span class="material-symbols-rounded" aria-hidden="true">tune</span>
+                  <span>Filters</span>
+                  <b class="ar-cf-count" id="cgf-count" hidden></b>
+                  <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+                </button>
+                <div class="ar-cf-pop" id="cgf-pop" hidden>
+                  <div class="ar-cf-pop-head">
+                    <strong>Filter campaigns</strong>
+                    <button type="button" class="ar-link" id="cgf-clear" hidden>Clear all</button>
+                  </div>
+                  <div class="ar-cgf-fields">
+                    <label><span>Channel</span>
+                      <select class="ar-cg-select" id="cgf-channel">
+                        <option value="all">All channels</option>
+                        <option value="email">Email</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="sms">Text</option>
+                      </select>
+                    </label>
+                    <label><span>Program</span>
+                      <select class="ar-cg-select" id="cgf-program"></select>
+                    </label>
+                    <label><span>Sort by</span>
+                      <select class="ar-cg-select" id="cgf-sort">
+                        <option value="new">Newest first</option>
+                        <option value="old">Oldest first</option>
+                        <option value="reach">Most recipients</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+          <div class="ar-cg-list" id="cg-list"></div>
         </div>
 
         <div id="cg-form-page" hidden>
@@ -635,6 +642,6 @@
   <div class="ar-toast" id="toast" hidden></div>
 
   <script src="data/students-data.js?v=ar259"></script>
-  <script src="js/admitright.js?v=ar309"></script>
+  <script src="js/admitright.js?v=ar315"></script>
 </body>
 </html>

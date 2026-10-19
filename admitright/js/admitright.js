@@ -5839,6 +5839,13 @@
     ];
     try { localStorage.setItem(TPL_KEY, JSON.stringify(MY_TEMPLATES)); } catch (err2) { /* storage blocked */ }
   }
+  var tplNeedsStamp = false;
+  MY_TEMPLATES.forEach(function (t) {
+    if (!t.createdAt) { t.createdAt = Date.now(); tplNeedsStamp = true; }
+  });
+  if (tplNeedsStamp) {
+    try { localStorage.setItem(TPL_KEY, JSON.stringify(MY_TEMPLATES)); } catch (err3) { /* storage blocked */ }
+  }
   var TPL_HIDE_KEY = 'admitright_hidden_templates_v1';
   var HIDDEN_TPL = [];
   try { HIDDEN_TPL = JSON.parse(localStorage.getItem(TPL_HIDE_KEY) || '[]'); } catch (err) { HIDDEN_TPL = []; }
@@ -5942,6 +5949,22 @@
     if ($('tpl-name-input')) $('tpl-name-input').focus();
   }
 
+  function tplStamp(ts) {
+    var d = new Date(ts);
+    var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+    var date = d.getDate() + ' ' + months[d.getMonth()];
+    if (d.getFullYear() !== new Date().getFullYear()) date += ' ' + d.getFullYear();
+    return date + ', ' + fmtTime(d);
+  }
+
+  function tplWhenHtml(t) {
+    if (!t.createdAt && !t.updatedAt) return '';
+    var parts = [];
+    if (t.createdAt) parts.push('<span><b>Created</b>' + esc(tplStamp(t.createdAt)) + '</span>');
+    if (t.updatedAt) parts.push('<span><b>Updated</b>' + esc(tplStamp(t.updatedAt)) + '</span>');
+    return '<small class="ar-tpl-when">' + parts.join('') + '</small>';
+  }
+
   function tplCard(t, on, yours) {
     var icons = {
       deadline: 'schedule', welcome: 'mail', followup: 'reply', scholarship: 'school', visit: 'event',
@@ -5952,10 +5975,10 @@
       '<span class="ar-tpl-thumb"><span class="ar-tpl-ico">' + ico(icons[t.id] || 'description') + '</span>' +
       (on ? '<span class="ar-tpl-check">' + ico('check') + '</span>' : '') +
       '<span class="ar-tpl-mail"><i></i><i></i><i></i></span></span>' +
-      '<span class="ar-tpl-tx"><span class="ar-tpl-name">' + esc(t.name) +
-      (yours ? '<em>Created</em>' : '') +
-      (t.edited ? '<em class="ar-tpl-edited">Edited</em>' : '') +
-      '</span><small>' + esc(t.note || '') + '</small></span></button>' +
+      '<span class="ar-tpl-tx"><span class="ar-tpl-name">' + esc(t.name) + '</span>' +
+      '<small>' + esc(t.note || '') + '</small>' +
+      tplWhenHtml(t) +
+      '</span></button>' +
       '<button type="button" class="ar-tpl-more" data-tpl-more="' + esc(t.id) + '" aria-label="Template actions">' + ico('more_vert') + '</button>' +
       (tplMenuId === t.id ? tplMenuHtml(t, yours) : '') +
       '</div>';
@@ -5997,12 +6020,14 @@
       mine.name = name;
       mine.note = note;
       mine.text = text;
-      mine.edited = true;
+      if (!mine.createdAt) mine.createdAt = Date.now();
+      mine.updatedAt = Date.now();
       saveMyTemplates();
     } else if (mode === 'create' || src) {
       MY_TEMPLATES.unshift({
         id: storeId('mt'), name: name, note: note,
         subject: src ? src.subject || '' : '', text: text,
+        createdAt: Date.now(),
       });
       saveMyTemplates();
       if (tplFilter === 'pre' || mode === 'create') tplFilter = 'mine';
@@ -6393,6 +6418,12 @@
     var brand = root.getPropertyValue('--brand').trim() || '#782bff';
     var blue = root.getPropertyValue('--stage-2').trim() || '#3b7fc4';
     $('cg-chart').innerHTML = cgComboChart(series, brand, blue);
+    var first = series.months[0];
+    var last = series.months[series.months.length - 1];
+    if ($('cg-chart-range') && first && last) {
+      var fmt = function (d) { return d.toLocaleDateString('en-GB', { month: 'short' }); };
+      $('cg-chart-range').textContent = fmt(first) + ' – ' + fmt(last);
+    }
   }
 
   function moveCgChartTip(e) {
@@ -6490,6 +6521,16 @@
     });
   }
 
+  function cgStamp(at) {
+    var d = new Date(at);
+    return esc(fmtDate(d) + ', ' + fmtTime(d));
+  }
+
+  function cgStat(label, value, pct) {
+    return '<div class="ar-cg-stat"><span>' + esc(label) + '</span><b>' + value + '</b>' +
+      (pct == null ? '' : '<i style="--w:' + pct + '%"></i>') + '</div>';
+  }
+
   function cgIndCardHtml(r) {
     var ch = channelById(r.channel);
     var st = cgTrack(r.student, r);
@@ -6497,17 +6538,17 @@
     var preview = (r.subject || r.text || 'No message').replace(/\s+/g, ' ').trim();
     if (preview.length > 96) preview = preview.slice(0, 96) + '…';
     return '<article class="panel ar-cg-card" data-cg-ind="' + key + '">' +
-      '<div class="ar-cg-card-top"><span class="ar-cg-ico ch-' + r.channel + '">' + ico(ch.icon) + '</span>' +
-      '<div class="ar-cg-card-title"><h3>' + esc(r.student.name) + '</h3><p>' + esc(preview) + '</p></div></div>' +
-      '<div class="ar-cg-meta">' +
-      cgMeta('badge', 'GR ID', r.student.id) +
-      cgMeta(ch.icon, 'Channel', ch.name) +
-      cgMeta('schedule', 'Sent on', fmtDateTime(new Date(r.at))) +
-      cgMeta('insights', 'Status', st.last.name) +
+      '<div class="ar-cg-card-main"><span class="ar-cg-ico ch-' + r.channel + '">' + ico(ch.icon) + '</span>' +
+      '<div class="ar-cg-card-title"><h3>' + esc(r.student.name) + '</h3><p>' + esc(preview) + '</p>' +
+      '<div class="ar-cg-chips"><span class="ar-cg-channel ch-' + r.channel + '">' + ico(ch.icon) + esc(ch.name) + '</span>' +
+      '<span class="ar-crit">' + esc(programById(r.student.program).name) + '</span>' +
+      '<span class="ar-crit">' + esc(st.last.name) + '</span></div></div></div>' +
+      '<div class="ar-cg-stats">' +
+      cgStat('Recipients', '1 student') +
+      cgStat('Sent on', cgStamp(r.at)) +
+      cgStat('Status', esc(st.last.name)) +
       '</div>' +
-      '<div class="ar-cg-foot"><div class="ar-cg-chips"><span class="ar-cg-channel ch-' + r.channel + '">' + ico(ch.icon) + esc(ch.name) + '</span>' +
-      '<span class="ar-crit">' + esc(programById(r.student.program).name) + '</span></div>' +
-      '<button type="button" class="btn btn-secondary btn-sm btn-icon" data-cg-ind-preview="' + key + '">' + ico('visibility') + 'Preview</button></div></article>';
+      '<div class="ar-cg-card-actions"><button type="button" class="btn btn-secondary btn-sm btn-icon" data-cg-ind-preview="' + key + '">' + ico('visibility') + 'Preview</button></div></article>';
   }
 
   function cgDeliveryHtml(s, c) {
@@ -6560,21 +6601,22 @@
     var launched = c.status === 'launched';
     var m = cgMetrics(c);
     var id = esc(c.id);
+    var openRate = cgPct(m.opened, m.delivered);
+    var clickRate = cgPct(m.clicked, m.opened);
     var tools = launched
-      ? cgTool('data-cg-view="' + id + '"', 'insights', 'View campaign details') + cgTool('data-cg-duplicate="' + id + '"', 'content_copy', 'Duplicate')
+      ? cgTool('data-cg-view="' + id + '"', 'open_in_new', 'View campaign details') + cgTool('data-cg-duplicate="' + id + '"', 'content_copy', 'Duplicate')
       : cgTool('data-cg-edit="' + id + '"', 'edit', 'Edit draft') + cgTool('data-cg-duplicate="' + id + '"', 'content_copy', 'Duplicate') + cgTool('data-cg-delete="' + id + '"', 'delete', 'Delete draft', true);
     return '<article class="panel ar-cg-card" data-cg-open="' + id + '">' +
-      '<div class="ar-cg-card-top"><span class="ar-cg-ico ch-' + c.channel + '">' + ico(ch.icon) + '</span>' +
-      '<div class="ar-cg-card-title"><h3>' + esc(c.name || 'Untitled campaign') + '</h3><p>' + esc(c.description || 'No description yet') + '</p></div>' +
-      '<div class="ar-cg-tools">' + tools + '</div></div>' +
-      '<div class="ar-cg-meta">' +
-      cgMeta('group', 'Recipients', m.sent.toLocaleString() + (m.sent === 1 ? ' student' : ' students')) +
-      cgMeta(launched ? 'send' : 'edit_note', launched ? 'Sent on' : 'Last edited', fmtDateTime(new Date(launched ? c.sentAt : c.updated))) +
-      (launched ? cgMeta('drafts', 'Open rate', cgPct(m.opened, m.delivered) + '%') + cgMeta('ads_click', 'Click to open', cgPct(m.clicked, m.opened) + '%') : '') +
+      '<div class="ar-cg-card-main"><span class="ar-cg-ico ch-' + c.channel + '">' + ico(ch.icon) + '</span>' +
+      '<div class="ar-cg-card-title"><h3>' + esc(c.name || 'Untitled campaign') + '</h3><p>' + esc(c.description || 'No description yet') + '</p>' +
+      '<div class="ar-cg-chips"><span class="ar-cg-channel ch-' + c.channel + '">' + ico(ch.icon) + esc(ch.name) + '</span>' + cgChipsHtml(c.audience) + '</div></div></div>' +
+      '<div class="ar-cg-stats">' +
+      cgStat('Recipients', m.sent.toLocaleString() + (m.sent === 1 ? ' student' : ' students')) +
+      cgStat(launched ? 'Sent on' : 'Last edited', cgStamp(launched ? c.sentAt : c.updated)) +
+      (launched ? cgStat('Open rate', openRate + '%', openRate) + cgStat('Click to open', clickRate + '%', clickRate) : '') +
       '</div>' +
-      '<div class="ar-cg-foot"><div class="ar-cg-chips"><span class="ar-cg-channel ch-' + c.channel + '">' + ico(ch.icon) + esc(ch.name) + '</span>' + cgChipsHtml(c.audience) + '</div>' +
-      '<button type="button" class="btn btn-secondary btn-sm btn-icon" data-cg-preview="' + id + '">' + ico('visibility') + 'Preview</button></div>' +
-      '</article>';
+      '<div class="ar-cg-card-actions"><button type="button" class="btn btn-secondary btn-sm btn-icon" data-cg-preview="' + id + '">' + ico('visibility') + 'Preview</button>' +
+      '<div class="ar-cg-tools">' + tools + '</div></div></article>';
   }
 
   function renderCampaignList() {
@@ -6636,12 +6678,7 @@
       '<section class="panel ar-cg-kpis"><div class="panel-head"><h2>Overview</h2></div>' +
       cgKpi('campaign', 'Total campaigns', CAMPAIGN_LIST.length, launched.length + ' launched · ' + drafts + ' draft' + (drafts === 1 ? '' : 's')) +
       cgKpi('person', 'Individual sends', individuals.toLocaleString(), 'One student at a time') +
-      cgKpi('groups', 'Total students', t.sent.toLocaleString(), 'from ' + launched.length + ' launched campaign' + (launched.length === 1 ? '' : 's')) +
-      '</section>';
-    $('cg-side').innerHTML =
-      '<section class="panel ar-cg-quick"><h3>Quick actions</h3>' +
-      '<button type="button" class="ar-cg-action" data-cg-templates>' + ico('description') + '<span><b>Manage templates</b><small>Reusable messages for every channel</small></span>' + ico('chevron_right') + '</button>' +
-      '<button type="button" class="ar-cg-action" data-cg-export>' + ico('download') + '<span><b>Export campaign data</b><small>Results as CSV, without student contact details</small></span>' + ico('chevron_right') + '</button>' +
+      cgKpi('groups', 'Total students', t.sent.toLocaleString(), 'from ' + launched.length + ' launched') +
       '</section>';
   }
 
@@ -7268,7 +7305,7 @@
     }
 
     if (t.closest('[data-cg-templates]')) {
-      openCampaignTemplates();
+      goTo('templates');
       return;
     }
 
