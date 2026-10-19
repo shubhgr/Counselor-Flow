@@ -10,7 +10,7 @@
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=tok1" />
   <link rel="stylesheet" href="css/tokens.css?v=tok1" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar371" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar376" />
 </head>
 <body class="ar ar-locked">
   <section class="ar-gate" id="gate-login" hidden>
@@ -293,6 +293,13 @@
 
       <!-- Events -->
       <div id="view-events" hidden>
+        <div class="ar-cf-pop" id="evf-pop" hidden>
+          <div class="ar-cf-pop-head">
+            <strong>Filter events</strong>
+            <button type="button" class="ar-link" id="evf-clear" data-ev-clear-all hidden>Clear all</button>
+          </div>
+          <div class="ar-cgf-fields" id="evf-fields"></div>
+        </div>
         <header class="topbar" id="events-list-head">
           <div class="ar-title">
             <img class="ar-uni-logo" src="img/udit.png" alt="" />
@@ -311,13 +318,6 @@
                 <b class="ar-cf-count" id="evf-count" hidden></b>
                 <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
               </button>
-              <div class="ar-cf-pop" id="evf-pop" hidden>
-                <div class="ar-cf-pop-head">
-                  <strong>Filter events</strong>
-                  <button type="button" class="ar-link" id="evf-clear" data-ev-clear-all hidden>Clear all</button>
-                </div>
-                <div class="ar-cgf-fields" id="evf-fields"></div>
-              </div>
             </div>
             <button type="button" class="btn btn-primary btn-sm btn-icon" id="ev-create">
               <span class="material-symbols-rounded" aria-hidden="true">add</span>
@@ -663,6 +663,6 @@
   <div class="ar-toast" id="toast" hidden></div>
 
   <script src="data/students-data.js?v=ar259"></script>
-  <script src="js/admitright.js?v=ar378"></script>
+  <script src="js/admitright.js?v=ar381"></script>
 </body>
 </html>

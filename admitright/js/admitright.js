@@ -5373,7 +5373,10 @@
       return '<option value="' + esc(value) + '"' + (selected ? ' selected' : '') + '>' + esc(label) + '</option>';
     };
     var select = function (id, options) {
-      return '<select class="ar-cg-select" id="' + id + '">' + options + '</select>';
+      return '<select class="ar-fselect" id="' + id + '">' + options + '</select>';
+    };
+    var field = function (label, control) {
+      return '<div class="ar-ffield"><span class="ar-flabel">' + label + '</span>' + control + '</div>';
     };
     var checks = function (group, items) {
       return '<div class="ar-fchips">' + items.map(function (it) {
@@ -5384,36 +5387,29 @@
     var pref = efPref();
     var prefs = EF.program === 'all' ? [] : prefsFor(EF.program);
     $('evf-fields').innerHTML =
-      '<label><span>Program</span>' + select('evf-program', [{ id: 'all', name: 'All programs' }].concat(PROGRAMS).map(function (p) {
+      field('Program', select('evf-program', [{ id: 'all', name: 'All programs' }].concat(PROGRAMS).map(function (p) {
         return opt(p.id, p.name, EF.program === p.id);
-      }).join('')) + '</label>' +
-      '<label><span>Preference</span>' + select('evf-pref', opt('', 'Any', !pref) + prefs.map(function (p) {
+      }).join(''))) +
+      field('Preference', select('evf-pref', opt('', 'Any', !pref) + prefs.map(function (p) {
         return opt(p.id, p.name, pref && pref.id === p.id);
-      }).join('')) + '</label>' +
-      '<label><span>Cohort</span>' + select('evf-cohort', [''].concat(COHORTS).map(function (c) {
+      }).join(''))) +
+      field('Cohort', select('evf-cohort', [''].concat(COHORTS).map(function (c) {
         return opt(c, c ? c + ' intake' : 'All cohorts', EF.cohort === c);
-      }).join('')) + '</label>' +
-      '<label><span>Format</span>' + checks('formats', EVENT_FORMATS) + '</label>' +
-      '<label><span>Kind of event</span>' + checks('kinds', EVENT_KINDS) + '</label>' +
-      '<label><span>City</span>' + checks('cities', eventCities().map(function (c) { return { id: c, name: c }; })) + '</label>' +
-      '<label><span>Meeting platform</span>' + checks('platforms', Object.keys(PLATFORM_LINKS).map(function (p) { return { id: p, name: p }; })) + '</label>' +
-      '<div class="ar-evf-block"><span>Event type</span><div class="ar-evf-type">' +
-      [{ id: 'online', name: 'Online event', icon: 'computer' }, { id: 'offline', name: 'Offline event', icon: 'groups' }, { id: 'hybrid', name: 'Hybrid event', icon: 'calendar_month' }].map(function (f) {
-        var on = EF.formats.indexOf(f.id) !== -1;
-        return '<button type="button" class="' + (on ? 'active' : '') + '" data-ev-check="formats:' + f.id + '">' + ico(f.icon) + esc(f.name) + '</button>';
-      }).join('') + '</div></div>' +
-      '<label><span>Event category</span>' + select('evf-category', opt('', 'Select event category', !EF.category) + EVENT_CATEGORIES.filter(function (c) { return c !== 'Other'; }).map(function (c) {
+      }).join(''))) +
+      field('Format', checks('formats', EVENT_FORMATS)) +
+      field('Kind of event', checks('kinds', EVENT_KINDS)) +
+      field('City', checks('cities', eventCities().map(function (c) { return { id: c, name: c }; }))) +
+      field('Meeting platform', checks('platforms', Object.keys(PLATFORM_LINKS).map(function (p) { return { id: p, name: p }; }))) +
+      field('Event type', checks('formats', [{ id: 'online', name: 'Online event' }, { id: 'offline', name: 'Offline event' }, { id: 'hybrid', name: 'Hybrid event' }])) +
+      field('Event category', select('evf-category', opt('', 'Select event category', !EF.category) + EVENT_CATEGORIES.filter(function (c) { return c !== 'Other'; }).map(function (c) {
         return opt(c, c, EF.category === c);
-      }).join('')) + '</label>' +
-      '<div class="ar-evf-block"><span>Start date range</span><div class="ar-evf-dates">' +
-      '<label><span>From</span><input type="date" id="evf-from" value="' + esc(EF.startFrom) + '"></label>' +
-      '<em>to</em>' +
-      '<label><span>To</span><input type="date" id="evf-to" value="' + esc(EF.startTo) + '"></label></div></div>' +
-      '<label><span>Creator</span>' + select('evf-creator', opt('', 'Select creators', !EF.creator) + (function () {
+      }).join(''))) +
+      field('Start date range', '<div class="ar-evf-dates"><label><span>From</span><input type="date" id="evf-from" value="' + esc(EF.startFrom) + '"></label><label><span>To</span><input type="date" id="evf-to" value="' + esc(EF.startTo) + '"></label></div>') +
+      field('Creator', select('evf-creator', opt('', 'Select creators', !EF.creator) + (function () {
         var seen = {};
         EVENTS.forEach(function (e) { if (e.host) seen[e.host] = true; });
         return Object.keys(seen).sort().map(function (h) { return opt(h, h, EF.creator === h); }).join('');
-      })()) + '</label>';
+      })()));
     $('evf-pref').disabled = EF.program === 'all';
     var n = efFacetCount();
     $('evf-count').textContent = n;
@@ -9978,7 +9974,8 @@
 
   document.addEventListener('click', function (e) {
     var pop = $('evf-pop');
-    if (!pop || pop.hidden || e.composedPath().indexOf($('evf-wrap')) !== -1) return;
+    var path = e.composedPath();
+    if (!pop || pop.hidden || path.indexOf($('evf-wrap')) !== -1 || path.indexOf(pop) !== -1) return;
     pop.hidden = true;
     $('evf-toggle').setAttribute('aria-expanded', 'false');
   });

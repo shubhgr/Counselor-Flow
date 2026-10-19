@@ -10610,22 +10610,83 @@ label.ar-editor-program:focus-within {
 }
 
 #evf-pop {
-  right: 0;
+  position: fixed;
+  top: var(--space-2);
+  right: var(--space-2);
+  bottom: var(--space-2);
   left: auto;
-  width: 460px;
-  max-height: min(82vh, 760px);
-  padding-bottom: 20px;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 60px rgba(20, 16, 40, 0.18);
+}
+
+#evf-pop .ar-cf-pop-head {
+  flex: none;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+
+#evf-pop .ar-cf-pop-head strong {
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+}
+
+#evf-pop .ar-cgf-fields {
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 0;
+  padding: var(--space-2) var(--space-5) var(--space-4);
   overflow-y: auto;
 }
 
-.ar-evf-block > span {
-  display: block;
-  margin-bottom: var(--space-2);
+#evf-pop .ar-ffield {
+  grid-template-columns: 1fr;
+  gap: var(--space-2);
+  padding: var(--space-4) 0;
+}
+
+#evf-pop .ar-ffield + .ar-ffield {
+  border-top: 1px solid var(--line);
+}
+
+#evf-pop .ar-flabel {
   color: var(--ink);
-  font-size: var(--text-2xs);
-  font-weight: var(--weight-heavy);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+#evf-pop .ar-fselect,
+#evf-pop .ar-evf-dates input {
+  width: 100%;
+  height: var(--btn-h);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-btn);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-base);
+}
+
+.ar-evf-block > span,
+#evf-pop .ar-cgf-fields label > span,
+#evf-pop .ar-evf-dates label span {
+  display: block;
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .ar-evf-type {
@@ -10662,22 +10723,22 @@ label.ar-editor-program:focus-within {
 
 .ar-evf-dates {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
   align-items: end;
 }
 
-.ar-evf-dates em {
-  padding-bottom: 10px;
-  color: var(--muted);
-  font-style: normal;
-  font-size: var(--text-sm);
-}
-
-.ar-evf-dates label {
+#evf-pop .ar-evf-dates label {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+  height: auto;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
   gap: 4px;
+  cursor: default;
 }
 
 .ar-evf-dates label span {
@@ -10688,52 +10749,16 @@ label.ar-editor-program:focus-within {
   text-transform: none;
 }
 
-.ar-evf-dates input {
-  width: 100%;
-  height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--bg);
-  font: inherit;
-  font-size: var(--text-sm);
-}
-
-#evf-pop .ar-cgf-fields label {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  height: auto;
-  padding: 0;
-  border: none;
-  background: transparent;
-  gap: var(--space-1);
-  cursor: default;
-}
-
-#evf-pop .ar-cgf-fields {
-  gap: 16px;
-}
-
-#evf-pop .ar-cgf-fields .ar-cg-select,
-#evf-pop .ar-evf-dates input {
-  box-sizing: border-box;
-  width: 100%;
-  height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background-color: var(--bg);
-  font-weight: var(--weight-medium);
-  font-size: var(--text-sm);
-}
-
-#evf-pop .ar-cgf-fields label > span {
-  margin-bottom: 0;
-}
-
 #evf-pop .ar-fchips {
-  margin-top: var(--space-0-5);
+  margin-top: 0;
+}
+
+body:has(#evf-pop:not([hidden]))::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 69;
+  background: rgba(20, 16, 40, 0.28);
 }
 
 #filter-menu.ar-filter-menu {
