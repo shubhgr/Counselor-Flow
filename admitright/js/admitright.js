@@ -2092,6 +2092,61 @@
 
   /* Ticked students stay ticked while filters change; bulk actions only use the ones still in view. */
   var SELECTED = {};
+  var bulkSegIds = null;
+
+  function openBulkSegment() {
+    var list = selectedStudents();
+    if (!list.length) {
+      toast('Tick students in the table first.');
+      return;
+    }
+    bulkSegIds = list.map(function (s) { return s.id; });
+    var n = bulkSegIds.length;
+    openDrawer(
+      'Create segment',
+      '<p class="ar-cm-note">' + ico('segment') + esc(String(n)) + ' selected student' + (n === 1 ? '' : 's') + ' will show up in Segments.</p>' +
+      fieldWrap('Segment name', textInput('bulk-seg-name', '', 'Campus visit shortlist'), true),
+      '<button type="button" class="btn btn-ghost btn-sm" data-bulk-seg-cancel>Cancel</button>' +
+      '<button type="button" class="btn btn-primary btn-sm btn-icon" data-bulk-seg-save>' + ico('check') + 'Create segment</button>',
+      true
+    );
+    if ($('bulk-seg-name')) $('bulk-seg-name').focus();
+  }
+
+  function saveBulkSegment() {
+    var name = ($('bulk-seg-name') ? $('bulk-seg-name').value : '').trim();
+    if (!name) {
+      toast('Give the segment a name.');
+      if ($('bulk-seg-name')) $('bulk-seg-name').focus();
+      return;
+    }
+    if (!bulkSegIds || !bulkSegIds.length) return;
+    var programs = {};
+    bulkSegIds.forEach(function (id) {
+      var s = studentById(id);
+      if (s) programs[s.program] = true;
+    });
+    var programIds = Object.keys(programs);
+    var oneProgram = programIds.length === 1 ? programIds[0] : '';
+    var made = {
+      id: 'seg-' + Date.now(),
+      name: name,
+      program: oneProgram || 'all',
+      prefId: oneProgram && state.program === oneProgram ? state.prefId : '',
+      shortlisted: 'any',
+      filters: blankFilters(),
+      members: bulkSegIds.slice(),
+      createdAt: Date.now(),
+    };
+    SEGMENTS.unshift(made);
+    segCache = {};
+    segPage.id = made.id;
+    bulkSegIds = null;
+    SELECTED = {};
+    closeDrawer();
+    toast('Segment created.');
+    goTo('segments');
+  }
 
   function checkCell(s) {
     return '<td class="ar-td-check"><label><input type="checkbox" data-select="' + s.id + '"' + (SELECTED[s.id] ? ' checked' : '') +
@@ -2143,7 +2198,7 @@
     var n = bulkTargets().length;
     var dis = n ? '' : ' disabled';
     var saved = savedView();
-    var pickOnly = picked ? '' : ' disabled title="Tick students in the table first"';
+    var pickOnly = picked || state.layout === 'board' ? '' : ' disabled title="Tick students in the table first"';
     function item(attrs, icon, label) {
       return '<button type="button" class="ar-menu-item ar-card-menu-item" role="menuitem" ' + attrs + dis + '>' + ico(icon) + '<span>' + label + '</span></button>';
     }
@@ -2156,18 +2211,35 @@
       }).join('') +
       '<div class="ar-bulk-sep"></div>' +
       (saved ? item('data-bulk="unsave"' + pickOnly, 'bookmark_remove', 'Remove from shortlist') : item('data-bulk="shortlist"' + pickOnly, 'bookmark_add', 'Shortlist')) +
+      item('data-bulk="segment"' + pickOnly, 'segment', 'Create segment') +
       item('data-bulk="download"', 'download', 'Download CSV');
+  }
+
+  function switchToTable() {
+    state.layout = 'table';
+    document.querySelectorAll('[data-view]').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-view') === 'table');
+    });
+    renderStudents();
   }
 
   function runBulk(action, channel) {
     var list = bulkTargets();
     if (!list.length) return;
+    if ((action === 'shortlist' || action === 'unsave' || action === 'segment') && state.layout !== 'table') {
+      switchToTable();
+      return;
+    }
     if (action === 'campaign') {
       openCampaign(list.map(function (s) { return s.id; }), channel);
       return;
     }
     if (action === 'download') {
       exportCsv(list);
+      return;
+    }
+    if (action === 'segment') {
+      openBulkSegment();
       return;
     }
     list = selectedStudents();
@@ -2834,16 +2906,34 @@
   }
 
   function segStudent(s, seg, score) {
+    if (seg.members) return seg.members.indexOf(s.id) !== -1;
     if (s.program !== seg.program) return false;
     if (seg.shortlisted === 'yes' && !(s.actions && s.actions.shortlisted)) return false;
     if (seg.shortlisted === 'no' && s.actions && s.actions.shortlisted) return false;
     return passesBag(s, seg.filters, score);
   }
 
+  function segMemberScore(s, seg) {
+    var pref = seg.program && seg.program !== 'all' && s.program === seg.program ? segPref(seg) : null;
+    if (!pref) {
+      var list = prefsFor(s.program);
+      pref = list[0] || null;
+    }
+    return pref ? scoreAgainst(s, pref).score : null;
+  }
+
   function segRows(seg) {
     if (segCache[seg.id]) return segCache[seg.id];
-    var pref = segPref(seg);
     var rows = [];
+    if (seg.members) {
+      seg.members.forEach(function (id) {
+        var s = studentById(id);
+        if (s) rows.push({ s: s, score: segMemberScore(s, seg) });
+      });
+      segCache[seg.id] = rows;
+      return rows;
+    }
+    var pref = segPref(seg);
     STUDENTS.forEach(function (s) {
       if (s.program !== seg.program) return;
       var score = pref ? scoreAgainst(s, pref).score : null;
@@ -2855,6 +2945,12 @@
   }
 
   function segChips(seg) {
+    if (seg.members) {
+      var pickedBits = [seg.members.length + ' selected'];
+      if (seg.program && seg.program !== 'all' && programById(seg.program)) pickedBits.unshift(programById(seg.program).name);
+      else if (seg.members.length) pickedBits.push('Mixed programs');
+      return pickedBits.map(function (b) { return '<span>' + esc(b) + '</span>'; }).join('');
+    }
     var pref = segPref(seg);
     var bag = seg.filters || blankFilters();
     var bits = [programById(seg.program).name];
@@ -5256,7 +5352,8 @@
     var kindEvents = EVENTS.filter(function (e) { return eventPasses(e, 'kinds'); });
     var formatEvents = EVENTS.filter(function (e) { return eventPasses(e, 'formats'); });
     var programs = topFive(tally(programEvents,
-      PROGRAMS.map(function (p) { return { id: p.id, name: p.name, icon: 'school' }; }), function (e) { return [e.program]; })
+      PROGRAMS.map(function (p) { return { id: p.id, name: p.name, icon: 'school' }; }),
+      function (e) { return [e.program]; })
       .filter(function (r) { return r.n; }));
     var kinds = topFive(tally(kindEvents, EVENT_KINDS, function (e) { return [e.kind]; })
       .filter(function (r) { return r.n; }));
@@ -5264,8 +5361,8 @@
 
     $('ev-insights').innerHTML =
       '<div class="ar-ev-overview-cols">' +
-      evStatGroup('Program', programs, 'program', programEvents.length, true) +
-      evStatGroup('Kind of event', kinds, 'kinds', kindEvents.length, true) +
+      '<section class="ar-ev-overview-col"><h3>Program</h3>' + insightRows(programs, 'program', maxN(programs)) + '</section>' +
+      '<section class="ar-ev-overview-col"><h3>Kind of event</h3>' + insightRows(kinds, 'kinds', maxN(kinds)) + '</section>' +
       evStatGroup('Format', formats, 'formats', formatEvents.length) +
       '</div>';
   }
@@ -5590,12 +5687,14 @@
 
   function newEventDraft() {
     return {
-      format: 'online', kind: 'webinar', name: '', category: 'Open House',
+      format: 'online', kind: 'webinar', name: '', category: 'Open House', categoryCustom: '',
       program: PROGRAMS[0].id, prefId: '', savedFilter: '', matchScore: '0',
+      audience: { mode: 'own', segmentId: '', program: PROGRAMS[0].id, prefId: '', minScore: '0', stage: '', intake: '', savedFilter: '' },
       description: '', coverImage: '', galleryImages: [],
       hasMeetingLink: false, startDate: '', startTime: '', time24: false, timezone: 'IST (GMT +05:30)',
       endMode: 'duration', days: '00', hours: '01', minutes: '00',
       registration: 'link', formLink: '', keepOpen: false, formBuilt: false,
+      flows: [],
       messages: {
         before: { on: false, mode: 'offset', offset: '24h', date: '', time: '', channel: 'email', text: '' },
         start: { on: false, offset: '0', channel: 'whatsapp', text: '' },
@@ -5624,9 +5723,13 @@
       var el = $('evc-' + k);
       if (el) d[k] = el.value;
     });
+    var customCat = $('evc-category-custom');
+    if (d.category === 'Other') d.categoryCustom = customCat ? customCat.value : (d.categoryCustom || '');
+    else d.categoryCustom = '';
     d.kind = EVENT_CATEGORY_KIND[d.category] || d.kind || 'webinar';
     var checked = document.querySelector('[name="evc-format"]:checked');
     if (checked) d.format = checked.value;
+    if ($('cga-program') || document.querySelector('#events-create-page [name="cg-aud-mode"]')) readEventAudience();
     ['cover', 'gallery', 'hasMeetingLink', 'time24', 'keepOpen'].forEach(function (k) {
       var el = $('evc-' + k);
       if (el) d[k] = el.checked;
@@ -5653,6 +5756,18 @@
     var time = $('evc-msg-before-time');
     if (date) d.messages.before.date = date.value;
     if (time) d.messages.before.time = time.value;
+    if (d.flows && document.querySelector('[data-flow]')) {
+      d.flows.forEach(function (flow) {
+        var ch = document.querySelector('[name="evc-flow-ch-' + flow.id + '"]:checked');
+        if (ch) flow.channel = ch.value;
+        var amount = $('evc-flow-amount-' + flow.id);
+        if (amount) flow.amount = Math.max(0, Number(amount.value) || 0);
+        ['unit', 'when', 'anchor', 'template'].forEach(function (k) {
+          var el = $('evc-flow-' + k + '-' + flow.id);
+          if (el) flow[k] = el.value;
+        });
+      });
+    }
   }
 
   function stepperHtml() {
@@ -5684,7 +5799,36 @@
       '<span class="ar-evm-switch" aria-hidden="true"></span><span><b>' + esc(label) + '</b><small>' + esc(note || '') + '</small></span></label>';
   }
 
+  function ensureEventAudience(d) {
+    if (!d.audience) {
+      d.audience = { mode: 'own', segmentId: '', program: d.program || PROGRAMS[0].id, prefId: d.prefId || '', minScore: d.matchScore || '0', stage: '', intake: '', savedFilter: d.savedFilter || '' };
+    }
+    return d.audience;
+  }
+
+  function readEventAudience() {
+    var d = evDraft();
+    if (!d) return;
+    var a = ensureEventAudience(d);
+    var mode = document.querySelector('#events-create-page [name="cg-aud-mode"]:checked');
+    if (mode) a.mode = mode.value;
+    ['program', 'prefId', 'minScore', 'stage', 'intake', 'savedFilter'].forEach(function (k) {
+      var el = $('cga-' + k);
+      if (el) a[k] = el.value;
+    });
+    if (a.mode === 'segment') {
+      var seg = SEGMENTS.filter(function (s) { return s.id === a.segmentId; })[0];
+      if (seg && programById(seg.program)) d.program = seg.program;
+    } else if (a.program && a.program !== 'all' && programById(a.program)) {
+      d.program = a.program;
+    }
+    d.prefId = a.prefId || '';
+    d.matchScore = a.minScore || '0';
+    d.savedFilter = a.savedFilter || '';
+  }
+
   function audienceTargetCount(d) {
+    if (d.audience) return cgAudience(d.audience).length;
     var pref = d.prefId ? findPref(d.program, d.prefId) : null;
     var min = Number(d.matchScore) || 0;
     return STUDENTS.filter(function (s) {
@@ -5697,47 +5841,36 @@
   function createBasicsHtml() {
     var d = evDraft();
     d.kind = EVENT_CATEGORY_KIND[d.category] || d.kind || 'webinar';
+    var formats = EVENT_FORMATS.map(function (f) {
+      return '<label class="' + (d.format === f.id ? ' on' : '') + '"><input type="radio" name="evc-format" value="' + f.id + '"' + (d.format === f.id ? ' checked' : '') + '>' +
+        ico(f.icon) + '<span>' + esc(f.name) + '</span></label>';
+    }).join('');
+    var gallery = d.galleryImages.map(function (src, i) {
+      return '<div><img src="' + esc(src) + '" alt="Gallery preview"><button type="button" data-evc-remove-gallery="' + i + '" aria-label="Remove gallery image">×</button></div>';
+    }).join('');
     return '<div class="ar-evc-sections">' +
-      '<section class="ar-evc-block"><h3>Event</h3><p>The name, description and cover are what students see first.</p>' +
+      '<section class="ar-evc-block"><h3>Event</h3><p>The name, category and format students see first.</p>' +
       '<div class="ar-evc-row ar-evc-two">' +
       fieldWrap('Event name', textInput('evc-name', d.name, 'Name your event'), true) +
-      fieldWrap('Event category', selectHtml('evc-category', d.category, EVENT_CATEGORIES), true) + '</div>' +
-      '<div class="ar-evc-formats">' + EVENT_FORMATS.map(function (f) {
-        return '<label class="' + (d.format === f.id ? ' on' : '') + '"><input type="radio" name="evc-format" value="' + f.id + '"' + (d.format === f.id ? ' checked' : '') + '>' +
-          ico(f.icon) + '<span>' + esc(f.name) + '</span></label>';
-      }).join('') + '</div>' +
-      '<div class="ar-evc-split">' +
-      fieldWrap('Description', '<textarea id="evc-description" rows="5" placeholder="Why should a student attend?">' + esc(d.description) + '</textarea>', false) +
+      fieldWrap('Event category', selectHtml('evc-category', d.category, EVENT_CATEGORIES) +
+        (d.category === 'Other' ? '<input type="text" id="evc-category-custom" value="' + esc(d.categoryCustom || '') + '" placeholder="Your category">' : ''), true) + '</div>' +
+      '<div class="ar-evc-field"><span>Format<em>*</em></span><div class="ar-evc-formats">' + formats + '</div></div></section>' +
+      '<section class="ar-evc-block"><h3>Description</h3><p>Why a student should attend.</p>' +
+      '<textarea id="evc-description" rows="4" placeholder="Why should a student attend?">' + esc(d.description) + '</textarea></section>' +
+      '<section class="ar-evc-block"><h3>Images</h3><p>The cover is the main photo. Gallery photos are extra.</p>' +
+      '<div class="ar-evc-split ar-evc-images">' +
       '<div class="ar-evc-media"><span>Cover image</span><div class="ar-evc-cover k-' + d.kind + '">' +
       (d.coverImage ? '<img src="' + esc(d.coverImage) + '" alt="Event cover preview"><button type="button" data-evc-remove-cover aria-label="Remove image">×</button>' : ico(kindById(d.kind).icon)) +
       '</div><input type="file" id="evc-coverFile" accept="image/*" hidden>' +
-      '<label class="ar-link" for="evc-coverFile">' + (d.coverImage ? 'Change image' : 'Upload image') + '</label></div></div></section>' +
-      '<section class="ar-evc-block"><h3>Gallery</h3><p>Extra photos from past events. These are separate from the cover.</p>' +
-      '<div class="ar-evc-gallery"><div class="ar-evc-gallery-grid">' + d.galleryImages.map(function (src, i) {
-        return '<div><img src="' + esc(src) + '" alt="Gallery preview"><button type="button" data-evc-remove-gallery="' + i + '" aria-label="Remove gallery image">×</button></div>';
-      }).join('') + '</div>' +
+      '<label class="ar-link" for="evc-coverFile">' + (d.coverImage ? 'Change image' : 'Upload image') + '</label></div>' +
+      '<div class="ar-evc-gallery"><span>Gallery</span><div class="ar-evc-gallery-grid">' + gallery + '</div>' +
       '<input type="file" id="evc-galleryFiles" accept="image/*" multiple hidden>' +
-      '<label class="ar-link" for="evc-galleryFiles">' + ico('add') + (d.galleryImages.length ? 'Add more' : 'Add images') + '</label></div></section></div>';
+      '<label class="ar-link" for="evc-galleryFiles">' + ico('add') + (d.galleryImages.length ? 'Add more' : 'Add images') + '</label></div></div></section></div>';
   }
 
   function createAudienceHtml() {
     var d = evDraft();
-    var saved = savedFilterInfo(d.program);
-    var prefOpts = [['', 'All students in the selected program']].concat(prefsFor(d.program).map(function (p) { return [p.id, p.name]; }));
-    var filterOpts = [['', 'No saved filter']];
-    if (saved) filterOpts.push(['saved', saved.label + (saved.disabled ? ' (pick matching program first)' : ''), saved.disabled]);
-    var leads = audienceTargetCount(d);
-    var scoreOpts = [['0', d.prefId ? 'Any match score' : 'Select preference to score leads'], ['80', '80% and above'], ['70', '70% and above'], ['60', '60% and above'], ['50', '50% and above']];
-    return '<div class="ar-evc-sections"><section class="ar-evc-block"><h3>Audience</h3><p>Who should be invited to this event.</p>' +
-      '<div class="ar-evc-row ar-evc-two">' +
-      fieldWrap('Program', selectHtml('evc-program', d.program, PROGRAMS.map(function (p) { return [p.id, p.name]; })), true) +
-      fieldWrap('Preference', selectHtml('evc-prefId', d.prefId, prefOpts), false) + '</div>' +
-      '<div class="ar-evc-row ar-evc-two">' +
-      fieldWrap('Match score', selectHtml('evc-matchScore', d.matchScore, scoreOpts), false) +
-      fieldWrap('Saved filter', selectHtml('evc-savedFilter', d.savedFilter, filterOpts), false) + '</div>' +
-      '<div class="ar-evc-target"><span>Students this reaches</span><strong>' + leads.toLocaleString() + '</strong><small>' +
-      esc(d.prefId ? 'From this preference and match score.' : 'Everyone in the selected program.') +
-      '</small></div></section></div>';
+    return '<div class="ar-evc-sections">' + cgAudienceStepHtml({ audience: ensureEventAudience(d) }) + '</div>';
   }
 
   function offsetPills(key, offsets, current) {
@@ -5757,19 +5890,41 @@
         '</div>' : '') + '</section>';
   }
 
+  function flowTemplates() {
+    var list = (typeof TPL_PREBUILT !== 'undefined' ? TPL_PREBUILT : []).concat(Array.isArray(MY_TEMPLATES) ? MY_TEMPLATES : []);
+    return list.map(function (t) { return [t.id, t.name]; });
+  }
+
+  function flowSelect(id, value, options) {
+    return '<select id="' + id + '">' + options.map(function (o) {
+      return '<option value="' + esc(o[0]) + '"' + (value === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+    }).join('') + '</select>';
+  }
+
+  function flowCard(flow) {
+    var ch = function (id, icon, name) {
+      return '<label class="' + (flow.channel === id ? 'on' : '') + '"><input type="radio" name="evc-flow-ch-' + flow.id + '" value="' + id + '"' + (flow.channel === id ? ' checked' : '') + '>' + ico(icon) + '<span>' + name + '</span></label>';
+    };
+    return '<article class="ar-flow" data-flow="' + esc(flow.id) + '">' +
+      '<div class="ar-flow-head"><div class="ar-evc-formats ar-flow-ch">' + ch('email', 'mail', 'Email') + ch('whatsapp', 'forum', 'WhatsApp') + '</div>' +
+      '<button type="button" class="ar-icon-btn" data-flow-remove="' + esc(flow.id) + '" aria-label="Remove message">' + ico('close') + '</button></div>' +
+      '<div class="ar-flow-eq"><span class="ar-flow-word">Send</span>' +
+      '<input type="number" min="0" id="evc-flow-amount-' + flow.id + '" value="' + esc(String(flow.amount)) + '" aria-label="Amount">' +
+      flowSelect('evc-flow-unit-' + flow.id, flow.unit, [['days', 'days'], ['hours', 'hours'], ['minutes', 'minutes']]) +
+      flowSelect('evc-flow-when-' + flow.id, flow.when, [['before', 'before'], ['after', 'after']]) +
+      flowSelect('evc-flow-anchor-' + flow.id, flow.anchor, [['registration', 'registration'], ['start', 'event start'], ['end', 'event end']]) +
+      '</div>' +
+      fieldWrap('Template', flowSelect('evc-flow-template-' + flow.id, flow.template, flowTemplates())) +
+      '</article>';
+  }
+
   function createMessagesHtml() {
-    var before = evDraft().messages.before;
-    var beforeWhen = '<div class="ar-evc-formats">' +
-      '<label class="' + (before.mode === 'datetime' ? ' on' : '') + '"><input type="radio" name="evc-msg-before-mode" value="datetime"' + (before.mode === 'datetime' ? ' checked' : '') + '>' + ico('calendar_today') + '<span>A date and time</span></label>' +
-      '<label class="' + (before.mode !== 'datetime' ? ' on' : '') + '"><input type="radio" name="evc-msg-before-mode" value="offset"' + (before.mode !== 'datetime' ? ' checked' : '') + '>' + ico('schedule') + '<span>Before it starts</span></label></div>' +
-      (before.mode === 'datetime'
-        ? '<div class="ar-evc-row ar-evc-two">' + fieldWrap('Date', '<input type="date" id="evc-msg-before-date" value="' + esc(before.date) + '">') + fieldWrap('Time', '<input type="time" id="evc-msg-before-time" value="' + esc(before.time) + '">') + '</div>'
-        : offsetPills('before', [['30m', '30 minutes before'], ['1h', '1 hour before'], ['24h', '24 hours before']], before.offset));
-    return '<div class="ar-evc-sections">' +
-      messageCard('before', 'Before the event starts', 'Choose an exact time, or send it 30 minutes, 1 hour or 24 hours before.', beforeWhen) +
-      messageCard('start', 'After the event starts', 'Send once the event is underway.', offsetPills('start', [['0', 'When it starts'], ['30m', '30 minutes after']], evDraft().messages.start.offset)) +
-      messageCard('end', 'After the event ends', 'Send once the event is over.', offsetPills('end', [['0', 'When it ends'], ['30m', '30 minutes after'], ['24h', '24 hours after']], evDraft().messages.end.offset)) +
-      '</div>';
+    var d = evDraft();
+    if (!d.flows) d.flows = [];
+    return '<div class="ar-evc-sections"><section class="ar-evc-block"><h3>Post-registration messages</h3>' +
+      '<p>Add a message for people who register. Pick the channel, when it goes out, and the template.</p>' +
+      (d.flows.length ? d.flows.map(flowCard).join('') : '<p class="ar-muted">No messages yet.</p>') +
+      '<button type="button" class="btn btn-secondary btn-sm btn-icon ar-flow-add" data-flow-add>' + ico('add') + 'Add a message</button></section></div>';
   }
 
   function createVenueHtml() {
@@ -5813,14 +5968,14 @@
     var program = programById(d.program);
     var pref = d.prefId ? findPref(d.program, d.prefId) : null;
     return '<section class="ar-evc-review"><div class="ar-evc-phone">' +
-      '<div class="ar-evc-mobile-card k-' + d.kind + '">' + ico(kindById(d.kind).icon) + '<span>' + esc(d.category) + '</span><h3>' + esc(d.name || 'Untitled event') + '</h3><p>' + esc(program.name) + '</p></div>' +
+      '<div class="ar-evc-mobile-card k-' + d.kind + '">' + ico(kindById(d.kind).icon) + '<span>' + esc(d.category === 'Other' ? ((d.categoryCustom || '').trim() || 'Other') : d.category) + '</span><h3>' + esc(d.name || 'Untitled event') + '</h3><p>' + esc(program.name) + '</p></div>' +
       '<div class="ar-seg ar-evc-theme"><button type="button" class="ar-seg-btn active">Dark mode</button><button type="button" class="ar-seg-btn">Light mode</button></div></div>' +
       '<div class="ar-evc-review-copy"><h3>Scroll and <span>review</span> your event in this prototype</h3><p>Choose the page you want to view</p>' +
       '<label><input type="radio" checked> Event card</label><label><input type="radio"> Event details</label><label><input type="radio"> Registration form</label>' +
       '<div class="ar-evc-review-actions"><button type="button" class="btn btn-secondary" data-ev-publish="draft">Save event as draft</button>' +
       '<button type="button" class="btn btn-primary" data-ev-publish="publish">Publish event</button></div>' +
       '<small>Built with ' + (d.registration === 'link' ? 'external form link' : d.registration === 'template' ? 'template form' : 'custom form') + '</small>' +
-      '<small>Audience: ' + esc(pref ? pref.name : 'All ' + program.name + ' students') + (d.savedFilter ? ' · saved filter' : '') + '</small>' +
+      '<small>Audience: ' + esc(d.audience ? cgTargetChips(d.audience).join(' · ') : (pref ? pref.name : 'All ' + program.name + ' students')) + '</small>' +
       '<small>Messages: ' + esc((d.messages ? ['before', 'start', 'end'].filter(function (k) { return d.messages[k].on; }) : []).join(', ') || 'none scheduled') + '</small></div></section>';
   }
 
@@ -5842,14 +5997,8 @@
   }
 
   function syncEventSaveBar() {
-    var bar = $('ev-savebar');
     var foot = $('ev-create-foot');
-    if (!bar || !evCreate) return;
-    var dirty = evCreate.clean !== JSON.stringify(evCreate.draft);
-    bar.hidden = !dirty;
-    if (foot) foot.hidden = dirty;
-    var label = $('ev-save-btn');
-    if (label) label.textContent = evCreate.savedOnce ? 'Update' : 'Save';
+    if (foot) foot.hidden = false;
   }
 
   function eventCreateNext() {
@@ -5887,7 +6036,7 @@
       city: d.format === 'online' ? '' : CAMPUS.city, venue: d.format === 'online' ? '' : CAMPUS.venue,
       platform: d.format === 'offline' ? '' : 'Zoom', link: d.format === 'offline' ? '' : PLATFORM_LINKS.Zoom(EVENTS.length + 3),
       clicks: 0, registrations: 0, draft: mode === 'draft', host: kind.name + ' host', image: '',
-      category: d.category, savedFilter: d.savedFilter, displayFormat: format.name, messages: d.messages,
+      category: d.category === 'Other' ? ((d.categoryCustom || '').trim() || 'Other') : d.category, savedFilter: d.savedFilter, displayFormat: format.name, messages: d.messages,
     });
     evCreate = null;
     currentEventId = null;
@@ -6716,7 +6865,7 @@
     var tpl = templateById(templateId || 'reminder');
     return {
       id: null, status: 'draft', name: '', description: '', channel: 'email', template: tpl.id, subject: tpl.subject, text: tpl.text,
-      audience: { program: state.program !== 'all' ? state.program : PROGRAMS[0].id, prefId: '', minScore: '0', stage: '', intake: '', savedFilter: '' },
+      audience: { mode: 'own', segmentId: '', program: state.program !== 'all' ? state.program : PROGRAMS[0].id, prefId: '', minScore: '0', stage: '', intake: '', savedFilter: '' },
     };
   }
 
@@ -6728,6 +6877,12 @@
   function cgAudience(a) {
     var key = JSON.stringify(a) + ':' + STUDENTS.length;
     if (cgCache[key]) return cgCache[key];
+    if (a.mode === 'segment') {
+      var seg = SEGMENTS.filter(function (s) { return s.id === a.segmentId; })[0];
+      var rows = seg ? segRows(seg).map(function (row) { return { s: row.s, score: row.score }; }) : [];
+      cgCache[key] = rows;
+      return rows;
+    }
     var pref = cgPrefOf(a);
     var min = Number(a.minScore) || 0;
     var stage = a.stage === '' || a.stage == null ? -1 : Number(a.stage);
@@ -6769,6 +6924,10 @@
   }
 
   function cgTargetChips(a) {
+    if (a.mode === 'segment') {
+      var picked = SEGMENTS.filter(function (s) { return s.id === a.segmentId; })[0];
+      return picked ? [picked.name] : ['Segment'];
+    }
     var chips = [a.program === 'all' ? 'All programs' : programById(a.program).name];
     var pref = cgPrefOf(a);
     if (pref) chips.push(pref.name);
@@ -6787,12 +6946,74 @@
     return first ? first.s : STUDENTS[0];
   }
 
+  function cgLooksHtml(text) {
+    return /<[a-z][\s\S]*>/i.test(text || '');
+  }
+
+  function cgTextPlain(html) {
+    var box = document.createElement('div');
+    box.innerHTML = html || '';
+    return (box.textContent || '').replace(/\u00a0/g, ' ').trim();
+  }
+
+  /** Keep only the marks the email editor can create. */
+  function cgSanitize(html) {
+    var allow = { B: 1, STRONG: 1, I: 1, EM: 1, U: 1, A: 1, UL: 1, OL: 1, LI: 1, P: 1, BR: 1, DIV: 1 };
+    var src = document.createElement('div');
+    src.innerHTML = html || '';
+    function clean(node) {
+      var out = document.createDocumentFragment();
+      Array.prototype.forEach.call(node.childNodes, function (child) {
+        if (child.nodeType === 3) { out.appendChild(document.createTextNode(child.textContent)); return; }
+        if (child.nodeType !== 1 || !allow[child.tagName]) {
+          if (child.nodeType === 1) out.appendChild(clean(child));
+          return;
+        }
+        var el = document.createElement(child.tagName.toLowerCase());
+        if (child.tagName === 'A') {
+          var href = child.getAttribute('href') || '';
+          if (/^(https?:|mailto:)/i.test(href)) el.setAttribute('href', href);
+        }
+        el.appendChild(clean(child));
+        out.appendChild(el);
+      });
+      return out;
+    }
+    var box = document.createElement('div');
+    box.appendChild(clean(src));
+    return box.innerHTML;
+  }
+
+  function cgRteHtml(text) {
+    if (!text) return '';
+    if (cgLooksHtml(text)) return cgSanitize(text);
+    return esc(text).replace(/\n/g, '<br>');
+  }
+
+  function cgRteField(text) {
+    var btn = function (cmd, icon, label) {
+      return '<button type="button" class="ar-icon-btn" data-rte="' + cmd + '" aria-label="' + label + '" data-tip="' + label + '">' + ico(icon) + '</button>';
+    };
+    return '<div class="ar-rte"><div class="ar-rte-bar" role="toolbar" aria-label="Formatting">' +
+      btn('bold', 'format_bold', 'Bold') +
+      btn('italic', 'format_italic', 'Italic') +
+      btn('underline', 'format_underlined', 'Underline') +
+      btn('insertUnorderedList', 'format_list_bulleted', 'Bulleted list') +
+      btn('insertOrderedList', 'format_list_numbered', 'Numbered list') +
+      btn('createLink', 'link', 'Link') +
+      '</div><div id="cg-text" class="ar-rte-body" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Write your message">' +
+      cgRteHtml(text) + '</div></div>';
+  }
+
   function cgPreviewHtml(c, s) {
     var text = fillTemplate(c.text || '', s).trim();
     if (c.channel === 'email') {
+      var body = cgLooksHtml(c.text || '')
+        ? '<div class="ar-rte-out">' + (cgTextPlain(text) ? cgSanitize(text) : 'Your message will appear here.') + '</div>'
+        : '<p>' + esc(text || 'Your message will appear here.') + '</p>';
       return '<div class="ar-cg-mail"><div class="ar-cg-mail-head"><span>' + ico('mail') + '</span><div><b>' +
         esc(fillTemplate(c.subject || '', s).trim() || '(No subject)') + '</b><small>' + esc(UNIVERSITY) + ' · via AdmitRight</small></div></div>' +
-        '<p>' + esc(text || 'Your message will appear here.') + '</p></div>';
+        body + '</div>';
     }
     return '<div class="ar-cg-phone ch-' + c.channel + '"><div class="ar-cg-phone-head">' + ico(channelById(c.channel).icon) +
       '<b>' + esc(UNIVERSITY) + '</b><small>' + esc(channelById(c.channel).name) + '</small></div>' +
@@ -7074,6 +7295,7 @@
     var launched = c.status === 'launched';
     var m = cgMetrics(c);
     var id = esc(c.id);
+    var openRate = cgPct(m.opened, m.delivered);
     var clickRate = cgPct(m.clicked, m.opened);
     var tools = launched
       ? cgTool('data-cg-view="' + id + '"', 'open_in_new', 'View campaign details') + cgTool('data-cg-duplicate="' + id + '"', 'content_copy', 'Duplicate')
@@ -7085,7 +7307,7 @@
       '<div class="ar-cg-stats">' +
       cgStat('Recipients', m.sent.toLocaleString() + (m.sent === 1 ? ' student' : ' students')) +
       cgStat(launched ? 'Sent on' : 'Last edited', cgStamp(launched ? c.sentAt : c.updated)) +
-      (launched ? cgStat('Click to open', clickRate + '%', clickRate) : '') +
+      (launched ? cgStat('Open rate', openRate + '%', openRate) + cgStat('Click to open', clickRate + '%', clickRate) : '') +
       '</div>' +
       '<div class="ar-cg-card-actions"><button type="button" class="btn btn-secondary btn-sm btn-icon" data-cg-preview="' + id + '">' + ico('visibility') + 'Preview</button>' +
       '<div class="ar-cg-tools">' + tools + '</div></div></article>';
@@ -7147,11 +7369,11 @@
     var drafts = CAMPAIGN_LIST.length - launched.length;
     var individuals = individualRows().length;
     $('cg-overview').innerHTML =
-      '<section class="panel ar-cg-kpis"><div class="panel-head"><h2>Overview</h2></div><div class="ar-cg-kpi-row">' +
+      '<section class="panel ar-cg-kpis"><div class="panel-head"><h2>Overview</h2><div class="ar-cg-kpi-row">' +
       cgKpi('campaign', 'Total campaigns', CAMPAIGN_LIST.length, launched.length + ' launched · ' + drafts + ' draft' + (drafts === 1 ? '' : 's')) +
       cgKpi('person', 'Individual sends', individuals.toLocaleString(), 'One student at a time') +
       cgKpi('groups', 'Total students', t.sent.toLocaleString(), 'from ' + launched.length + ' launched') +
-      '</div></section>';
+      '</div></div></section>';
   }
 
   function openCampaignPreview(id) {
@@ -7260,8 +7482,7 @@
       '<p class="ar-cm-note">' + ico('lock') + 'Sent through AdmitRight. Students’ phone numbers and emails stay private.</p></section>';
   }
 
-  function cgAudienceStepHtml(d) {
-    var a = d.audience;
+  function cgAudienceOwnHtml(a) {
     var all = a.program === 'all';
     var prefs = all ? [] : prefsFor(a.program);
     var saved = savedFilterInfo('all');
@@ -7275,8 +7496,7 @@
     var filterOpts = [['', 'No saved filter']];
     if (saved) filterOpts.push(['saved', saved.label]);
     var matched = list.filter(function (x) { return x.score !== null && x.score >= MATCH_MIN; }).length;
-    return '<section class="ar-evc-section"><h3>Audience</h3><p class="ar-evc-note">Pick who should get this campaign. The count updates as you change filters.</p>' +
-      '<div class="ar-evc-group"><h4>Who to target</h4><p>Start from a program, then narrow by preference, match score, funnel stage or intake.</p>' +
+    return '<div class="ar-evc-group">' +
       '<div class="ar-evc-row">' +
       fieldWrap('Program', selectHtml('cga-program', a.program, programOpts), true) +
       fieldWrap('Target audience preference', selectHtml('cga-prefId', a.prefId, prefOpts)) +
@@ -7287,7 +7507,36 @@
       fieldWrap('Saved filter', selectHtml('cga-savedFilter', a.savedFilter, filterOpts)) + '</div>' +
       '<div class="ar-evc-target"><span>Total targeted students</span><strong>' + list.length.toLocaleString() + '</strong><small>' +
       esc(cgPrefOf(a) ? matched.toLocaleString() + ' are strong matches for this preference.' : 'Pick a preference to see how well they match.') + '</small></div>' +
-      '<div class="ar-cg-chips ar-cg-target-chips">' + cgChipsHtml(a) + '</div></div></section>';
+      '<div class="ar-cg-chips ar-cg-target-chips">' + cgChipsHtml(a) + '</div></div>';
+  }
+
+  function cgAudienceSegmentHtml(a) {
+    var seg = SEGMENTS.filter(function (s) { return s.id === a.segmentId; })[0] || null;
+    var n = seg ? segRows(seg).length : 0;
+    return '<div class="ar-cg-segpick">' + SEGMENTS.map(function (item) {
+      var on = item.id === a.segmentId;
+      return '<button type="button" class="ar-segc' + (on ? ' on' : '') + '" data-cg-seg="' + esc(item.id) + '">' +
+        '<span class="ar-segc-top"><strong>' + esc(item.name) + '</strong><b>' + segRows(item).length + '</b></span>' +
+        '<span class="ar-segc-chips">' + segChips(item) + '</span></button>';
+    }).join('') + '</div>' +
+      '<div class="ar-evc-target"><span>Total targeted students</span><strong>' + n.toLocaleString() + '</strong><small>' +
+      esc(seg ? seg.name : 'Pick a segment') + '</small></div>';
+  }
+
+  function cgAudienceStepHtml(d) {
+    var a = d.audience;
+    var mode = a.mode === 'segment' ? 'segment' : 'own';
+    var choice = function (id, icon, title, note) {
+      return '<label class="' + (mode === id ? 'on' : '') + '"><input type="radio" name="cg-aud-mode" value="' + id + '"' + (mode === id ? ' checked' : '') + '>' +
+        ico(icon) + '<span><b>' + title + '</b><small>' + note + '</small></span></label>';
+    };
+    return '<section class="ar-evc-section"><h3>Audience</h3>' +
+      '<div class="ar-evc-formats ar-cg-aud-modes">' +
+      choice('own', 'tune', 'Choose your own audience', 'Set program, preference, score, stage and intake') +
+      choice('segment', 'segment', 'Choose segmentation', 'Use a segment you already saved') +
+      '</div>' +
+      (mode === 'segment' ? cgAudienceSegmentHtml(a) : cgAudienceOwnHtml(a)) +
+      '</section>';
   }
 
   function cgMessageStepHtml(d) {
@@ -7297,7 +7546,7 @@
       '<div class="ar-cg-compose"><div>' +
       fieldWrap('Template', selectHtml('cg-template', d.template, CAMPAIGN_TEMPLATES.map(function (t) { return [t.id, t.name]; }))) +
       (d.channel === 'email' ? fieldWrap('Subject', textInput('cg-subject', d.subject, 'Subject line'), true) : '') +
-      fieldWrap('Message', '<textarea id="cg-text" rows="8" placeholder="Write your message">' + esc(d.text) + '</textarea>', true) +
+      fieldWrap('Message', d.channel === 'email' ? cgRteField(d.text) : '<textarea id="cg-text" rows="8" placeholder="Write your message">' + esc(d.text) + '</textarea>', true) +
       (d.channel === 'sms' ? '<p class="ar-cg-count" id="cg-sms-count"></p>' : '') +
       '<p class="ar-cm-note">' + ico('auto_fix_high') + '{first}, {program} and {university} are filled in for each student.</p></div>' +
       '<div class="ar-cg-preview-col"><span>Preview for ' + esc(s.name.split(' ')[0]) + '</span><div id="cg-preview">' + cgPreviewHtml(d, s) + '</div></div>' +
@@ -7309,15 +7558,26 @@
       '<button type="button" class="ar-link" data-cg-step="' + step + '">' + ico('edit') + 'Edit</button></div>' + body + '</section>';
   }
 
+  function cgTestMeta(channel) {
+    if (channel === 'whatsapp') return { label: 'WhatsApp number', placeholder: '+91 98765 43210', noun: 'WhatsApp message' };
+    if (channel === 'sms') return { label: 'Username or ID', placeholder: 'Username or student ID', noun: 'text' };
+    return { label: 'Gmail', placeholder: 'name@gmail.com', noun: 'email' };
+  }
+
   function cgReviewStepHtml(d) {
     var ch = channelById(d.channel);
     var n = cgAudience(d.audience).length;
+    var test = cgTestMeta(d.channel);
     return '<section class="ar-cg-review">' +
       '<div class="ar-cg-review-grid">' +
       cgReviewBlock('Campaign', 0, '<div class="ar-cg-kv">' + detailKV('Name', d.name) + detailKV('Channel', ch.name) + detailKV('Description', d.description) + '</div>') +
       cgReviewBlock('Audience', 1, '<div class="ar-cg-kv">' + detailKV('Recipients', n.toLocaleString() + ' students') + '</div><div class="ar-cg-chips">' + cgChipsHtml(d.audience) + '</div>') +
       '</div>' +
       cgReviewBlock('Message', 2, '<div class="ar-cg-preview-box">' + cgPreviewHtml(d, cgSample(d)) + '</div>') +
+      '<div class="ar-cg-test"><div><h3>Send a test</h3><p>Check this ' + esc(test.noun) + ' before you launch it.</p></div>' +
+      '<label class="ar-evc-field"><span>' + esc(test.label) + '</span><div class="ar-cg-test-row">' +
+      '<input type="text" id="cg-test" placeholder="' + esc(test.placeholder) + '" autocomplete="off">' +
+      '<button type="button" class="btn btn-secondary btn-sm btn-icon" data-cg-test>' + ico('science') + 'Send test</button></div></label></div>' +
       '<div class="ar-cg-launch"><div><h3>Ready to send?</h3><p>' + n.toLocaleString() + ' student' + (n === 1 ? '' : 's') + ' will get this ' +
       esc(ch.id === 'whatsapp' ? ch.name : ch.name.toLowerCase()) + ' message right away. You can’t edit a campaign after launch.</p></div>' +
       '<div class="ar-cg-launch-actions"><button type="button" class="btn btn-secondary btn-sm" data-cg-save-draft>Save as draft</button>' +
@@ -7360,10 +7620,13 @@
     var d = cgForm.draft;
     ['name', 'description', 'template', 'subject', 'text'].forEach(function (k) {
       var el = $('cg-' + k);
-      if (el) d[k] = el.value;
+      if (!el) return;
+      d[k] = el.getAttribute('contenteditable') === 'true' ? el.innerHTML : el.value;
     });
     var ch = document.querySelector('[name="cg-channel"]:checked');
     if (ch) d.channel = ch.value;
+    var audMode = document.querySelector('[name="cg-aud-mode"]:checked');
+    if (audMode) d.audience.mode = audMode.value;
     ['program', 'prefId', 'minScore', 'stage', 'intake', 'savedFilter'].forEach(function (k) {
       var el = $('cga-' + k);
       if (el) d.audience[k] = el.value;
@@ -7374,10 +7637,11 @@
   function cgProblem(step) {
     var d = cgForm.draft;
     if (step === 0 && !d.name.trim()) return ['Give the campaign a name.', 'cg-name'];
+    if (step === 1 && d.audience.mode === 'segment' && !d.audience.segmentId) return ['Choose a segment.', 'cga-program'];
     if (step === 1 && !cgAudience(d.audience).length) return ['No students match this audience. Loosen a filter.', 'cga-program'];
     if (step === 2) {
       if (d.channel === 'email' && !d.subject.trim()) return ['Add a subject line.', 'cg-subject'];
-      if (!d.text.trim()) return ['Write a message first.', 'cg-text'];
+      if (!cgTextPlain(d.text)) return ['Write a message first.', 'cg-text'];
       if (d.channel === 'sms' && fillTemplate(d.text, cgSample(d)).length > SMS_LIMIT) return ['Keep the text under ' + SMS_LIMIT + ' characters.', 'cg-text'];
     }
     return null;
@@ -7980,6 +8244,31 @@
       return;
     }
 
+    var cgSeg = t.closest('[data-cg-seg]');
+    if (cgSeg && state.view === 'events' && evCreate) {
+      readEventCreate();
+      var evAud = ensureEventAudience(evCreate.draft);
+      evAud.mode = 'segment';
+      evAud.segmentId = cgSeg.getAttribute('data-cg-seg');
+      var evSeg = SEGMENTS.filter(function (s) { return s.id === evAud.segmentId; })[0];
+      if (evSeg && programById(evSeg.program)) evCreate.draft.program = evSeg.program;
+      renderEventCreate();
+      return;
+    }
+    if (cgSeg && (cgForm || tplDraft)) {
+      if (state.view === 'templates' && tplDraft) tplSyncForm();
+      if (cgForm) {
+        readCampaignForm();
+        cgForm.draft.audience.mode = 'segment';
+        cgForm.draft.audience.segmentId = cgSeg.getAttribute('data-cg-seg');
+        var pickedSeg = SEGMENTS.filter(function (s) { return s.id === cgForm.draft.audience.segmentId; })[0];
+        if (pickedSeg) cgForm.draft.audience.program = pickedSeg.program;
+        if (state.view === 'templates') renderTemplates();
+        else renderCampaignForm();
+      }
+      return;
+    }
+
     if (t.closest('[data-cg-next]')) {
       campaignFormNext();
       return;
@@ -8013,6 +8302,30 @@
       if (draftFromTpl) tplSyncForm();
       saveCampaignDraft();
       if (draftFromTpl) tplDraft = null;
+      return;
+    }
+
+    if (t.closest('[data-cg-test]')) {
+      if (state.view === 'templates' && tplDraft) tplSyncForm();
+      if (!cgForm) return;
+      var testTo = ($('cg-test') && $('cg-test').value || '').trim();
+      var testCh = cgForm.draft.channel;
+      if (testCh === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(testTo)) {
+        toast('Enter a Gmail address.');
+        if ($('cg-test')) $('cg-test').focus();
+        return;
+      }
+      if (testCh === 'whatsapp' && (testTo.replace(/\D/g, '').length < 10)) {
+        toast('Enter a WhatsApp number.');
+        if ($('cg-test')) $('cg-test').focus();
+        return;
+      }
+      if (testCh === 'sms' && testTo.length < 2) {
+        toast('Enter a username or ID.');
+        if ($('cg-test')) $('cg-test').focus();
+        return;
+      }
+      toast('Test ' + cgTestMeta(testCh).noun + ' sent to ' + testTo + '.');
       return;
     }
 
@@ -8436,6 +8749,32 @@
       return;
     }
 
+    if (t.closest('[data-flow-add]') && evCreate) {
+      readEventCreate();
+      if (!evCreate.draft.flows) evCreate.draft.flows = [];
+      var firstTpl = flowTemplates()[0];
+      evCreate.draft.flows.push({
+        id: 'f' + Date.now(),
+        channel: 'email',
+        amount: 1,
+        unit: 'days',
+        when: 'after',
+        anchor: 'registration',
+        template: firstTpl ? firstTpl[0] : '',
+      });
+      renderEventCreate();
+      return;
+    }
+
+    var flowRemove = t.closest('[data-flow-remove]');
+    if (flowRemove && evCreate) {
+      readEventCreate();
+      var drop = flowRemove.getAttribute('data-flow-remove');
+      evCreate.draft.flows = (evCreate.draft.flows || []).filter(function (flow) { return flow.id !== drop; });
+      renderEventCreate();
+      return;
+    }
+
     if (t.closest('[data-ev-create-next]') && evCreate) {
       eventCreateNext();
       return;
@@ -8554,6 +8893,17 @@
     }
 
     if (t.closest('.ar-td-check, .ar-th-check')) return;
+
+    if (t.closest('[data-bulk-seg-cancel]')) {
+      bulkSegIds = null;
+      closeDrawer();
+      return;
+    }
+
+    if (t.closest('[data-bulk-seg-save]')) {
+      saveBulkSegment();
+      return;
+    }
 
     var bulk = t.closest('[data-bulk]');
     if (bulk) {
@@ -9200,16 +9550,38 @@
       renderCampaignList();
       return;
     }
-    if (id === 'cg-text' || id === 'cg-subject') {
+    if (id === 'cg-text' || id === 'cg-subject' || (e.target.closest && e.target.closest('#cg-text'))) {
       readCampaignForm();
       updateCampaignPreview();
     }
   });
 
+  $('view-campaigns').addEventListener('mousedown', function (e) {
+    if (e.target.closest('[data-rte]')) e.preventDefault();
+  });
+
+  $('view-campaigns').addEventListener('click', function (e) {
+    var rte = e.target.closest('[data-rte]');
+    var editor = $('cg-text');
+    if (!rte || !editor || editor.getAttribute('contenteditable') !== 'true') return;
+    var cmd = rte.getAttribute('data-rte');
+    editor.focus();
+    if (cmd === 'createLink') {
+      var url = window.prompt('Link address', 'https://');
+      if (!url) return;
+      if (!/^(https?:|mailto:)/i.test(url)) url = 'https://' + url.replace(/^\/+/, '');
+      document.execCommand('createLink', false, url);
+    } else {
+      document.execCommand(cmd, false, null);
+    }
+    readCampaignForm();
+    updateCampaignPreview();
+  });
+
   $('view-templates').addEventListener('change', function (e) {
     if (!tplDraft || tplDraft.step < 1) return;
     var tid = e.target.id || '';
-    if (e.target.name !== 'cg-channel' && tid.indexOf('cga-') !== 0) return;
+    if (e.target.name !== 'cg-channel' && e.target.name !== 'cg-aud-mode' && tid.indexOf('cga-') !== 0) return;
     tplSyncForm();
     readCampaignForm();
     if (tid === 'cga-program') {
@@ -9230,7 +9602,7 @@
     }
     if (!cgForm) return;
     var d = cgForm.draft;
-    if (e.target.name === 'cg-channel') {
+    if (e.target.name === 'cg-channel' || e.target.name === 'cg-aud-mode') {
       readCampaignForm();
       renderCampaignForm();
       return;
@@ -9289,7 +9661,26 @@
     var tag = e.target.tagName;
     if (tag === 'SELECT' || e.target.type === 'radio' || e.target.type === 'checkbox') {
       if (e.target.id === 'evc-program') evCreate.draft.prefId = '';
+      if (e.target.id === 'cga-program' && evCreate.draft.audience) {
+        evCreate.draft.audience.prefId = '';
+        evCreate.draft.audience.minScore = '0';
+        evCreate.draft.audience.savedFilter = '';
+        evCreate.draft.prefId = '';
+      }
+      if (e.target.id === 'cga-prefId' && evCreate.draft.audience && !evCreate.draft.audience.prefId) evCreate.draft.audience.minScore = '0';
+      if (e.target.id === 'cga-savedFilter' && evCreate.draft.audience && evCreate.draft.audience.savedFilter === 'saved') {
+        var evSaved = savedFilterInfo('all');
+        if (evSaved) {
+          evCreate.draft.audience.program = programById(evSaved.program) ? evSaved.program : 'all';
+          evCreate.draft.audience.prefId = evCreate.draft.audience.program !== 'all' && evSaved.prefId ? evSaved.prefId : '';
+          evCreate.draft.audience.minScore = '0';
+          evCreate.draft.audience.intake = evSaved.intake || '';
+          if (evCreate.draft.audience.program !== 'all') evCreate.draft.program = evCreate.draft.audience.program;
+        }
+      }
+      var pickedOther = e.target.id === 'evc-category' && evCreate.draft.category === 'Other';
       renderEventCreate();
+      if (pickedOther && $('evc-category-custom')) $('evc-category-custom').focus();
       return;
     }
     syncEventSaveBar();
