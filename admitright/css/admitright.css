@@ -12253,6 +12253,24 @@ body:has(#filter-menu:not([hidden]))::after {
   overflow: hidden;
 }
 
+.ar-segleads {
+  padding-bottom: 0;
+}
+
+.ar-segleads .ar-seg-scroll {
+  margin-right: calc(-1 * var(--panel-pad-x));
+  margin-left: calc(-1 * var(--panel-pad-x));
+}
+
+.ar-segleads .ar-table-scroll,
+.ar-segleads .ar-seg-table {
+  width: 100%;
+}
+
+.ar-segleads .ar-muted {
+  padding: 0 var(--panel-pad-x) var(--space-3);
+}
+
 .ar-seg-table {
   table-layout: fixed;
 }
