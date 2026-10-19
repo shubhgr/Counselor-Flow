@@ -4110,7 +4110,6 @@
       '<button type="button" class="btn btn-secondary btn-sm" data-add-subject>Add</button></div>'
     );
   }
-  }
 
   function addCustomSubject() {
     var input = $('pe-subject-new');
