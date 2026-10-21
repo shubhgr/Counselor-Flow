@@ -10634,25 +10634,170 @@ label.ar-editor-program:focus-within {
 
 /* Dashboard: leads-over-time panel */
 .ar-insights {
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   align-items: stretch;
+  gap: var(--space-3);
+}
+
+.ar-insights-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  align-self: stretch;
 }
 
 .ar-insights.collapsed {
   grid-template-columns: 1fr;
 }
 
-.ar-insights.collapsed .ar-trend-chart,
-.ar-insights.collapsed .ar-actions-panel {
+.ar-insights.collapsed .ar-insights-rail {
   display: none !important;
 }
 
-.ar-insights:not(.collapsed) #trend-chart {
-  flex: 0 0 236px;
-  height: 236px;
+.ar-insights:not(.collapsed) .ar-actions-h,
+.ar-insights .ar-actions-panel.ar-actions-h {
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  margin-top: var(--space-4);
+  height: fit-content;
+  max-height: none;
+  min-height: 0;
+  overflow: visible;
+  align-self: start;
+}
+
+.ar-insights:not(.collapsed) .ar-actions-panel.ar-actions-h .ar-trend-actions {
+  flex: 0 0 auto;
+  display: block;
+  min-height: 0;
+  height: fit-content;
+}
+
+.ar-trend-panel {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.ar-trend-panel .panel-head {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.ar-actions-panel.ar-actions-h .ar-factions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  flex: none;
+  height: auto;
+  min-height: 0;
+  padding-bottom: 0;
+}
+
+.ar-actions-panel.ar-actions-h .ar-faction {
+  flex: none;
+  display: flex;
+  height: auto;
+  width: auto;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2-5) var(--space-3);
+}
+
+.ar-actions-panel.ar-actions-h .ar-faction-ring {
+  width: 44px;
+  height: 44px;
+}
+
+.ar-actions-panel.ar-actions-h .ar-faction-ring svg {
+  width: 44px;
+  height: 44px;
+}
+
+.ar-actions-panel.ar-actions-h .ar-faction-name {
+  font-size: var(--text-2xs);
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.ar-actions-panel.ar-actions-h .ar-faction-stat strong {
+  font-size: var(--text-xl);
+}
+
+.ar-insights:not(.collapsed) #trend-chart {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 160px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  margin-top: 0;
+  padding-top: 0;
+  overflow: hidden;
+}
+
+.ar-insights:not(.collapsed) #trend-chart > .ar-stackchart,
+.ar-insights:not(.collapsed) #trend-chart > .ar-achart.ar-stage-line {
+  flex: 1 1 auto;
+  min-height: 160px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.ar-insights:not(.collapsed) #trend-chart .ar-stage-line .ar-achart-plot {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 120px;
+}
+
+.ar-insights:not(.collapsed) #trend-chart .ar-stackchart-plot {
+  flex: 1 1 auto;
+  min-height: 120px;
+  min-width: 0;
+  padding: 0 10px;
+  overflow: visible;
+}
+
+.ar-insights:not(.collapsed) #trend-chart .ar-stackchart-bars {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.ar-insights:not(.collapsed) #trend-chart .ar-stackchart.bare .ar-stack {
+  width: 70%;
+  max-width: 28px;
+  border-radius: 5px 5px 0 0;
+}
+
+.ar-insights:not(.collapsed) #trend-chart .ar-stackchart.dense .ar-stack {
+  width: 100%;
+  max-width: none;
+  min-width: 3px;
+  border-radius: 3px 3px 0 0;
+}
+
+.ar-insights:not(.collapsed) #trend-chart .ar-stackchart-bars button:hover {
+  z-index: 5;
+}
+
+.ar-insights:not(.collapsed) #trend-chart .ar-stackchart-axis {
+  margin: var(--space-2) 10px 0;
+  overflow: hidden;
 }
 
 #trend-chart > .ar-achart,
@@ -10759,15 +10904,42 @@ label.ar-editor-program:focus-within {
   text-overflow: ellipsis;
 }
 
-.ar-stack-tip {
+.ar-stackchart-axis {
+  position: relative;
+  display: block;
+  height: 1.35em;
+  margin-top: var(--space-2);
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-1-5);
+}
+
+.ar-stackchart-axis span {
   position: absolute;
-  bottom: calc(var(--h, 0%) + 8px);
-  left: 50%;
-  z-index: 4;
+  top: var(--space-1-5);
+  flex: none;
+  transform: translateX(-50%);
+  overflow: visible;
+  text-overflow: clip;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.ar-stackchart-plot .ar-stack-tip {
+  position: absolute;
+  top: 6px;
+  left: 4px;
+  z-index: 8;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 168px;
+  width: max-content;
+  min-width: 160px;
+  max-width: calc(100% - 8px);
+  max-height: calc(100% - 12px);
+  overflow: auto;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius-btn);
@@ -10778,15 +10950,11 @@ label.ar-editor-program:focus-within {
   font-style: normal;
   text-align: left;
   white-space: nowrap;
-  opacity: 0;
-  transform: translate(-50%, 4px);
-  transition: opacity var(--dur-fast), transform var(--dur-fast);
   pointer-events: none;
 }
 
-.ar-stackchart-bars button:hover .ar-stack-tip {
-  opacity: 1;
-  transform: translate(-50%, 0);
+.ar-stackchart-plot .ar-stack-tip[hidden] {
+  display: none;
 }
 
 .ar-stack-tip strong {
@@ -10813,9 +10981,272 @@ label.ar-editor-program:focus-within {
   font-variant-numeric: tabular-nums;
 }
 
-/* Stage: a row of stats above the chart */
+/* Stage: fixed body height so Funnel ↔ Snapshot does not resize the top row */
+.ar-insights:not(.collapsed) {
+  min-height: 380px;
+}
+
+.ar-insights:not(.collapsed) .ar-funnel-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 380px;
+  height: 100%;
+}
+
 .ar-insights:not(.collapsed) .ar-funnel-panel .ar-flist {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+  height: 300px;
+  max-height: 300px;
+  overflow: hidden;
+}
+
+.ar-funnel-viz,
+.ar-pie-viz {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.ar-funnel-viz {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ar-funnel-row {
+  flex: 1 1 0;
+  display: grid;
+  grid-template-columns: minmax(168px, 220px) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ar-funnel-row:last-child {
+  border-bottom: 0;
+}
+
+.ar-funnel-row:hover .ar-funnel-track i,
+.ar-funnel-row.active .ar-funnel-track i {
+  filter: brightness(0.96);
+}
+
+.ar-funnel-row.dim .ar-funnel-track i {
+  opacity: 0.28;
+}
+
+.ar-funnel-row.dim .ar-funnel-meta {
+  opacity: 0.55;
+}
+
+.ar-funnel-row.active .ar-funnel-name {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ar-funnel-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+
+.ar-funnel-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ar-funnel-meta strong {
+  flex: none;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.ar-funnel-meta small {
+  flex: none;
+  padding: var(--space-0-5) var(--space-1-5);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--st, var(--brand)) 16%, #fff);
+  color: var(--st, var(--brand));
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.ar-funnel-track {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 22px;
+  min-width: 0;
+}
+
+.ar-funnel-track i {
+  display: block;
+  height: 100%;
+  max-width: 100%;
+  border-radius: 5px;
+  background: var(--st, var(--brand));
+}
+
+.ar-pie-viz {
+  display: grid;
+  grid-template-columns: minmax(160px, 200px) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.ar-pie-plot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ar-pie-plot svg {
+  display: block;
+  width: min(100%, 280px);
+  height: auto;
+  max-height: 260px;
+}
+
+.ar-pie-slice {
+  cursor: pointer;
+  transform-origin: 110px 110px;
+  transition: opacity 0.15s ease;
+}
+
+.ar-pie-slice.dim {
+  opacity: 0.28;
+}
+
+.ar-pie-slice.on {
+  filter: drop-shadow(0 0 0.5px var(--ink));
+}
+
+.ar-pie-total {
+  fill: var(--ink);
+  font-size: 22px;
+  font-weight: 650;
+  font-family: inherit;
+}
+
+.ar-pie-total-label {
+  fill: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  text-transform: lowercase;
+}
+
+.ar-pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  height: 100%;
+}
+
+.ar-pie-leg {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ar-pie-leg:last-child {
+  border-bottom: 0;
+}
+
+.ar-pie-leg span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ar-pie-leg strong {
+  flex: none;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.ar-pie-leg small {
+  flex: none;
+  padding: var(--space-0-5) var(--space-1-5);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--st, var(--brand)) 16%, #fff);
+  color: var(--st, var(--brand));
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+}
+
+.ar-pie-leg.active span {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ar-pie-leg.zero {
+  opacity: 0.45;
+}
+
+@media (max-width: 720px) {
+  .ar-insights:not(.collapsed) .ar-funnel-panel .ar-flist {
+    height: auto;
+    min-height: 0;
+  }
+
+  .ar-funnel-row,
+  .ar-pie-viz {
+    grid-template-columns: 1fr;
+    gap: var(--space-1-5);
+  }
+
+  .ar-funnel-row,
+  .ar-pie-leg {
+    flex: none;
+    padding: var(--space-2) 0;
+  }
+
+  .ar-pie-plot {
+    order: -1;
+  }
 }
 
 .ar-fstages {
@@ -10901,8 +11332,8 @@ label.ar-editor-program:focus-within {
 .ar-frow-val small {
   padding: var(--space-0-5) var(--space-1-5);
   border-radius: var(--radius-xs);
-  background: color-mix(in srgb, var(--st, var(--brand)) 14%, var(--brand-white));
-  color: color-mix(in srgb, var(--st, var(--brand)) 55%, var(--purple-950));
+  background: color-mix(in srgb, var(--st, var(--brand)) 16%, #fff);
+  color: var(--st, var(--brand));
   font-size: var(--text-2xs);
   font-weight: var(--weight-bold);
   font-variant-numeric: tabular-nums;
@@ -10924,7 +11355,24 @@ label.ar-editor-program:focus-within {
 }
 
 .ar-actions-panel .panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
   margin-bottom: var(--space-3);
+}
+
+.ar-trend-panel > .panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.ar-trend-panel > #trend-chart {
+  margin-top: 4px;
 }
 
 .ar-insights-head {
@@ -11049,6 +11497,10 @@ label.ar-editor-program:focus-within {
   .ar-insights .ar-actions-panel .ar-collapse-btn {
     display: none;
   }
+
+  .ar-insights {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ar-trend-sub {
@@ -11069,9 +11521,9 @@ label.ar-editor-program:focus-within {
   border-top: 0;
 }
 
-@media (max-width: 1100px) {
-  .ar-insights {
-    grid-template-columns: 1fr;
+@media (max-width: 720px) {
+  .ar-actions-h .ar-factions {
+    flex-direction: column;
   }
 }
 
