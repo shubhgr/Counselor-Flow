@@ -10,7 +10,7 @@
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=tok1" />
   <link rel="stylesheet" href="css/tokens.css?v=tok1" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar414" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar435" />
 </head>
 <body class="ar ar-locked">
   <section class="ar-gate" id="gate-login" hidden>
@@ -156,7 +156,7 @@
           <section class="ar-insights">
             <div class="panel ar-funnel-panel" id="funnel">
               <div class="panel-head">
-                <h2>Stage</h2>
+                <h2 class="ar-insights-head">Stage <span class="ar-head-count" id="stage-count">0</span></h2>
                 <div class="ar-head-actions">
                   <div class="ar-seg ar-seg-sm" role="tablist" aria-label="Stage view">
                     <button type="button" class="ar-seg-btn" data-stage-mode="funnel" role="tab" aria-selected="false" title="How many students reached each stage">Funnel</button>
@@ -175,7 +175,7 @@
 
             <div class="panel ar-actions-panel">
               <div class="panel-head">
-                <h2>Additional user actions</h2>
+                <h2 class="ar-insights-head">Additional user actions <span class="ar-head-count" id="actions-count">0</span></h2>
                 <button type="button" class="ar-icon-btn ar-collapse-btn" data-toggle-insights aria-label="Collapse">
                   <span class="material-symbols-rounded" aria-hidden="true">expand_less</span>
                 </button>
@@ -231,6 +231,7 @@
               </div>
             </div>
             <div class="ar-filters" id="active-filters" hidden></div>
+            <div id="students-visit" class="ar-students-visit" hidden></div>
             <div class="panel ar-saved-empty" id="saved-empty" hidden>
               <span class="material-symbols-rounded" aria-hidden="true">bookmark</span>
               <h3>No leads yet</h3>
@@ -416,6 +417,16 @@
                 <span class="material-symbols-rounded" aria-hidden="true">search</span>
                 <input type="search" id="cg-search" placeholder="Search campaigns" autocomplete="off" />
               </label>
+              <label class="ar-cg-sort-wrap">
+                <span class="ar-cg-sort-label">Sort by</span>
+                <select class="ar-cg-select" id="cg-sort" aria-label="Sort by">
+                  <option value="new">Newest first</option>
+                  <option value="old">Oldest first</option>
+                  <option value="reach">Most recipients</option>
+                  <option value="ctr-hi">CTR: high to low</option>
+                  <option value="ctr-lo">CTR: low to high</option>
+                </select>
+              </label>
               <div class="ar-cf-wrap" id="cgf-wrap">
                 <button type="button" class="chip-btn ar-picker ar-cf-toggle" id="cgf-toggle" aria-expanded="false" aria-controls="cgf-pop">
                   <span class="material-symbols-rounded" aria-hidden="true">tune</span>
@@ -440,12 +451,8 @@
                     <label><span>Program</span>
                       <select class="ar-cg-select" id="cgf-program"></select>
                     </label>
-                    <label><span>Sort by</span>
-                      <select class="ar-cg-select" id="cgf-sort">
-                        <option value="new">Newest first</option>
-                        <option value="old">Oldest first</option>
-                        <option value="reach">Most recipients</option>
-                      </select>
+                    <label><span>Created by</span>
+                      <select class="ar-cg-select" id="cgf-createdBy"></select>
                     </label>
                   </div>
                 </div>
@@ -681,6 +688,6 @@
   <div class="ar-toast" id="toast" hidden></div>
 
   <script src="data/students-data.js?v=ar259"></script>
-  <script src="js/admitright.js?v=ar413"></script>
+  <script src="js/admitright.js?v=ar436"></script>
 </body>
 </html>

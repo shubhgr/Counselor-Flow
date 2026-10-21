@@ -92,6 +92,9 @@
     { id: 'bdes', name: 'B.Des', fee: 16, stream: 'Any', seats: 60, prefName: 'Eligibility' },
     { id: 'bcom', name: 'B.Com (Hons)', fee: 8, stream: 'Commerce', seats: 120, prefName: 'Eligibility' },
   ];
+  /** Cross-program bucket on Programs & preferences — holds Eligibility (Default). */
+  var ALL_PROGRAM = { id: 'all', name: 'All', fee: 12, stream: 'Any', seats: 0, prefName: 'Eligibility' };
+  var PP_PROGRAMS = [ALL_PROGRAM].concat(PROGRAMS);
 
   var BOARD_GROUPS = [
     ['National & international', ['CBSE', 'CISCE', 'IB', 'Cambridge (IGCSE)', 'NIOS']],
@@ -280,7 +283,7 @@
     var met = partMet(p);
     return '<b class="' + cls + ' ' + (met ? 'hi' : 'lo') + '">' + (met ? 'Yes' : 'No') + '</b>';
   }
-  /** Every preference uses the same bands: Matches 80+, Close 60–79, Below under 60. */
+  /** Every preference uses the same bands: Strong match 80+, Potential match 60–79, Low match under 60. */
   var MATCH_MIN = 80;
   var CLOSE_MIN = 60;
 
@@ -553,8 +556,8 @@
 
   function defaultPrefs() {
     var out = {};
-    PROGRAMS.forEach(function (p) {
-      out[p.id] = [{ id: newId(), name: p.prefName, criteria: baseCriteria(p) }];
+    PP_PROGRAMS.forEach(function (p) {
+      out[p.id] = [{ id: p.id === 'all' ? 'pref-all-eligibility' : newId(), name: p.prefName, criteria: baseCriteria(p) }];
     });
     var ncr = baseCriteria(PROGRAMS[0]);
     ncr.location = { radius: 100, weight: 40 };
@@ -621,13 +624,16 @@
     try {
       var stored = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null');
       if (stored) {
-        PROGRAMS.forEach(function (p) {
+        PP_PROGRAMS.forEach(function (p) {
           if (!Array.isArray(stored[p.id]) || !stored[p.id].length) return;
           stored[p.id].forEach(function (pref) {
             if (pref.name === 'Standard intake' && p.prefName) pref.name = p.prefName;
           });
           defaults[p.id] = stored[p.id];
         });
+        if (!Array.isArray(defaults.all) || !defaults.all.length) {
+          defaults.all = [{ id: 'pref-all-eligibility', name: 'Eligibility', criteria: baseCriteria(ALL_PROGRAM) }];
+        }
         if (localStorage.getItem(SEEDS_KEY) !== '1') {
           var cse = defaults[PROGRAMS[0].id] = defaults[PROGRAMS[0].id].filter(function (p) {
             return RETIRED_SEEDS.indexOf(p.id) === -1;
@@ -643,7 +649,7 @@
       }
       localStorage.setItem(SEEDS_KEY, '1');
     } catch (e) {}
-    PROGRAMS.forEach(function (p) {
+    PP_PROGRAMS.forEach(function (p) {
       (defaults[p.id] || []).forEach(function (pref) { normCriteria(pref.criteria); });
       if (defaults[p.id] && defaults[p.id][0]) defaults[p.id][0].name = 'Eligibility';
     });
@@ -786,9 +792,10 @@
     query: '',
     range: null, // { from, to, preset } as whole days, or null for all time
     intake: '2027',
-    ppProgram: PROGRAMS[0].id,
+    createdBy: '',
+    ppProgram: 'all',
     collapsed: {},
-    filters: { min: '', max: '', vals: {} },
+    filters: { min: '', max: '', engMin: '', engMax: '', vals: {} },
     chatId: null,
   };
 
@@ -799,13 +806,13 @@
   }
 
   function programById(id) {
+    if (id === 'all') return ALL_PROGRAM;
     return PROGRAMS.filter(function (p) { return p.id === id; })[0];
   }
 
   /** The preference a student is judged by in the current dashboard context. */
   function activePrefFor(s) {
-    if (state.program !== 'all') return findPref(state.program, state.prefId);
-    return prefsFor(s.program)[0];
+    return findPref(state.program, state.prefId) || prefsFor(state.program)[0] || null;
   }
 
   /** bucket 3 means the program has no preference yet, so the student isn't scored. */
@@ -861,19 +868,63 @@
   }
 
   var SAVED_KEY = 'admitright_saved_v1';
+  var SAVED_AT_KEY = 'admitright_saved_at_v1';
   var SAVED = {};
+  var SAVED_AT = {};
   try {
     (JSON.parse(localStorage.getItem(SAVED_KEY) || '[]') || []).forEach(function (id) { SAVED[id] = true; });
   } catch (err) { SAVED = {}; }
+  try { SAVED_AT = JSON.parse(localStorage.getItem(SAVED_AT_KEY) || '{}') || {}; } catch (err2) { SAVED_AT = {}; }
+
+  function saveSavedStore() {
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify(Object.keys(SAVED))); } catch (err) { /* storage full or blocked */ }
+    try { localStorage.setItem(SAVED_AT_KEY, JSON.stringify(SAVED_AT)); } catch (err2) { /* storage full or blocked */ }
+  }
+
+  (function seedSavedAts() {
+    var dirty = false;
+    Object.keys(SAVED).forEach(function (id, i) {
+      if (SAVED_AT[id]) return;
+      var s = studentById(id);
+      var at = s && s.actions && s.actions.shortlisted ? new Date(s.actions.shortlisted).getTime() : (TODAY.getTime() - i * 86400000);
+      SAVED_AT[id] = at;
+      dirty = true;
+    });
+    if (dirty) saveSavedStore();
+  })();
 
   function isSaved(id) {
     return !!SAVED[id];
   }
 
+  function shortlistedAt(s) {
+    if (s && SAVED_AT[s.id]) return new Date(SAVED_AT[s.id]);
+    if (s && s.actions && s.actions.shortlisted) return new Date(s.actions.shortlisted);
+    return s && s.createdOn ? new Date(s.createdOn) : new Date(TODAY);
+  }
+
+  function shortlistDayKey(d) {
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+
+  function shortlistDayLabel(d) {
+    var day = dayStart(d);
+    var today = dayStart(TODAY);
+    var diff = Math.round((today - day) / 86400000);
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Yesterday';
+    return fmtShort(d, true);
+  }
+
   function toggleSaved(id) {
-    if (SAVED[id]) delete SAVED[id];
-    else SAVED[id] = true;
-    try { localStorage.setItem(SAVED_KEY, JSON.stringify(Object.keys(SAVED))); } catch (err) { /* storage full or blocked */ }
+    if (SAVED[id]) {
+      delete SAVED[id];
+      delete SAVED_AT[id];
+    } else {
+      SAVED[id] = true;
+      SAVED_AT[id] = Date.now();
+    }
+    saveSavedStore();
     return !!SAVED[id];
   }
 
@@ -897,6 +948,7 @@
       .filter(function (s) {
         if (!savedView() && state.stage !== null && !atStage(s, state.stage)) return false;
         if (!savedView() && state.action && !s.actions[state.action]) return false;
+        if (state.createdBy && studentCreatorId(s) !== state.createdBy) return false;
         if (!passesFilters(s)) return false;
         if (!q) return true;
         return (s.name + ' ' + s.id + ' ' + s.city).toLowerCase().indexOf(q) !== -1;
@@ -953,11 +1005,37 @@
   function activeFilterCount() {
     if (!filtersOn()) return 0;
     var f = state.filters;
-    return (f.min !== '' || f.max !== '' ? 1 : 0) + activeFilters().length;
+    return (f.min !== '' || f.max !== '' ? 1 : 0) +
+      (f.engMin !== '' || f.engMax !== '' ? 1 : 0) +
+      activeFilters().length + (state.createdBy ? 1 : 0);
   }
 
   function resetFilters() {
-    state.filters = { min: '', max: '', vals: {} };
+    state.filters = { min: '', max: '', engMin: '', engMax: '', vals: {} };
+    state.createdBy = '';
+  }
+
+  function engageFilterBag(bag) {
+    return { min: bag.engMin || '', max: bag.engMax || '' };
+  }
+
+  function engageScoreAttr(k) {
+    return 'data-fscore="' + (k === 'min' ? 'engMin' : 'engMax') + '" min="0" max="100"';
+  }
+
+  function passesEngageRange(s, bag) {
+    if (!bag) return true;
+    var eng = engageScore(s);
+    if (bag.engMin !== '' && bag.engMin != null && (eng === null || eng < Number(bag.engMin))) return false;
+    if (bag.engMax !== '' && bag.engMax != null && (eng === null || eng > Number(bag.engMax))) return false;
+    return true;
+  }
+
+  function engageRangeChip(bag) {
+    if (!bag || (bag.engMin === '' || bag.engMin == null) && (bag.engMax === '' || bag.engMax == null)) return '';
+    if (bag.engMin !== '' && bag.engMax !== '' && bag.engMin != null && bag.engMax != null) return bag.engMin + '–' + bag.engMax + '%';
+    if (bag.engMin !== '' && bag.engMin != null) return bag.engMin + '%+';
+    return 'up to ' + bag.engMax + '%';
   }
 
   var FILTERS_KEY = 'admitright_filters_v1';
@@ -1006,6 +1084,7 @@
   function savedFilterSummary(sf) {
     var vals = sf.filters.vals || {};
     var n = (sf.filters.min !== '' || sf.filters.max !== '' ? 1 : 0) +
+      (sf.filters.engMin !== '' || sf.filters.engMax !== '' ? 1 : 0) +
       Object.keys(vals).filter(function (id) { return filterActive(id, vals[id]); }).length;
     var program = programById(sf.program);
     var pref = prefsFor(sf.program).filter(function (p) { return p.id === sf.prefId; })[0];
@@ -1115,6 +1194,7 @@
     var f = state.filters;
     if (f.min !== '' && (s.score === null || s.score < Number(f.min))) return false;
     if (f.max !== '' && (s.score === null || s.score > Number(f.max))) return false;
+    if (!passesEngageRange(s, f)) return false;
     var ids = activeFilters();
     for (var i = 0; i < ids.length; i++) {
       var id = ids[i];
@@ -1190,12 +1270,10 @@
     return s.score === null ? '—' : s.score + '<small>%</small>';
   }
 
+  /** Profile engagement is event-only: Opened / Registered / Joined → 0–100%. */
   function engageScore(s) {
     if (!s.engage) return null;
-    var camp = Math.min(4, s.engage.campaign || 0) / 4;
-    var ev = Math.min(3, s.engage.event || 0) / 3;
-    var act = ACTIONS.length ? actionsDone(s).length / ACTIONS.length : 0;
-    return Math.round(camp * 50 + ev * 30 + act * 20);
+    return Math.round(Math.min(3, s.engage.event || 0) / 3 * 100);
   }
 
   /* ——— Score changes after a preference edit ——— */
@@ -1304,7 +1382,7 @@
     return '<div class="ar-card-scorebox">' + scoreDeltaHtml(s) +
       '<div class="ar-card-meters">' +
       meter('Match', match, scoreClass(s), matchColor) +
-      meter('Engage', eng, 'ar-engage', 'var(--brand)') +
+      meter('Events', eng, 'ar-engage', 'var(--brand)') +
       '</div></div>';
   }
 
@@ -1421,7 +1499,7 @@
     var digits = [];
     for (var i = 0; i < prog.ids.length; i++) digits.push('3');
     STUDENTS.forEach(function (s) {
-      if (s.program !== programId) return;
+      if (programId !== 'all' && s.program !== programId) return;
       if (!Object.prototype.hasOwnProperty.call(index, s.id)) {
         index[s.id] = prog.ids.length;
         prog.ids.push(s.id);
@@ -1443,7 +1521,7 @@
   /** Opening a preference's dashboard counts as seeing it; marked once per preference opened. */
   var lastSeenKey = null;
   function noteDashboardSeen() {
-    if (document.body.classList.contains('ar-locked') || state.view !== 'dashboard' || state.program === 'all') return;
+    if (document.body.classList.contains('ar-locked') || state.view !== 'dashboard') return;
     var pref = findPref(state.program, state.prefId);
     if (!pref) return;
     var key = state.program + '|' + pref.id;
@@ -1461,7 +1539,7 @@
     prog.ids.forEach(function (id, i) { index[id] = i; });
     var out = { at: entry.at, up: 0, down: 0, fresh: [0, 0, 0] };
     STUDENTS.forEach(function (s) {
-      if (s.program !== programId) return;
+      if (programId !== 'all' && s.program !== programId) return;
       var b = bucketOf(scoreAgainst(s, pref).score);
       var i = index[s.id];
       var was = i === undefined || i >= entry.digits.length ? 3 : Number(entry.digits.charAt(i));
@@ -1473,7 +1551,7 @@
 
   function bucketNums(counts) {
     return '<div class="ar-visit-nums">' + bucketDefs().map(function (d, i) {
-      return '<span class="ar-visit-num' + (counts[i] ? '' : ' zero') + '"><i style="background:' + d.color + '"></i><b>' + counts[i] + '</b> ' + ['Matches', 'Close', 'Below'][i] + '</span>';
+      return '<span class="ar-visit-num' + (counts[i] ? '' : ' zero') + '"><i style="background:' + d.color + '"></i><b>' + counts[i] + '</b> ' + esc(d.short || d.name) + '</span>';
     }).join('') + '</div>';
   }
 
@@ -1489,7 +1567,7 @@
   }
 
   /** Shown until the preference is first opened: where its students stand today, and who is new since the course was last viewed. */
-  function visitSnapshotHtml(programId, pref, seen) {
+  function visitSnapshotHtml(programId, pref, seen, dismissible) {
     var prog = seen.programs[programId];
     var lastAt = prog ? programSeenAt(programId, seen) : 0;
     var known = {};
@@ -1497,7 +1575,7 @@
     var now = [0, 0, 0];
     var fresh = [0, 0, 0];
     STUDENTS.forEach(function (s) {
-      if (s.program !== programId) return;
+      if (programId !== 'all' && s.program !== programId) return;
       var b = bucketOf(scoreAgainst(s, pref).score);
       now[b] += 1;
       if (lastAt && !known[s.id]) fresh[b] += 1;
@@ -1506,7 +1584,8 @@
       ? visitLabel('New since last viewed · ' + esc(timeAgo(lastAt)), fresh[0] + fresh[1] + fresh[2]) + bucketNums(fresh)
       : visitLabel('New since last viewed') + '<span class="ar-visit-note">This course hasn’t been viewed yet.</span>';
     return (
-      '<div class="ar-visit">' +
+      '<div class="ar-visit' + (dismissible ? ' ar-visit-banner' : '') + '">' +
+      (dismissible ? '<button type="button" class="ar-icon-btn ar-visit-close" data-visit-dismiss aria-label="Dismiss">' + ico('close') + '</button>' : '') +
       '<div class="ar-visit-head">Not opened yet · current numbers</div>' +
       '<div class="ar-visit-grid">' +
       '<div class="ar-visit-col">' + visitLabel('All students', now[0] + now[1] + now[2]) + bucketNums(now) + '</div>' +
@@ -1515,12 +1594,14 @@
     );
   }
 
-  function visitHtml(programId, pref, seen) {
+  function visitHtml(programId, pref, seen, dismissible) {
     var ch = visitChanges(programId, pref, seen);
-    if (!ch) return visitSnapshotHtml(programId, pref, seen);
+    if (!ch) return visitSnapshotHtml(programId, pref, seen, dismissible);
     var newTotal = ch.fresh[0] + ch.fresh[1] + ch.fresh[2];
     return (
-      '<div class="ar-visit">' +
+      '<div class="ar-visit' + (dismissible ? ' ar-visit-banner' : '') + '"' +
+      (dismissible ? ' data-visit-at="' + ch.at + '"' : '') + '>' +
+      (dismissible ? '<button type="button" class="ar-icon-btn ar-visit-close" data-visit-dismiss aria-label="Dismiss">' + ico('close') + '</button>' : '') +
       '<div class="ar-visit-head">Since you last opened it · ' + esc(timeAgo(ch.at)) + '</div>' +
       '<div class="ar-visit-grid">' +
       '<div class="ar-visit-col">' + visitLabel('Moved buckets') +
@@ -1532,6 +1613,61 @@
       bucketNums(ch.fresh) + '</div>' +
       '</div></div>'
     );
+  }
+
+  var VISIT_DISMISS_KEY = 'admitright_visit_dismiss_v1';
+  var VISIT_DISMISS = {};
+  try { VISIT_DISMISS = JSON.parse(localStorage.getItem(VISIT_DISMISS_KEY) || '{}') || {}; } catch (err) { VISIT_DISMISS = {}; }
+  var visitBannerCache = null;
+
+  function visitDismissId(programId, prefId, at) {
+    return programId + '|' + prefId + '|' + (at || 0);
+  }
+
+  function isVisitDismissed(programId, prefId, at) {
+    return !!VISIT_DISMISS[visitDismissId(programId, prefId, at)];
+  }
+
+  function dismissVisitBanner(programId, prefId, at) {
+    VISIT_DISMISS[visitDismissId(programId, prefId, at)] = 1;
+    try { localStorage.setItem(VISIT_DISMISS_KEY, JSON.stringify(VISIT_DISMISS)); } catch (err) { /* blocked */ }
+  }
+
+  /** Must run before noteDashboardSeen so the banner still shows the previous visit’s numbers. */
+  function renderStudentsVisit() {
+    var el = $('students-visit');
+    if (!el) return;
+    if (savedView()) {
+      el.hidden = true;
+      el.innerHTML = '';
+      return;
+    }
+    var pref = findPref(state.program, state.prefId);
+    if (!pref) {
+      el.hidden = true;
+      el.innerHTML = '';
+      visitBannerCache = null;
+      return;
+    }
+    var key = state.program + '|' + pref.id;
+    if (!visitBannerCache || visitBannerCache.key !== key) {
+      var seen = readSeen();
+      var ch = visitChanges(state.program, pref, seen);
+      visitBannerCache = {
+        key: key,
+        programId: state.program,
+        prefId: pref.id,
+        at: ch ? ch.at : 0,
+        html: visitHtml(state.program, pref, seen, true),
+      };
+    }
+    if (isVisitDismissed(visitBannerCache.programId, visitBannerCache.prefId, visitBannerCache.at)) {
+      el.hidden = true;
+      el.innerHTML = '';
+      return;
+    }
+    el.innerHTML = visitBannerCache.html;
+    el.hidden = !visitBannerCache.html;
   }
 
   /* ——— Dashboard: stages ——— */
@@ -1559,6 +1695,9 @@
         '<span class="ar-mini-top">' + ico(st.icon) + '<b>' + counts[i] + '</b></span><small>' + esc(st.name) + '</small></button>';
     }).join('');
     var shownTotal = counts.reduce(function (a, b) { return a + b; }, 0);
+    var headN = set.length;
+    if ($('stage-count')) $('stage-count').textContent = fmtNum(headN);
+    if ($('actions-count')) $('actions-count').textContent = fmtNum(headN);
     var trend = stageSeries(set, snapshot);
     $('funnel-grid').innerHTML = '<div class="ar-fstages">' + STAGES.map(function (st, i) {
       var note;
@@ -1592,7 +1731,7 @@
           '<button type="button" class="ar-faction' + (state.action === a.id ? ' active' : '') + (n ? '' : ' zero') + '" data-funnel-action="' + a.id + '">' +
           '<span class="ar-faction-ring"><svg viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="30"></circle><circle cx="36" cy="36" r="30" stroke-dasharray="' + turn + ' ' + circ + '"></circle></svg>' + ico(a.icon) + '</span>' +
           '<span class="ar-faction-copy"><span class="ar-faction-name">' + esc(a.name) + '</span>' +
-          '<span class="ar-faction-stat"><strong>' + n + '</strong><small>from ' + fmtNum(of) + ' student' + (of === 1 ? '' : 's') + '</small></span></span></button>'
+          '<span class="ar-faction-stat"><strong>' + n + '</strong></span></span></button>'
         );
       }).join('') + '</div>';
   }
@@ -1886,7 +2025,7 @@
     if (!pref) {
       $('pref-panel-title').textContent = 'No preference yet';
       $('prefs-summary').innerHTML = '<p class="panel-lead">' + esc(programById(state.program).name) +
-        ' has no preference, so its students aren’t scored. Create one to sort them into Matches, Close and Below.</p>';
+        ' has no preference, so its students aren’t scored. Create one to sort them into Strong match, Potential match and Low match.</p>';
       return;
     }
     $('pref-panel-title').textContent = 'Preferences';
@@ -2030,9 +2169,9 @@
 
   function bucketDefs() {
     return [
-      { name: 'Gold', range: MATCH_MIN + '–100%', color: '#C8962E' },
-      { name: 'Silver', range: CLOSE_MIN + '–' + (MATCH_MIN - 1) + '%', color: '#8E97A8' },
-      { name: 'Bronze', range: 'Under ' + CLOSE_MIN + '%', color: '#A86B3C' },
+      { name: 'Strong match', short: 'Strong match', range: MATCH_MIN + '–100%', color: '#C8962E' },
+      { name: 'Potential match', short: 'Potential match', range: CLOSE_MIN + '–' + (MATCH_MIN - 1) + '%', color: '#8E97A8' },
+      { name: 'Low match', short: 'Low match', range: 'Under ' + CLOSE_MIN + '%', color: '#A86B3C' },
     ];
   }
 
@@ -2041,14 +2180,40 @@
   var TABLE_LIMIT = 300;
   var boardCols = [];
 
+  function savedBoardItems(list) {
+    var sorted = list.slice().sort(function (a, b) {
+      return shortlistedAt(b).getTime() - shortlistedAt(a).getTime() || (b.lastActive || 0) - (a.lastActive || 0);
+    });
+    var items = [];
+    var lastKey = '';
+    sorted.forEach(function (s) {
+      var at = shortlistedAt(s);
+      var key = shortlistDayKey(at);
+      if (key !== lastKey) {
+        items.push({ kind: 'day', label: shortlistDayLabel(at) });
+        lastKey = key;
+      }
+      items.push({ kind: 'card', s: s });
+    });
+    return items;
+  }
+
+  function boardChunkHtml(chunk) {
+    if (chunk.kind === 'day') {
+      return '<div class="ar-day-rule" role="separator" aria-label="' + esc(chunk.label) + '"><span>' + esc(chunk.label) + '</span></div>';
+    }
+    return cardHtml(chunk.s);
+  }
+
   /** Students of programs without a preference get their own full-width section; it replaces the columns when that program is picked. */
   function renderBoard() {
     var list = visibleSet();
-    if (state.program === 'all' || savedView()) {
-      boardCols = [{ items: list, shown: 0 }];
+    if (savedView()) {
+      var savedItems = savedBoardItems(list);
+      boardCols = [{ items: savedItems, shown: 0, saved: true }];
       $('board').innerHTML =
-        '<div class="ar-col-list ar-col-grid ar-col-plain gr-scroll" data-col="0">' +
-        (list.length ? '' : '<div class="ar-col-empty">' + (savedView() ? 'No leads match these filters.' : 'No students match these filters.') + '</div>') + '</div>';
+        '<div class="ar-col-list ar-col-grid ar-col-plain ar-col-saved gr-scroll" data-col="0">' +
+        (savedItems.length ? '' : '<div class="ar-col-empty">No leads match these filters.</div>') + '</div>';
       growColumn(0);
       return;
     }
@@ -2090,7 +2255,10 @@
     if (!col || col.shown >= col.items.length) return;
     var next = col.items.slice(col.shown, col.shown + BOARD_CHUNK);
     col.shown += next.length;
-    document.querySelector('[data-col="' + i + '"]').insertAdjacentHTML('beforeend', next.map(cardHtml).join(''));
+    var html = col.saved
+      ? next.map(boardChunkHtml).join('')
+      : next.map(cardHtml).join('');
+    document.querySelector('[data-col="' + i + '"]').insertAdjacentHTML('beforeend', html);
   }
 
   document.addEventListener('scroll', function (e) {
@@ -2282,7 +2450,7 @@
 
   /** A program's tables are split by match level; columns are the preference's criteria with each student's score on them. */
   function renderTable(list) {
-    var pref = state.program === 'all' ? null : findPref(state.program, state.prefId);
+    var pref = findPref(state.program, state.prefId);
     if (!pref) {
       $('table').innerHTML = '<div class="panel ar-table-wrap">' + (list.length
         ? '<table class="ar-table ar-table-fit"><thead><tr>' + checkHead('all') + '<th class="ar-th-student">Student</th><th>Stage</th><th>Stream</th><th>Class 12</th><th>Test</th><th>Budget</th><th>Location of student</th><th>Preferred location</th><th>Intake</th><th class="ar-th-save"></th></tr></thead><tbody>' +
@@ -2295,7 +2463,7 @@
       return;
     }
     var crits = CRITERIA.filter(function (c) { return c.id !== 'board' && pref.criteria[c.id].weight > 0; });
-    var headCols = '<th class="ar-th-student">Student</th><th class="ar-th-match">Match</th><th>Engage</th>' + crits.map(function (c) {
+    var headCols = '<th class="ar-th-student">Student</th><th class="ar-th-match">Match</th><th>Events</th>' + crits.map(function (c) {
       return '<th title="Percentile among ' + esc(programById(state.program).name) + ' applicants on ' + esc(c.label.toLowerCase()) + '">' +
         esc(c.id === 'activities' ? 'Activities' : c.label) + ' <i class="ar-th-weight">' + pref.criteria[c.id].weight + '</i></th>';
     }).join('') + '<th class="ar-th-save"></th></tr>';
@@ -2318,8 +2486,21 @@
       }).join('');
     }
     if (savedView()) {
+      var savedSorted = list.slice().sort(function (a, b) {
+        return shortlistedAt(b).getTime() - shortlistedAt(a).getTime();
+      });
+      var lastDay = '';
+      var savedRows = savedSorted.slice(0, TABLE_LIMIT).map(function (s) {
+        var key = shortlistDayKey(shortlistedAt(s));
+        var rule = '';
+        if (key !== lastDay) {
+          rule = '<tr class="ar-day-row"><td colspan="20"><div class="ar-day-rule"><span>' + esc(shortlistDayLabel(shortlistedAt(s))) + '</span></div></td></tr>';
+          lastDay = key;
+        }
+        return rule + rowsFor([s]);
+      }).join('');
       $('table').innerHTML = '<section class="panel ar-table-wrap">' + (list.length
-        ? '<div class="ar-table-scroll"><table class="ar-table ar-table-fit"><thead>' + head('all') + '</thead><tbody>' + rowsFor(list) + '</tbody></table></div>' + tableMore(list.length)
+        ? '<div class="ar-table-scroll"><table class="ar-table ar-table-fit"><thead>' + head('all') + '</thead><tbody>' + savedRows + '</tbody></table></div>' + tableMore(list.length)
         : '<div class="ar-col-empty">No leads match these filters.</div>') + '</section>';
       return;
     }
@@ -2347,11 +2528,18 @@
       var act = ACTIONS.filter(function (a) { return a.id === state.action; })[0];
       chips.push('<button type="button" class="ar-filter-chip" data-clear="action">Action: ' + esc(act.name) + ico('close') + '</button>');
     }
+    if (state.createdBy) {
+      chips.push('<button type="button" class="ar-filter-chip" data-clear="createdBy">Created by: ' + esc(staffName(state.createdBy)) + ico('close') + '</button>');
+    }
     if (filtersOn()) {
       var f = state.filters;
       if (f.min !== '' || f.max !== '') {
         var range = f.min !== '' && f.max !== '' ? f.min + '–' + f.max + '%' : f.min !== '' ? f.min + '%+' : 'up to ' + f.max + '%';
         chips.push('<button type="button" class="ar-filter-chip" data-clear="score">Match ' + range + ico('close') + '</button>');
+      }
+      var engChip = engageRangeChip(f);
+      if (engChip) {
+        chips.push('<button type="button" class="ar-filter-chip" data-clear="engage">Events ' + engChip + ico('close') + '</button>');
       }
       var pref = findPref(state.program, state.prefId);
       activeFilters().forEach(function (id) {
@@ -2519,11 +2707,15 @@
   function openFilterPlaces(id, from) {
     var pref = id === 'preferred';
     var inSeg = from && from.closest && from.closest('#drawer');
-    var pfx = inSeg ? 'sg' : 'ff';
+    var inAud = from && from.closest && from.closest('#cga-filters');
+    var pfx = inSeg ? 'sg' : inAud ? 'cga' : 'ff';
     var list = $(pfx + (pref ? '-pref-list' : '-place-list'));
     var box = $(pfx + (pref ? '-pref-q' : '-place-q'));
     if (!list || !box) return;
-    var host = inSeg && segEditor ? segEditor.filters : state.filters;
+    var host = inSeg && segEditor ? segEditor.filters
+      : inAud ? audFilterBag()
+      : state.filters;
+    if (!host) return;
     var places = (host.vals[pref ? 'preferred' : 'location'] && host.vals[pref ? 'preferred' : 'location'].places) || [];
     list.innerHTML = placeListHtml(box.value, places, pref ? 'data-ff-add-pref' : 'data-ff-add-place');
     list.hidden = false;
@@ -2612,6 +2804,7 @@
     $('filter-menu').innerHTML = head +
       '<div class="ar-fmenu-body gr-scroll">' +
       row(label('Match score'), rangeInputs(scoreAttr, f, '%')) +
+      row(label('Engagement score'), rangeInputs(engageScoreAttr, engageFilterBag(f), '%')) +
       FILTER_ORDER.filter(function (id) {
         var critRow = pref.criteria[id];
         if (!critRow) return false;
@@ -2630,6 +2823,10 @@
         [['', 'All intakes'], ['2026', '2026'], ['2027', '2027'], ['2028', '2028'], ['2029', '2029']].map(function (o) {
           return '<option value="' + o[0] + '"' + (state.intake === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
         }).join('') + '</select>') +
+      row(label('Created by'), '<select class="ar-fselect" data-fcreator aria-label="Created by">' +
+        [{ id: '', name: 'Anyone' }].concat(CHAT_STAFF).map(function (p) {
+          return '<option value="' + esc(p.id) + '"' + (state.createdBy === p.id ? ' selected' : '') + '>' + esc(p.id ? staffName(p.id) : p.name) + '</option>';
+        }).join('') + '</select>') +
       '</div>' + foot;
   }
 
@@ -2643,6 +2840,7 @@
     var list = visibleSet();
     renderFilters(list);
     saveViewState();
+    renderStudentsVisit();
     var noneSaved = savedView() && !Object.keys(SAVED).length;
     $('saved-empty').hidden = !noneSaved;
     $('board').hidden = noneSaved || state.layout !== 'board';
@@ -2664,21 +2862,16 @@
     $('program-label').textContent = state.program === 'all' ? 'All programs' : programById(state.program).name;
 
     var prefBtn = $('pref-btn');
-    if (state.program === 'all') {
-      prefBtn.disabled = true;
-      prefBtn.title = 'Pick a program to choose a preference';
-      $('pref-label').textContent = 'Program default';
-      $('pref-menu').innerHTML = '';
-      return;
-    }
     prefBtn.disabled = false;
     prefBtn.title = '';
-    var active = findPref(state.program, state.prefId) || { id: null, name: 'No preference' };
+    var prefs = prefsFor(state.program);
+    var active = findPref(state.program, state.prefId) || prefs[0] || { id: null, name: 'No preference' };
+    if (active.id && state.prefId !== active.id) state.prefId = active.id;
     $('pref-label').textContent = active.name;
     $('pref-menu').innerHTML =
-      prefsFor(state.program).map(function (p) {
+      prefs.map(function (p) {
         return '<button type="button" class="ar-menu-item' + (p.id === active.id ? ' active' : '') + '" data-pref="' + p.id + '">' +
-          esc(p.name) + '</button>';
+          esc(p.name) + (p === prefs[0] ? ' · Default' : '') + '</button>';
       }).join('') +
       '<button type="button" class="ar-menu-item ar-menu-add" data-create-pref="' + state.program + '">' + ico('add') + 'Create preference</button>';
   }
@@ -2705,15 +2898,16 @@
   /* ——— Programs & preferences view ——— */
 
   function renderPrograms() {
-    $('pp-program-count').textContent = PROGRAMS.length;
-    $('pp-program-list').innerHTML = PROGRAMS.map(function (p) {
+    if (!programById(state.ppProgram)) state.ppProgram = 'all';
+    $('pp-program-count').textContent = PP_PROGRAMS.length;
+    $('pp-program-list').innerHTML = PP_PROGRAMS.map(function (p) {
       return (
         '<button type="button" class="ar-pp-program' + (state.ppProgram === p.id ? ' active' : '') + '" data-pp-program="' + p.id + '">' +
         '<strong>' + esc(p.name) + '</strong></button>'
       );
     }).join('');
 
-    var program = programById(state.ppProgram);
+    var program = programById(state.ppProgram) || ALL_PROGRAM;
     var prefs = prefsFor(program.id);
     if (!prefs.length) {
       $('pp-cards').innerHTML =
@@ -2862,7 +3056,7 @@
   }
 
   function blankFilters() {
-    return { min: '', max: '', intake: '', vals: {} };
+    return { min: '', max: '', engMin: '', engMax: '', intake: '', vals: {} };
   }
 
   var SEGMENTS = [
@@ -2882,10 +3076,26 @@
     return SEGMENTS.filter(function (s) { return s.id === id; })[0] || SEGMENTS[0];
   }
 
+  function segPrefProgram(programId) {
+    if (programId === 'all') return 'all';
+    return programId && programById(programId) ? programId : PROGRAMS[0].id;
+  }
+
+  function segPrefsFor(programId) {
+    var list = prefsFor(segPrefProgram(programId));
+    return list.length ? list : prefsFor(PROGRAMS[0].id);
+  }
+
+  function segPrefLabel(p, i) {
+    if (!p) return '';
+    return i === 0 ? p.name + ' (Default)' : p.name;
+  }
+
   function segPref(seg) {
-    var list = prefsFor(seg.program);
+    var programId = segPrefProgram(seg.program);
+    var list = segPrefsFor(programId);
     if (!list.length) return null;
-    if (seg.prefId) return findPref(seg.program, seg.prefId);
+    if (seg.prefId) return findPref(programId, seg.prefId) || list[0];
     return list.filter(function (p) { return p.name === seg.prefName; })[0] || list[0];
   }
 
@@ -2894,6 +3104,7 @@
     if (bag.intake && intakeYear(s) !== String(bag.intake)) return false;
     if (bag.min !== '' && bag.min != null && (score === null || score < Number(bag.min))) return false;
     if (bag.max !== '' && bag.max != null && (score === null || score > Number(bag.max))) return false;
+    if (!passesEngageRange(s, bag)) return false;
     var vals = bag.vals || {};
     var ids = Object.keys(vals).filter(function (id) { return filterActive(id, vals[id]); });
     for (var i = 0; i < ids.length; i++) {
@@ -2933,7 +3144,7 @@
 
   function segStudent(s, seg, score) {
     if (seg.members) return seg.members.indexOf(s.id) !== -1;
-    if (s.program !== seg.program) return false;
+    if (seg.program && seg.program !== 'all' && s.program !== seg.program) return false;
     if (seg.shortlisted === 'yes' && !(s.actions && s.actions.shortlisted)) return false;
     if (seg.shortlisted === 'no' && s.actions && s.actions.shortlisted) return false;
     return passesBag(s, seg.filters, score);
@@ -2981,8 +3192,14 @@
     }
     var pref = segPref(seg);
     STUDENTS.forEach(function (s) {
-      if (s.program !== seg.program) return;
-      var score = pref ? scoreAgainst(s, pref).score : null;
+      if (seg.program && seg.program !== 'all' && s.program !== seg.program) return;
+      var score;
+      if (seg.program === 'all') {
+        var ownPref = prefsFor(s.program)[0];
+        score = ownPref ? scoreAgainst(s, ownPref).score : null;
+      } else {
+        score = pref ? scoreAgainst(s, pref).score : null;
+      }
       if (!segStudent(s, seg, score)) return;
       rows.push({ s: s, score: score });
     });
@@ -3002,14 +3219,16 @@
     }
     var pref = segPref(seg);
     var bag = seg.filters || blankFilters();
-    var bits = [programById(seg.program).name];
-    if (pref) bits.push(pref.name);
+    var bits = [seg.program === 'all' || !programById(seg.program) ? 'All' : programById(seg.program).name];
+    if (pref) bits.push(isDefaultPref(segPrefProgram(seg.program), pref.id) || pref.name === 'Eligibility' ? pref.name + ' (Default)' : pref.name);
     if (seg.shortlisted === 'yes') bits.push('Shortlisted');
     if (seg.shortlisted === 'no') bits.push('Not shortlisted');
     if (bag.min !== '' || bag.max !== '') {
       var range = bag.min !== '' && bag.max !== '' ? bag.min + '–' + bag.max + '%' : bag.min !== '' ? bag.min + '%+' : 'up to ' + bag.max + '%';
       bits.push('Match ' + range);
     }
+    var engBit = engageRangeChip(bag);
+    if (engBit) bits.push('Engage ' + engBit);
     Object.keys(bag.vals || {}).forEach(function (id) {
       if (filterActive(id, bag.vals[id])) bits.push(filterChipText(id, bag.vals[id], pref || { criteria: { test: { tests: [] } } }));
     });
@@ -3094,15 +3313,45 @@
         }).join('') : '<p class="ar-muted">No segments match.</p>') + '</div>' +
       '</section>' +
       '<section class="panel ar-segleads">' +
-        '<div class="panel-head"><h2>' + rows.length.toLocaleString() + '</h2></div>' +
+        '<div class="panel-head ar-segleads-head">' +
+          '<div class="ar-segleads-title"><h2>' + esc(seg ? seg.name : 'Segment') + '</h2>' +
+          '<span class="ar-meta">' + rows.length.toLocaleString() + ' lead' + (rows.length === 1 ? '' : 's') + '</span></div>' +
+          (seg ? '<div class="ar-segleads-actions">' +
+              '<div class="ar-menu-wrap ar-seg-cg-wrap">' +
+                '<button type="button" class="btn btn-secondary btn-sm btn-icon" data-seg-campaigns aria-expanded="false" aria-haspopup="true">' + ico('campaign') + 'Campaigns</button>' +
+                '<div class="ar-menu ar-seg-cg-menu" hidden role="menu">' +
+                  '<div class="ar-card-menu-head">Campaign</div>' +
+                  CAMPAIGN_CHANNELS.map(function (c) {
+                    return '<button type="button" class="ar-menu-item ar-card-menu-item" role="menuitem" data-seg-campaign="' + c.id + '">' + ico(c.icon) + '<span>' + esc(c.name) + '</span></button>';
+                  }).join('') +
+                '</div></div>' +
+              '<button type="button" class="btn btn-secondary btn-sm btn-icon" data-seg-duplicate>' + ico('content_copy') + 'Duplicate</button>' +
+            '</div>' : '') +
+        '</div>' +
         '<div class="ar-seg-scroll">' +
           (seg && rows.length ? segTableHtml(rows, segIsUpload(seg)) : '<p class="ar-muted">' + (seg ? 'No leads match this segment.' : 'No segments in this list.') + '</p>') +
         '</div>' +
       '</section>';
   }
 
-  function filterFieldsHtml(pref, bag) {
+  function openSegCampaign(channel) {
+    var seg = segById(segPage.id);
+    if (!seg) return;
+    if (segIsUpload(seg)) {
+      toast('Upload segments can’t receive campaigns yet.');
+      return;
+    }
+    var ids = segRows(seg).map(function (r) { return r.s.id; }).filter(Boolean);
+    if (!ids.length) {
+      toast('No leads in this segment.');
+      return;
+    }
+    openCampaign(ids, channel || 'email');
+  }
+
+  function filterFieldsHtml(pref, bag, pfx) {
     if (!pref) return '';
+    pfx = pfx || 'sg';
     var f = bag;
     var crit = function (id) { return CRITERIA.filter(function (c) { return c.id === id; })[0]; };
     var numAttr = function (id) { return function (k) { return 'data-fnum="' + id + ':' + k + '"'; }; };
@@ -3134,7 +3383,7 @@
           '<label class="ar-fin"><span>₹</span><input type="number" placeholder="Minimum" data-fnum="budget:min" value="' +
           (v.min === undefined ? '' : v.min) + '" aria-label="Minimum fee budget"><span>L</span></label>');
       }
-      if (id === 'location' || id === 'preferred') return row(label(name), filterLocationHtml(v, id, 'sg'));
+      if (id === 'location' || id === 'preferred') return row(label(name), filterLocationHtml(v, id, pfx));
       if (PICK_FILTERS[id]) return row(label(name), filterMultiHtml(id, v));
       if (RANGE_FILTERS[id]) {
         var u = RANGE_FILTERS[id].unit;
@@ -3145,6 +3394,7 @@
     filterWriteBag = bag;
     var html =
       row(label('Match score'), rangeInputs(function (k) { return 'data-fscore="' + k + '" min="0" max="100"'; }, f, '%')) +
+      row(label('Engagement score'), rangeInputs(engageScoreAttr, engageFilterBag(f), '%')) +
       FILTER_ORDER.filter(function (id) {
         var critRow = pref.criteria[id];
         if (!critRow) return false;
@@ -3169,6 +3419,7 @@
 
   function segSavedPickHtml(d) {
     var list = SFILTERS.filter(function (sf) {
+      if (d.program === 'all') return !sf.prefId || sf.prefId === d.prefId || sf.program === PROGRAMS[0].id;
       return sf.program === d.program && (!sf.prefId || sf.prefId === d.prefId);
     });
     if (!list.length) {
@@ -3245,32 +3496,69 @@
     var d = segEditor;
     if (!d.filters) d.filters = blankFilters();
     if (!d.filterTab) d.filterTab = 'new';
-    var prefs = prefsFor(d.program);
+    var duplicating = !!d.duplicate;
+    var tab = d.filterTab;
+    var prefs = segPrefsFor(d.program);
     if (!prefs.some(function (p) { return p.id === d.prefId; })) d.prefId = prefs[0] ? prefs[0].id : '';
     var pref = prefs.filter(function (p) { return p.id === d.prefId; })[0] || prefs[0];
-    var kept = savedFilterById(d.savedId);
-    if (kept && (kept.program !== d.program || (kept.prefId && kept.prefId !== d.prefId))) d.savedId = '';
-    var tab = d.filterTab;
+    var kept = d.savedId ? savedFilterById(d.savedId) : null;
     var modeBtn = function (id, label) {
       return '<button type="button" class="ar-seg-btn' + (tab === id ? ' active' : '') + '" data-seg-ftab="' + id + '">' + label + '</button>';
     };
     var mode = '<div class="ar-seg ar-seg-form-mode">' + modeBtn('new', 'New filter') + modeBtn('saved', 'Saved filters') + modeBtn('upload', 'Upload leads') + '</div>';
-    var course = '<div class="ar-seg-course">' + fieldWrap('Course', '<select id="seg-program">' + PROGRAMS.map(function (p) {
+    var courseOpts = [{ id: 'all', name: 'All' }].concat(PROGRAMS);
+    var course = tab === 'upload' ? '' : '<div class="ar-seg-course">' + fieldWrap('Course', '<select id="seg-program">' + courseOpts.map(function (p) {
       return '<option value="' + esc(p.id) + '"' + (p.id === d.program ? ' selected' : '') + '>' + esc(p.name) + '</option>';
     }).join('') + '</select>', true) +
-      fieldWrap('Preference', '<select id="seg-pref">' + prefs.map(function (p) {
-        return '<option value="' + esc(p.id) + '"' + (p.id === d.prefId ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+      fieldWrap('Preference', '<select id="seg-pref">' + prefs.map(function (p, i) {
+        return '<option value="' + esc(p.id) + '"' + (p.id === d.prefId ? ' selected' : '') + '>' + esc(segPrefLabel(p, i)) + '</option>';
       }).join('') + '</select>', true) + '</div>';
-    var filterBody = tab === 'upload' ? segUploadHtml(d) : tab === 'saved' ? segSavedPickHtml(d) : '<div class="ar-seg-filters">' + filterFieldsHtml(pref, d.filters) + '</div>';
+    var filterBody;
+    if (tab === 'upload') {
+      filterBody = segUploadHtml(d);
+    } else if (tab === 'saved' && !d.savedId) {
+      filterBody = segSavedPickHtml(d);
+    } else {
+      filterBody = (tab === 'saved' && kept
+        ? '<p class="ar-seg-note">' + ico('bookmark') + 'Editing a copy of “' + esc(kept.name) + '”. The saved filter stays unchanged.</p>' +
+          '<button type="button" class="btn btn-ghost btn-sm ar-seg-saved-back" data-seg-saved-back>' + ico('arrow_back') + 'Choose another saved filter</button>'
+        : '') +
+        '<div class="ar-seg-filters">' + filterFieldsHtml(pref, d.filters) + '</div>';
+    }
     var scroll = $('drawer-body') && !$('drawer').hidden ? $('drawer-body').scrollTop : 0;
     openDrawer(
-      'Create segment',
-      fieldWrap('Segment name', textInput('seg-name', d.name, 'CSE around Gurugram'), true) + course + mode + filterBody,
+      duplicating ? 'Duplicate segment' : 'Create segment',
+      fieldWrap('Segment name', textInput('seg-name', d.name, 'CSE around Gurugram'), true) + mode + course + filterBody,
       '<button type="button" class="btn btn-ghost btn-sm" data-seg-cancel>Cancel</button>' +
-      '<button type="button" class="btn btn-primary btn-sm btn-icon" data-seg-save>' + ico('check') + 'Create segment</button>',
+      '<button type="button" class="btn btn-primary btn-sm btn-icon" data-seg-save>' + ico('check') + (duplicating ? 'Duplicate segment' : 'Create segment') + '</button>',
       true
     );
     if ($('drawer-body')) $('drawer-body').scrollTop = scroll;
+  }
+
+  function openDuplicateSegment(id) {
+    var seg = segById(id);
+    if (!seg) return;
+    var base = (seg.name || 'Untitled segment').replace(/\s*\(copy\)\s*$/i, '').trim();
+    var pref = segPref(seg);
+    segEditor = {
+      duplicate: true,
+      name: base + ' (copy)',
+      program: seg.program || PROGRAMS[0].id,
+      prefId: pref ? pref.id : (prefsFor(seg.program)[0] || {}).id || '',
+      shortlisted: seg.shortlisted || 'any',
+      filters: clone(seg.filters || blankFilters()),
+      filterTab: seg.leads || seg.source === 'upload' ? 'upload' : 'new',
+      savedId: '',
+      upload: seg.leads ? {
+        fileName: (seg.name || 'Leads') + '.csv',
+        headers: ['Name', 'Email', 'Phone'],
+        rows: seg.leads.map(function (lead) { return [lead.name || '', lead.email || '', lead.phone || '']; }),
+        map: { name: '0', email: '1', phone: '2' },
+      } : null,
+    };
+    if (seg.members) segEditor.members = seg.members.slice();
+    openSegForm();
   }
 
   function segReadEditor() {
@@ -3330,6 +3618,95 @@
       if (chipBits[1]) bag.vals[chipBits[0]] = { val: chipBits[1] };
       else delete bag.vals[chipBits[0]];
       segRefreshForm();
+      return true;
+    }
+    return false;
+  }
+
+  function audFilterClick(t) {
+    if (!t.closest || !(t.closest('.ar-cg-aud-fields') || t.closest('.ar-cg-aud-body'))) return false;
+    var a = audDraftAudience();
+    if (!a) return false;
+
+    var ftab = t.closest('[data-cga-ftab]');
+    if (ftab) {
+      a.filterTab = ftab.getAttribute('data-cga-ftab') === 'saved' ? 'saved' : 'new';
+      if (a.filterTab !== 'saved') a.savedId = '';
+      audRefresh();
+      return true;
+    }
+
+    var pickSf = t.closest('[data-cga-saved]');
+    if (pickSf) {
+      var sf = savedFilterById(pickSf.getAttribute('data-cga-saved'));
+      if (!sf) { toast('That saved filter is gone.'); return true; }
+      a.savedId = sf.id;
+      a.filterTab = 'saved';
+      a.program = sf.program || a.program || 'all';
+      a.prefId = sf.prefId || (prefsFor(a.program === 'all' ? 'all' : a.program)[0] || {}).id || '';
+      a.filters = clone(sf.filters || blankFilters());
+      if (sf.intake) a.filters.intake = sf.intake;
+      a.intake = a.filters.intake || '';
+      a.minScore = a.filters.min || '0';
+      audRefresh();
+      return true;
+    }
+
+    if (t.closest('[data-cga-saved-back]')) {
+      a.savedId = '';
+      a.filterTab = 'saved';
+      audRefresh();
+      return true;
+    }
+
+    if (!t.closest('.ar-cg-aud-fields')) return false;
+    var bag = a.filters || (a.filters = blankFilters());
+    var ffChip = t.closest('[data-ff-remove]');
+    if (ffChip) {
+      var ffId = ffChip.getAttribute('data-ff-remove');
+      var ffVal = ffChip.getAttribute('data-ff-value');
+      if (ffId === 'stage') {
+        a.stages = (a.stages || []).filter(function (x) { return String(x) !== String(ffVal); });
+        audRefresh();
+        return true;
+      }
+      if (ffId === 'action') {
+        a.actions = (a.actions || []).filter(function (x) { return x !== ffVal; });
+        audRefresh();
+        return true;
+      }
+      var ffCur = ((bag.vals[ffId] && bag.vals[ffId].vals) || []).filter(function (x) {
+        return x !== ffVal;
+      });
+      if (ffCur.length) bag.vals[ffId] = { vals: ffCur };
+      else delete bag.vals[ffId];
+      audRefresh();
+      return true;
+    }
+    var ffAdd = t.closest('[data-ff-add-place], [data-ff-add-pref]');
+    var ffRemove = t.closest('[data-ff-remove-place], [data-ff-remove-pref]');
+    if (ffAdd || ffRemove) {
+      var ffLoc = (ffAdd && ffAdd.hasAttribute('data-ff-add-pref')) || (ffRemove && ffRemove.hasAttribute('data-ff-remove-pref')) ? 'preferred' : 'location';
+      var loc = bag.vals[ffLoc] || { mode: 'custom', places: [] };
+      var nextPlaces = (loc.places || []).slice();
+      if (ffAdd) {
+        var placeName = ffAdd.getAttribute(ffLoc === 'preferred' ? 'data-ff-add-pref' : 'data-ff-add-place');
+        if (nextPlaces.indexOf(placeName) === -1) nextPlaces.push(placeName);
+      } else {
+        nextPlaces = nextPlaces.filter(function (p) { return p !== ffRemove.getAttribute(ffLoc === 'preferred' ? 'data-ff-remove-pref' : 'data-ff-remove-place'); });
+      }
+      bag.vals[ffLoc] = { mode: 'custom', places: nextPlaces };
+      audRefresh();
+      var audBox = $(ffLoc === 'preferred' ? 'cga-pref-q' : 'cga-place-q');
+      if (audBox) { audBox.focus(); openFilterPlaces(ffLoc, audBox); }
+      return true;
+    }
+    var fchip = t.closest('[data-fchip]');
+    if (fchip) {
+      var chipBits = fchip.getAttribute('data-fchip').split(':');
+      if (chipBits[1]) bag.vals[chipBits[0]] = { val: chipBits[1] };
+      else delete bag.vals[chipBits[0]];
+      audRefresh();
       return true;
     }
     return false;
@@ -3909,8 +4286,8 @@
 
   function engagementLogHtml(s) {
     var rows = studentEventActivity(s);
-    var body = rows.length ? eventItemsHtml(s, rows) : '<p class="ar-muted">No event registrations yet.</p>';
-    return profileSection('engage', 'Engagement · ' + rows.length, body);
+    var body = rows.length ? eventItemsHtml(s, rows) : '<p class="ar-muted">No event activity yet.</p>';
+    return profileSection('engage', 'Events · ' + rows.length, body);
   }
 
   function sendCampaign() {
@@ -3957,15 +4334,39 @@
 
   /* Layout only: counselors on the team. Outgoing chats are tagged with one of them. */
   var CHAT_STAFF = [
-    { id: 'meera', name: 'Meera Kapoor' },
-    { id: 'arjun', name: 'Arjun Malik' },
-    { id: 'neha', name: 'Neha Iyer' },
-    { id: 'rahul', name: 'Rahul Sethi' },
+    { id: 'meera', name: 'Meera Kapoor', title: 'Senior counselor' },
+    { id: 'arjun', name: 'Arjun Malik', title: 'Admissions counselor' },
+    { id: 'neha', name: 'Neha Iyer', title: 'Regional counselor' },
+    { id: 'rahul', name: 'Rahul Sethi', title: 'Outreach lead' },
   ];
   var CHAT_ME = 'meera';
 
   function staffById(id) {
     return CHAT_STAFF.filter(function (p) { return p.id === id; })[0] || null;
+  }
+
+  /** Display as "Name, title" — e.g. Dr. Ritu Sharma, AI Lab lead */
+  function staffName(id) {
+    var s = staffById(id);
+    if (!s) return '';
+    return s.title ? s.name + ', ' + s.title : s.name;
+  }
+
+  function createdByLine(who) {
+    var label = (who || '').trim();
+    return label ? 'Created by ' + label : '';
+  }
+
+  function assignStaffId(seed) {
+    return CHAT_STAFF[Math.abs(hashOf(String(seed || ''))) % CHAT_STAFF.length].id;
+  }
+
+  function campaignCreatorId(c) {
+    return c.createdBy || assignStaffId(c.id);
+  }
+
+  function studentCreatorId(s) {
+    return s.createdBy || assignStaffId(s.id);
   }
 
   function messageStaff(m, studentId) {
@@ -4376,7 +4777,7 @@
       (pref
         ? '<div class="ar-cp-score"><div class="ar-ring" style="--p:' + (score || 0) + ';--c:' + color + '"><span>' + score + '%</span></div>' +
           '<div class="ar-cp-score-text"><span>Match score</span><strong>' + esc(pref.name) + '</strong></div>' +
-          '<div class="ar-cp-score-text"><span>Engagement</span><strong>' + (engageScore(s) === null ? '—' : engageScore(s) + '%') + '</strong></div></div>'
+          '<div class="ar-cp-score-text"><span>Events</span><strong>' + (engageScore(s) === null ? '—' : engageScore(s) + '%') + '</strong></div></div>'
         : '') +
       '<div class="ar-cp-sec ar-cp-ai"><h4><span>' + ico('auto_awesome') + 'AI summary</span></h4><p>' + aiSummary(s) + '</p></div>' +
       '<div class="ar-cp-sec ar-cp-match"><h4>Preference match' + (pref ? ' <small>' + esc(pref.name) + '</small>' : '') + '</h4>' +
@@ -4392,8 +4793,8 @@
       '<h5>Additional user actions <small>' + have.length + ' of ' + ACTIONS.length + '</small></h5>' + extras + '</div></div>' +
       '<div class="ar-cp-sec"><h4>Campaigns <small>' + sent.length + '</small></h4>' +
       (sent.length ? campaignItemsHtml(s, sent) : '<p class="ar-muted">No campaigns yet.</p>') + '</div>' +
-      '<div class="ar-cp-sec"><h4>Engagement <small>' + evRows.length + '</small></h4>' +
-      (evRows.length ? eventItemsHtml(s, evRows) : '<p class="ar-muted">No event registrations yet.</p>') + '</div>' +
+      '<div class="ar-cp-sec"><h4>Events <small>' + evRows.length + '</small></h4>' +
+      (evRows.length ? eventItemsHtml(s, evRows) : '<p class="ar-muted">No event activity yet.</p>') + '</div>' +
       (chatBulk.on ? '</div>' : '');
     (box.querySelector('.ar-cp-scroll') || box).scrollTop = keepScroll;
   }
@@ -4664,7 +5065,7 @@
       '<button type="button" class="ar-icon-btn ar-hero-chat" data-card-chat="' + s.id + '" aria-label="Chat">' + ico('forum') + '</button>' +
       '<div class="ar-hero-scores">' +
       '<div><div class="ar-ring" style="--p:' + (s.score || 0) + ';--c:' + scoreColor(s) + '"><span>' + (s.score === null ? '—' : s.score + '%') + '</span></div><small>Match</small></div>' +
-      '<div><div class="ar-ring" style="--p:' + (engageScore(s) || 0) + ';--c:var(--brand)"><span>' + (engageScore(s) === null ? '—' : engageScore(s) + '%') + '</span></div><small>Engage</small></div></div></div>' +
+      '<div><div class="ar-ring" style="--p:' + (engageScore(s) || 0) + ';--c:var(--brand)"><span>' + (engageScore(s) === null ? '—' : engageScore(s) + '%') + '</span></div><small>Events</small></div></div></div>' +
       profileSection('ai', ico('auto_awesome') + 'AI summary', aiSummary(s), 'ar-ai') +
       profileSection('match', 'Preference match', matchHtml(s, s.pref, { score: s.score, parts: s.parts })) +
       profileSection('profile', 'Profile', profileFactsHtml(s) +
@@ -5207,32 +5608,32 @@
   var EVENT_SEEDS = [
     ['JEE Main 2027: the last 90 days', 'webinar', 'online', 'btech-cse', 0, '2027', 3.5, 60, '', '', 'Zoom', 1840, 412, false, 'Prof. Anil Mehta, Dean of Engineering'],
     ['Inside our AI & robotics lab', 'webinar', 'hybrid', 'btech-ai', 0, '2027', -0.5, 90, CAMPUS.city, CAMPUS.venue, 'Zoom', 1510, 366, false, 'Dr. Ritu Sharma, AI Lab lead'],
-    ['Coffee chat with B.Tech alumni', 'coffee', 'offline', 'btech-cse', null, '2027', 20, 90, 'New Delhi', 'Third Wave Coffee, Connaught Place', '', 620, 84, false, 'Alumni from Google and Zomato'],
-    ['AMA: Life in the BMU hostels', 'ama', 'online', 'btech-ai', null, '2027', 46, 45, '', '', 'Google Meet', 960, 203, false, 'Student council'],
+    ['Coffee chat with B.Tech alumni', 'coffee', 'offline', 'btech-cse', null, '2027', 20, 90, 'New Delhi', 'Third Wave Coffee, Connaught Place', '', 620, 84, false, 'Aarav Joshi, B.Tech alumni lead'],
+    ['AMA: Life in the BMU hostels', 'ama', 'online', 'btech-ai', null, '2027', 46, 45, '', '', 'Google Meet', 960, 203, false, 'Priya Nair, Student council president'],
     ['Ask the expert: Scholarships and loans', 'expert', 'hybrid', 'bba', 0, '2027', 74, 60, CAMPUS.city, CAMPUS.venue, 'Zoom', 1320, 288, false, 'Neha Kapoor, Financial aid office'],
-    ['Design portfolio review', 'expert', 'offline', 'bdes', 0, '2027', 122, 120, 'Jaipur', 'Hotel Clarks Amer, JLN Marg', '', 410, 62, false, 'Faculty of Design'],
+    ['Design portfolio review', 'expert', 'offline', 'bdes', 0, '2027', 122, 120, 'Jaipur', 'Hotel Clarks Amer, JLN Marg', '', 410, 62, false, 'Prof. Leena Das, Faculty of Design'],
     ['Data science careers: what recruiters want', 'webinar', 'online', 'bsc-ds', 0, '2027', 170, 60, '', '', 'Microsoft Teams', 780, 150, false, 'Karan Malhotra, Analytics lead at Deloitte'],
-    ['Coffee chat for BBA aspirants', 'coffee', 'offline', 'bba', null, '2028', 218, 90, 'Chandigarh', 'Elante Mall, Industrial Area', '', 300, 41, false, 'BBA student ambassadors'],
+    ['Coffee chat for BBA aspirants', 'coffee', 'offline', 'bba', null, '2028', 218, 90, 'Chandigarh', 'Elante Mall, Industrial Area', '', 300, 41, false, 'Ishaan Verma, BBA student ambassador'],
     ['AMA with the admissions director', 'ama', 'online', 'btech-cse', null, '2027', 290, 60, '', '', 'Zoom', 2200, 540, false, 'Dr. Sanjay Gupta, Director of Admissions'],
-    ['Coffee chat in Lucknow', 'coffee', 'offline', 'btech-cse', null, '2027', -72, 90, 'Lucknow', 'Cafe Repertwahr, Qaiserbagh', '', 540, 77, false, 'Admissions team'],
-    ['Choosing between CSE and AI & ML', 'webinar', 'online', 'btech-ai', 0, '2027', -146, 60, '', '', 'Zoom', 2650, 690, false, 'Heads of CSE and AI & ML'],
-    ['Ask the expert: Internships at BMU', 'expert', 'hybrid', 'bba', null, '2027', -240, 60, 'New Delhi', 'India Habitat Centre, Lodhi Road', 'Google Meet', 880, 190, false, 'Placement cell'],
-    ['B.Des studio walkthrough', 'webinar', 'online', 'bdes', null, '2026', -336, 45, '', '', 'Google Meet', 640, 130, false, 'Faculty of Design'],
-    ['AMA: CUET for B.Sc Data Science', 'ama', 'online', 'bsc-ds', 0, '2026', -480, 60, '', '', 'Zoom', 1120, 260, false, 'B.Sc Data Science faculty'],
-    ['Coffee chat in Noida', 'coffee', 'offline', 'btech-ai', null, '2027', -600, 90, 'Noida', 'Starbucks, DLF Mall of India', '', 380, 55, false, 'Admissions team'],
-    ['Parents’ evening: fees and hostels', 'expert', 'offline', 'btech-cse', null, '2027', -720, 120, CAMPUS.city, CAMPUS.venue, '', 720, 160, false, 'Admissions and hostel office'],
-    ['JEE Advanced rank holders meet-up', 'coffee', 'offline', 'btech-cse', 1, '2027', 430, 120, 'New Delhi', 'The Leela Ambience, Gurugram Road', '', 0, 0, true, 'Admissions team'],
-    ['Product design careers', 'webinar', 'online', 'bdes', null, '2028', 500, 60, '', '', 'Zoom', 0, 0, true, 'Alumni designers'],
-    ['AMA: BBA placements 2026', 'ama', 'hybrid', 'bba', 0, '2027', 600, 60, CAMPUS.city, CAMPUS.venue, 'Microsoft Teams', 0, 0, true, 'Placement cell'],
-    ['Ask the expert: Maths prep for data science', 'expert', 'online', 'bsc-ds', null, '2028', 670, 45, '', '', 'Google Meet', 0, 0, true, 'B.Sc Data Science faculty'],
-    ['Campus open house', 'openhouse', 'offline', 'btech-cse', 0, '2027', 96, 180, CAMPUS.city, CAMPUS.venue, '', 980, 240, false, 'Admissions team'],
-    ['AI lab open house', 'openhouse', 'hybrid', 'btech-ai', 0, '2027', 140, 120, CAMPUS.city, CAMPUS.venue, 'Zoom', 640, 150, false, 'Faculty of Engineering'],
-    ['BBA campus open house', 'openhouse', 'offline', 'bba', null, '2028', 260, 150, CAMPUS.city, CAMPUS.venue, '', 420, 96, false, 'School of Management'],
-    ['Design studio open house', 'openhouse', 'hybrid', 'bdes', 0, '2027', -200, 120, CAMPUS.city, CAMPUS.venue, 'Google Meet', 510, 118, false, 'Faculty of Design'],
-    ['Commerce careers after B.Com', 'webinar', 'online', 'bcom', 0, '2027', 36, 60, '', '', 'Zoom', 540, 128, false, 'School of Management'],
-    ['CA foundation workshop', 'workshop', 'offline', 'bcom', null, '2027', 150, 120, CAMPUS.city, CAMPUS.venue, '', 390, 86, false, 'Faculty of Commerce'],
-    ['Excel for finance workshop', 'workshop', 'online', 'bcom', null, '2028', 210, 90, '', '', 'Microsoft Teams', 260, 64, false, 'School of Management'],
-    ['Design thinking workshop', 'workshop', 'hybrid', 'bdes', 0, '2027', 80, 90, CAMPUS.city, CAMPUS.venue, 'Zoom', 470, 102, false, 'Faculty of Design'],
+    ['Coffee chat in Lucknow', 'coffee', 'offline', 'btech-cse', null, '2027', -72, 90, 'Lucknow', 'Cafe Repertwahr, Qaiserbagh', '', 540, 77, false, 'Anita Rao, Admissions counselor'],
+    ['Choosing between CSE and AI & ML', 'webinar', 'online', 'btech-ai', 0, '2027', -146, 60, '', '', 'Zoom', 2650, 690, false, 'Prof. Vivek Menon, Head of CSE'],
+    ['Ask the expert: Internships at BMU', 'expert', 'hybrid', 'bba', null, '2027', -240, 60, 'New Delhi', 'India Habitat Centre, Lodhi Road', 'Google Meet', 880, 190, false, 'Sneha Kulkarni, Placement cell'],
+    ['B.Des studio walkthrough', 'webinar', 'online', 'bdes', null, '2026', -336, 45, '', '', 'Google Meet', 640, 130, false, 'Prof. Leena Das, Faculty of Design'],
+    ['AMA: CUET for B.Sc Data Science', 'ama', 'online', 'bsc-ds', 0, '2026', -480, 60, '', '', 'Zoom', 1120, 260, false, 'Dr. Mohit Pal, B.Sc Data Science faculty'],
+    ['Coffee chat in Noida', 'coffee', 'offline', 'btech-ai', null, '2027', -600, 90, 'Noida', 'Starbucks, DLF Mall of India', '', 380, 55, false, 'Anita Rao, Admissions counselor'],
+    ['Parents’ evening: fees and hostels', 'expert', 'offline', 'btech-cse', null, '2027', -720, 120, CAMPUS.city, CAMPUS.venue, '', 720, 160, false, 'Rajesh Khanna, Hostel warden'],
+    ['JEE Advanced rank holders meet-up', 'coffee', 'offline', 'btech-cse', 1, '2027', 430, 120, 'New Delhi', 'The Leela Ambience, Gurugram Road', '', 0, 0, true, 'Anita Rao, Admissions counselor'],
+    ['Product design careers', 'webinar', 'online', 'bdes', null, '2028', 500, 60, '', '', 'Zoom', 0, 0, true, 'Mira Shah, Alumni designer'],
+    ['AMA: BBA placements 2026', 'ama', 'hybrid', 'bba', 0, '2027', 600, 60, CAMPUS.city, CAMPUS.venue, 'Microsoft Teams', 0, 0, true, 'Sneha Kulkarni, Placement cell'],
+    ['Ask the expert: Maths prep for data science', 'expert', 'online', 'bsc-ds', null, '2028', 670, 45, '', '', 'Google Meet', 0, 0, true, 'Dr. Mohit Pal, B.Sc Data Science faculty'],
+    ['Campus open house', 'openhouse', 'offline', 'btech-cse', 0, '2027', 96, 180, CAMPUS.city, CAMPUS.venue, '', 980, 240, false, 'Dr. Sanjay Gupta, Director of Admissions'],
+    ['AI lab open house', 'openhouse', 'hybrid', 'btech-ai', 0, '2027', 140, 120, CAMPUS.city, CAMPUS.venue, 'Zoom', 640, 150, false, 'Dr. Ritu Sharma, AI Lab lead'],
+    ['BBA campus open house', 'openhouse', 'offline', 'bba', null, '2028', 260, 150, CAMPUS.city, CAMPUS.venue, '', 420, 96, false, 'Prof. Kavita Singh, School of Management'],
+    ['Design studio open house', 'openhouse', 'hybrid', 'bdes', 0, '2027', -200, 120, CAMPUS.city, CAMPUS.venue, 'Google Meet', 510, 118, false, 'Prof. Leena Das, Faculty of Design'],
+    ['Commerce careers after B.Com', 'webinar', 'online', 'bcom', 0, '2027', 36, 60, '', '', 'Zoom', 540, 128, false, 'Prof. Kavita Singh, School of Management'],
+    ['CA foundation workshop', 'workshop', 'offline', 'bcom', null, '2027', 150, 120, CAMPUS.city, CAMPUS.venue, '', 390, 86, false, 'CA Rohan Desai, Faculty of Commerce'],
+    ['Excel for finance workshop', 'workshop', 'online', 'bcom', null, '2028', 210, 90, '', '', 'Microsoft Teams', 260, 64, false, 'Prof. Kavita Singh, School of Management'],
+    ['Design thinking workshop', 'workshop', 'hybrid', 'bdes', 0, '2027', 80, 90, CAMPUS.city, CAMPUS.venue, 'Zoom', 470, 102, false, 'Prof. Leena Das, Faculty of Design'],
   ];
 
   var EVENTS = (function () {
@@ -5320,7 +5721,7 @@
 
   /* ——— Events: filters ——— */
 
-  var EF = { program: 'all', prefId: null, cohort: '', formats: [], kinds: [], cities: [], platforms: [], category: '', creator: '', startFrom: '', startTo: '', q: '' };
+  var EF = { program: 'all', prefId: null, cohort: '', formats: [], kinds: [], city: '', category: '', creator: '', startFrom: '', startTo: '', q: '' };
 
   function efPref() {
     return EF.program === 'all' || !EF.prefId ? null : findPref(EF.program, EF.prefId);
@@ -5337,8 +5738,7 @@
     if (EF.cohort && e.cohort !== EF.cohort) return false;
     if (skip !== 'formats' && EF.formats.length && EF.formats.indexOf(e.format) === -1) return false;
     if (skip !== 'kinds' && EF.kinds.length && EF.kinds.indexOf(e.kind) === -1) return false;
-    if (skip !== 'cities' && EF.cities.length && !eventPlaces(e).some(function (c) { return EF.cities.indexOf(c) !== -1; })) return false;
-    if (EF.platforms.length && EF.platforms.indexOf(e.platform) === -1) return false;
+    if (skip !== 'city' && EF.city && eventPlaces(e).indexOf(EF.city) === -1) return false;
     if (EF.category) {
       var catKind = EVENT_CATEGORY_KIND[EF.category];
       if (catKind && e.kind !== catKind) return false;
@@ -5352,7 +5752,7 @@
 
   function efFacetCount() {
     return (EF.program !== 'all') + !!EF.prefId + !!EF.cohort +
-      EF.formats.length + EF.kinds.length + EF.cities.length + EF.platforms.length +
+      EF.formats.length + EF.kinds.length + !!EF.city +
       !!EF.category + !!EF.creator + !!(EF.startFrom || EF.startTo);
   }
 
@@ -5398,14 +5798,14 @@
       }).join(''))) +
       field('Format', checks('formats', EVENT_FORMATS)) +
       field('Kind of event', checks('kinds', EVENT_KINDS)) +
-      field('City', checks('cities', eventCities().map(function (c) { return { id: c, name: c }; }))) +
-      field('Meeting platform', checks('platforms', Object.keys(PLATFORM_LINKS).map(function (p) { return { id: p, name: p }; }))) +
-      field('Event type', checks('formats', [{ id: 'online', name: 'Online event' }, { id: 'offline', name: 'Offline event' }, { id: 'hybrid', name: 'Hybrid event' }])) +
+      field('City', select('evf-city', opt('', 'All cities', !EF.city) + eventCities().map(function (c) {
+        return opt(c, c, EF.city === c);
+      }).join(''))) +
       field('Event category', select('evf-category', opt('', 'Select event category', !EF.category) + EVENT_CATEGORIES.filter(function (c) { return c !== 'Other'; }).map(function (c) {
         return opt(c, c, EF.category === c);
       }).join(''))) +
       field('Start date range', '<div class="ar-evf-dates"><label><span>From</span><input type="date" id="evf-from" value="' + esc(EF.startFrom) + '"></label><label><span>To</span><input type="date" id="evf-to" value="' + esc(EF.startTo) + '"></label></div>') +
-      field('Creator', select('evf-creator', opt('', 'Select creators', !EF.creator) + (function () {
+      field('Created by', select('evf-creator', opt('', 'Anyone', !EF.creator) + (function () {
         var seen = {};
         EVENTS.forEach(function (e) { if (e.host) seen[e.host] = true; });
         return Object.keys(seen).sort().map(function (h) { return opt(h, h, EF.creator === h); }).join('');
@@ -5422,17 +5822,16 @@
     var names = {
       formats: function (v) { return formatById(v).name; },
       kinds: function (v) { return kindById(v).name; },
-      cities: function (v) { return v; },
-      platforms: function (v) { return v; },
     };
     var chips = [];
     if (EF.program !== 'all') chips.push('<button type="button" class="ar-filter-chip" data-ev-clear="program">' + esc(programById(EF.program).name) + ico('close') + '</button>');
     if (EF.prefId && efPref()) chips.push('<button type="button" class="ar-filter-chip" data-ev-clear="pref">' + esc(efPref().name) + ico('close') + '</button>');
     if (EF.cohort) chips.push('<button type="button" class="ar-filter-chip" data-ev-clear="cohort">' + esc(EF.cohort) + ' intake' + ico('close') + '</button>');
+    if (EF.city) chips.push('<button type="button" class="ar-filter-chip" data-ev-clear="city">' + esc(EF.city) + ico('close') + '</button>');
     if (EF.category) chips.push('<button type="button" class="ar-filter-chip" data-ev-clear="category">' + esc(EF.category) + ico('close') + '</button>');
     if (EF.creator) chips.push('<button type="button" class="ar-filter-chip" data-ev-clear="creator">' + esc(EF.creator) + ico('close') + '</button>');
     if (EF.startFrom || EF.startTo) chips.push('<button type="button" class="ar-filter-chip" data-ev-clear="dates">' + esc((EF.startFrom || 'Any') + ' – ' + (EF.startTo || 'Any')) + ico('close') + '</button>');
-    ['formats', 'kinds', 'cities', 'platforms'].forEach(function (g) {
+    ['formats', 'kinds'].forEach(function (g) {
       EF[g].forEach(function (v) {
         chips.push('<button type="button" class="ar-filter-chip" data-ev-clear="' + g + ':' + esc(v) + '">' + esc(names[g](v)) + ico('close') + '</button>');
       });
@@ -5570,8 +5969,8 @@
 
     $('ev-insights').innerHTML =
       '<div class="ar-ev-overview-cols">' +
-      '<section class="ar-ev-overview-col"><h3>Program</h3>' + insightRows(programs, 'program', maxN(programs)) + '</section>' +
-      '<section class="ar-ev-overview-col"><h3>Kind of event</h3>' + insightRows(kinds, 'kinds', maxN(kinds)) + '</section>' +
+      '<section class="ar-ev-overview-col"><h3>Top 5 Program</h3>' + insightRows(programs, 'program', maxN(programs)) + '</section>' +
+      '<section class="ar-ev-overview-col"><h3>Top 5 Kind of Event</h3>' + insightRows(kinds, 'kinds', maxN(kinds)) + '</section>' +
       evStatGroup('Format', formats, 'formats', formatEvents.length) +
       '</div>';
   }
@@ -5647,6 +6046,7 @@
       '<small>' + esc(programById(e.program).name) + ' · ' + e.cohort + ' intake' + (pref ? ' · ' + esc(pref.name) : '') + '</small></div>' +
       metricsHtml(e) +
       '<div class="ar-ev-type">' + placeHtml(e) + '</div>' +
+      (e.host ? '<p class="ar-ev-creator">' + ico('person') + esc(createdByLine(e.host)) + '</p>' : '') +
       followupChips(e) + '</div></div>';
   }
 
@@ -5727,7 +6127,9 @@
       detailKV('Name', e.name) + detailKV('Duration', e.minutes >= 60 ? (e.minutes / 60) + ' hours' : e.minutes + ' minutes') +
       detailKV('Type', formatById(e.format).name) + detailKV('Category', e.category || kindById(e.kind).name) +
       detailKV('Program', programById(e.program).name) + detailKV('Audience', pref ? pref.name : 'Everyone in the program') +
+      detailKV('Created by', e.host || '—') +
       '</div></div>' +
+
       '<div class="ar-ev-detail-cols">' +
       '<section class="ar-ev-detail-section"><h4>Registration details</h4>' + factsHtml([['Form', 'AdmitRight event form'], ['Deadline', 'Open until event starts'], ['After registration', FOLLOWUP_CHANNELS.filter(function (c) { return f[c.id].on; }).map(function (c) { return c.name; }).join(', ') || 'None']]) + '</section>' +
       '<section class="ar-ev-detail-section"><h4>Date & time</h4>' + factsHtml([['Start date', fmtDate(e.start)], ['Start time', fmtTime(e.start)], ['End date', fmtDate(e.end)], ['End time', fmtTime(e.end)]]) + '</section>' +
@@ -5898,7 +6300,7 @@
     return {
       format: 'online', kind: 'webinar', name: '', category: 'Open House', categoryCustom: '',
       program: PROGRAMS[0].id, prefId: '', savedFilter: '', matchScore: '0',
-      audience: { mode: 'own', segmentId: '', program: PROGRAMS[0].id, prefId: '', minScore: '0', stage: '', intake: '', savedFilter: '' },
+      audience: { mode: 'own', segmentId: '', program: PROGRAMS[0].id, prefId: '', minScore: '0', stage: '', stages: [], actions: [], intake: '', savedFilter: '', filters: blankFilters() },
       description: '', coverImage: '', galleryImages: [],
       venueName: '', venueAddress: '', pin: '', city: '', country: '', mapLink: '', capacity: '', meetingLink: '',
       hasMeetingLink: false, startDate: '', startTime: '', startPeriod: 'AM', time24: false, timezone: 'IST (GMT +05:30)',
@@ -6046,9 +6448,9 @@
 
   function ensureEventAudience(d) {
     if (!d.audience) {
-      d.audience = { mode: 'own', segmentId: '', program: d.program || PROGRAMS[0].id, prefId: d.prefId || '', minScore: d.matchScore || '0', stage: '', intake: '', savedFilter: d.savedFilter || '' };
+      d.audience = { mode: 'own', segmentId: '', program: d.program || PROGRAMS[0].id, prefId: d.prefId || '', minScore: d.matchScore || '0', stage: '', stages: [], actions: [], intake: '', savedFilter: d.savedFilter || '', filters: blankFilters() };
     }
-    return d.audience;
+    return ensureAudienceShape(d.audience);
   }
 
   function readEventAudience() {
@@ -6057,10 +6459,12 @@
     var a = ensureEventAudience(d);
     var mode = document.querySelector('#events-create-page [name="cg-aud-mode"]:checked');
     if (mode) a.mode = mode.value;
-    ['program', 'prefId', 'minScore', 'stage', 'intake', 'savedFilter'].forEach(function (k) {
+    ['program', 'prefId'].forEach(function (k) {
       var el = $('cga-' + k);
       if (el) a[k] = el.value;
     });
+    a.intake = (a.filters && a.filters.intake) || '';
+    a.minScore = (a.filters && a.filters.min) || a.minScore || '0';
     if (a.mode === 'segment') {
       var seg = SEGMENTS.filter(function (s) { return s.id === a.segmentId; })[0];
       if (seg && programById(seg.program)) d.program = seg.program;
@@ -6493,7 +6897,7 @@
       cohort: state.intake || '2027', start: start, end: new Date(start.getTime() + 3600000), minutes: 60,
       city: d.format === 'online' ? '' : CAMPUS.city, venue: d.format === 'online' ? '' : CAMPUS.venue,
       platform: d.format === 'offline' ? '' : 'Zoom', link: d.format === 'offline' ? '' : PLATFORM_LINKS.Zoom(EVENTS.length + 3),
-      clicks: 0, registrations: 0, draft: mode === 'draft', host: kind.name + ' host', image: '',
+      clicks: 0, registrations: 0, draft: mode === 'draft', host: staffName(CHAT_ME) || 'Meera Kapoor, Senior counselor', image: '',
       category: d.category === 'Other' ? ((d.categoryCustom || '').trim() || 'Other') : d.category, savedFilter: d.savedFilter, displayFormat: format.name, messages: d.messages,
     });
     evCreate = null;
@@ -7236,7 +7640,7 @@
     renderTemplates();
   }
   var cgCache = {};
-  var CGF = { q: '', channel: 'all', program: 'all', sort: 'new' };
+  var CGF = { q: '', channel: 'all', program: 'all', createdBy: '', sort: 'new' };
 
   function cgPath() {
     if (cgPage.page === 'form') return cgPage.id ? 'campaigns/' + encodeURIComponent(cgPage.id) + '/edit' : 'campaigns/create';
@@ -7285,7 +7689,7 @@
       ['cg-draft-open-house', 'draft', 'Open house follow-up', 'Thank attendees and share next steps.', 'email', 'visit', 'btech-cse', 0, '70', '', '', 1],
       ['cg-draft-ai-wa', 'draft', 'AI & ML application nudge', '', 'whatsapp', 'reminder', 'btech-ai', -1, '0', '1', '2028', 4],
     ];
-    return rows.map(function (r) {
+    return rows.map(function (r, i) {
       var tpl = templateById(r[5]);
       var pref = r[7] >= 0 ? prefsFor(r[6])[r[7]] : null;
       var at = base - r[11] * day;
@@ -7293,6 +7697,7 @@
         id: r[0], status: r[1], name: r[2], description: r[3], channel: r[4], template: r[5],
         subject: r[4] === 'email' ? tpl.subject : '', text: r[5] === 'custom' ? portfolio : tpl.text,
         audience: { program: r[6], prefId: pref ? pref.id : '', minScore: r[8], stage: r[9], intake: r[10], savedFilter: '' },
+        createdBy: CHAT_STAFF[i % CHAT_STAFF.length].id,
         created: at, updated: at, sentAt: r[1] === 'launched' ? at : null, recipients: null,
       };
     });
@@ -7301,6 +7706,9 @@
   var CAMPAIGN_LIST = null;
   try { CAMPAIGN_LIST = JSON.parse(localStorage.getItem(CG_KEY) || 'null'); } catch (err) { CAMPAIGN_LIST = null; }
   if (!Array.isArray(CAMPAIGN_LIST)) CAMPAIGN_LIST = seedCampaignList();
+  CAMPAIGN_LIST.forEach(function (c) {
+    if (!c.createdBy) c.createdBy = assignStaffId(c.id);
+  });
 
   function saveCampaignList() {
     try { localStorage.setItem(CG_KEY, JSON.stringify(CAMPAIGN_LIST)); } catch (err) { /* storage full or blocked */ }
@@ -7323,16 +7731,60 @@
     var tpl = templateById(templateId || 'reminder');
     return {
       id: null, status: 'draft', name: '', description: '', channel: 'email', template: tpl.id, subject: tpl.subject, text: tpl.text,
-      audience: { mode: 'own', segmentId: '', program: state.program !== 'all' ? state.program : PROGRAMS[0].id, prefId: '', minScore: '0', stage: '', intake: '', savedFilter: '' },
+      createdBy: CHAT_ME,
+      audience: { mode: 'own', segmentId: '', program: state.program !== 'all' ? state.program : PROGRAMS[0].id, prefId: '', minScore: '0', stage: '', stages: [], actions: [], intake: '', savedFilter: '', filters: blankFilters() },
     };
   }
 
+  function ensureAudienceShape(a) {
+    if (!a) return a;
+    if (!a.filters) a.filters = blankFilters();
+    if (!a.filters.vals) a.filters.vals = {};
+    if (a.filters.engMin == null) a.filters.engMin = '';
+    if (a.filters.engMax == null) a.filters.engMax = '';
+    if (!Array.isArray(a.stages)) {
+      a.stages = (a.stage !== '' && a.stage != null) ? [String(a.stage)] : [];
+    } else {
+      a.stages = a.stages.map(String);
+    }
+    if (!Array.isArray(a.actions)) a.actions = [];
+    if (!a.filterTab || a.filterTab === 'upload') a.filterTab = 'new';
+    if (!a.savedId) a.savedId = '';
+    if (a.intake && !a.filters.intake) a.filters.intake = a.intake;
+    if ((!a.filters.min || a.filters.min === '') && a.minScore && a.minScore !== '0') a.filters.min = String(a.minScore);
+    a.intake = a.filters.intake || '';
+    a.minScore = a.filters.min || a.minScore || '0';
+    return a;
+  }
+
+  function audDraftAudience() {
+    if (cgForm && cgForm.draft && cgForm.draft.audience) return ensureAudienceShape(cgForm.draft.audience);
+    if (evCreate && evCreate.draft) return ensureAudienceShape(ensureEventAudience(evCreate.draft));
+    if (tplDraft && tplDraft.draft && tplDraft.draft.audience) return ensureAudienceShape(tplDraft.draft.audience);
+    return null;
+  }
+
+  function audFilterBag() {
+    var a = audDraftAudience();
+    return a ? a.filters : null;
+  }
+
+  function audRefresh() {
+    cgCache = {};
+    if (cgForm) renderCampaignForm();
+    else if (evCreate) renderEventCreate();
+    else if (tplDraft) { tplSyncForm(); renderTemplates(); }
+  }
+
   function cgPrefOf(a) {
-    return a.program !== 'all' && a.prefId ? findPref(a.program, a.prefId) : null;
+    if (!a || !a.prefId) return null;
+    if (a.program === 'all') return findPref('all', a.prefId);
+    return findPref(a.program, a.prefId) || null;
   }
 
   /** Students the audience filters pick, best match first. Cached per render because scoring every student is slow. */
   function cgAudience(a) {
+    ensureAudienceShape(a);
     var key = JSON.stringify(a) + ':' + STUDENTS.length;
     if (cgCache[key]) return cgCache[key];
     if (a.mode === 'segment') {
@@ -7342,15 +7794,21 @@
       return rows;
     }
     var pref = cgPrefOf(a);
-    var min = Number(a.minScore) || 0;
-    var stage = a.stage === '' || a.stage == null ? -1 : Number(a.stage);
+    var stageSet = a.stages && a.stages.length
+      ? a.stages.map(Number)
+      : (a.stage !== '' && a.stage != null ? null : []);
+    var legacyStage = (!a.stages || !a.stages.length) && a.stage !== '' && a.stage != null ? Number(a.stage) : -1;
     var list = [];
     STUDENTS.forEach(function (s) {
       if (a.program !== 'all' && s.program !== a.program) return;
-      if (stage >= 0 && s.stage < stage) return;
-      if (a.intake && intakeYear(s) !== a.intake) return;
+      if (stageSet && stageSet.length && stageSet.indexOf(s.stage) === -1) return;
+      if (legacyStage >= 0 && s.stage < legacyStage) return;
+      if (a.actions && a.actions.length) {
+        var did = a.actions.some(function (id) { return s.actions && s.actions[id]; });
+        if (!did) return;
+      }
       var score = pref ? scoreAgainst(s, pref).score : null;
-      if (pref && min && score < min) return;
+      if (!passesBag(s, a.filters, score)) return;
       list.push({ s: s, score: score });
     });
     list.sort(byScore);
@@ -7382,6 +7840,7 @@
   }
 
   function cgTargetChips(a) {
+    ensureAudienceShape(a);
     if (a.mode === 'segment') {
       var picked = SEGMENTS.filter(function (s) { return s.id === a.segmentId; })[0];
       if (!picked) return ['Segment'];
@@ -7397,9 +7856,23 @@
     var chips = [a.program === 'all' ? 'All programs' : programById(a.program).name];
     var pref = cgPrefOf(a);
     if (pref) chips.push('Preference: ' + pref.name);
-    if (pref && Number(a.minScore)) chips.push(a.minScore + '%+ match');
-    if (a.stage !== '' && a.stage != null) chips.push(STAGES[Number(a.stage)].name + ' or later');
-    if (a.intake) chips.push(a.intake + ' intake');
+    if (pref && a.filters && a.filters.min !== '' && a.filters.min != null) chips.push(a.filters.min + '%+ match');
+    else if (pref && Number(a.minScore)) chips.push(a.minScore + '%+ match');
+    var audEng = engageRangeChip(a.filters);
+    if (audEng) chips.push(audEng + ' engage');
+    if (a.stages && a.stages.length) {
+      chips.push(a.stages.map(function (i) { return STAGES[Number(i)] ? STAGES[Number(i)].name : i; }).join(', '));
+    } else if (a.stage !== '' && a.stage != null) {
+      chips.push(STAGES[Number(a.stage)].name + ' or later');
+    }
+    if (a.actions && a.actions.length) {
+      chips.push(a.actions.map(function (id) {
+        var act = ACTIONS.filter(function (x) { return x.id === id; })[0];
+        return act ? act.name : id;
+      }).join(', '));
+    }
+    if (a.filters && a.filters.intake) chips.push(a.filters.intake + ' intake');
+    else if (a.intake) chips.push(a.intake + ' intake');
     if (a.savedFilter === 'saved') {
       var saved = savedFilterInfo('all');
       if (saved && saved.label) chips.push('Saved filter: ' + saved.label);
@@ -7739,6 +8212,11 @@
     $('drawer').classList.add('ar-campaign-modal');
   }
 
+  function cgCtr(c) {
+    var m = cgMetrics(c);
+    return cgPct(m.clicked, m.opened);
+  }
+
   function cgFiltered() {
     var q = CGF.q.trim().toLowerCase();
     var want = cgPage.tab === 'drafts' ? 'draft' : 'launched';
@@ -7746,9 +8224,12 @@
       if (c.status !== want) return false;
       if (CGF.channel !== 'all' && c.channel !== CGF.channel) return false;
       if (CGF.program !== 'all' && c.audience.program !== CGF.program) return false;
-      return !q || (c.name + ' ' + c.description + ' ' + cgTargetChips(c.audience).join(' ')).toLowerCase().indexOf(q) >= 0;
+      if (CGF.createdBy && campaignCreatorId(c) !== CGF.createdBy) return false;
+      return !q || (c.name + ' ' + c.description + ' ' + staffName(campaignCreatorId(c)) + ' ' + cgTargetChips(c.audience).join(' ')).toLowerCase().indexOf(q) >= 0;
     }).sort(function (a, b) {
       if (CGF.sort === 'reach') return cgRecipients(b) - cgRecipients(a);
+      if (CGF.sort === 'ctr-hi') return cgCtr(b) - cgCtr(a);
+      if (CGF.sort === 'ctr-lo') return cgCtr(a) - cgCtr(b);
       var ka = a.sentAt || a.updated;
       var kb = b.sentAt || b.updated;
       return CGF.sort === 'old' ? ka - kb : kb - ka;
@@ -7768,6 +8249,7 @@
     var launched = c.status === 'launched';
     var m = cgMetrics(c);
     var id = esc(c.id);
+    var creator = staffName(campaignCreatorId(c));
     var openRate = cgPct(m.opened, m.delivered);
     var clickRate = cgPct(m.clicked, m.opened);
     var tools = launched
@@ -7776,7 +8258,8 @@
     return '<article class="panel ar-cg-card" data-cg-open="' + id + '">' +
       '<div class="ar-cg-card-main"><span class="ar-cg-ico ch-' + c.channel + '">' + ico(ch.icon) + '</span>' +
       '<div class="ar-cg-card-title"><h3>' + esc(c.name || 'Untitled campaign') + '</h3><p>' + esc(c.description || 'No description yet') + '</p>' +
-      '<div class="ar-cg-chips"><span class="ar-cg-channel ch-' + c.channel + '">' + ico(ch.icon) + esc(ch.name) + '</span>' + cgChipsHtml(c.audience) + '</div></div></div>' +
+      '<div class="ar-cg-chips"><span class="ar-cg-channel ch-' + c.channel + '">' + ico(ch.icon) + esc(ch.name) + '</span>' + cgChipsHtml(c.audience) +
+      (creator ? '<span class="ar-crit">' + ico('person') + esc(createdByLine(creator)) + '</span>' : '') + '</div></div></div>' +
       '<div class="ar-cg-stats">' +
       cgStat('Recipients', m.sent.toLocaleString() + (m.sent === 1 ? ' student' : ' students')) +
       cgStat(launched ? 'Sent on' : 'Last edited', cgStamp(launched ? c.sentAt : c.updated)) +
@@ -7802,20 +8285,26 @@
         return '<option value="' + p.id + '">' + esc(p.name) + '</option>';
       }).join('');
     }
+    if ($('cgf-createdBy') && $('cgf-createdBy').options.length < 2) {
+      $('cgf-createdBy').innerHTML = '<option value="">Anyone</option>' + CHAT_STAFF.map(function (p) {
+        return '<option value="' + p.id + '">' + esc(staffName(p.id)) + '</option>';
+      }).join('');
+    }
     $('cgf-program').value = CGF.program;
     $('cgf-channel').value = CGF.channel;
-    $('cgf-sort').value = CGF.sort;
+    if ($('cgf-createdBy')) $('cgf-createdBy').value = CGF.createdBy;
+    if ($('cg-sort')) $('cg-sort').value = CGF.sort;
     if ($('cg-search').value !== CGF.q) $('cg-search').value = CGF.q;
-    var cgPicked = (CGF.channel !== 'all') + (CGF.program !== 'all') + (CGF.sort !== 'new');
+    var cgPicked = (CGF.channel !== 'all') + (CGF.program !== 'all') + !!CGF.createdBy;
     $('cgf-count').textContent = cgPicked;
     $('cgf-count').hidden = !cgPicked;
     $('cgf-clear').hidden = !cgPicked;
     $('cgf-toggle').classList.toggle('on', cgPicked > 0);
     var individual = cgPage.tab === 'individual';
     var rows = individual ? cgIndividuals() : cgFiltered();
-    var filtered = CGF.q || CGF.channel !== 'all' || CGF.program !== 'all';
+    var filtered = CGF.q || CGF.channel !== 'all' || CGF.program !== 'all' || CGF.createdBy;
     var emptyTitle = filtered ? 'No campaigns match these filters' : individual ? 'No individual campaigns yet' : cgPage.tab === 'drafts' ? 'No drafts' : 'No campaigns launched yet';
-    var emptyBody = filtered ? 'Try a different search, channel or program.' : individual
+    var emptyBody = filtered ? 'Try a different search, channel, program or creator.' : individual
       ? 'Send one from a student card on the dashboard. It shows up here with its delivery status.'
       : 'Create a campaign to reach the right students by email, WhatsApp or text.';
     $('cg-list').innerHTML = rows.length ? rows.map(individual ? cgIndCardHtml : cgCardHtml).join('') :
@@ -7914,6 +8403,7 @@
     copy.status = 'draft';
     copy.sentAt = null;
     copy.recipients = null;
+    copy.createdBy = CHAT_ME;
     copy.created = copy.updated = Date.now();
     CAMPAIGN_LIST.unshift(copy);
     saveCampaignList();
@@ -7955,30 +8445,67 @@
       '<p class="ar-cm-note">' + ico('lock') + 'Sent through AdmitRight. Students’ phone numbers and emails stay private.</p></section>';
   }
 
+  function cgAudSavedPickHtml(a) {
+    var list = SFILTERS.filter(function (sf) {
+      if (a.program === 'all') return true;
+      return sf.program === a.program && (!sf.prefId || !a.prefId || sf.prefId === a.prefId);
+    });
+    if (!list.length) {
+      return '<div class="ar-fsaved-empty">' + ico('bookmark') + '<strong>No saved filters</strong>' +
+        '<span>Save one on the dashboard, or build a new filter here.</span></div>';
+    }
+    return '<div class="ar-seg-saved ar-cga-saved">' + list.map(function (sf) {
+      return '<button type="button" class="ar-segc" data-cga-saved="' + esc(sf.id) + '">' +
+        '<span class="ar-segc-top"><strong>' + esc(sf.name) + '</strong></span>' +
+        '<small>' + esc(savedFilterSummary(sf)) + '</small></button>';
+    }).join('') + '</div>';
+  }
+
   function cgAudienceOwnHtml(a) {
-    var all = a.program === 'all';
-    var prefs = all ? [] : prefsFor(a.program);
-    var saved = savedFilterInfo('all');
+    ensureAudienceShape(a);
+    var prefs = a.program === 'all' ? prefsFor('all') : prefsFor(a.program);
+    if (!prefs.some(function (p) { return p.id === a.prefId; })) a.prefId = prefs[0] ? prefs[0].id : '';
     var list = cgAudience(a);
-    var programOpts = [['all', 'All programs']].concat(PROGRAMS.map(function (p) { return [p.id, p.name]; }));
-    var prefOpts = [['', all ? 'Pick a program to use a preference' : 'All students in the program']].concat(prefs.map(function (p) { return [p.id, p.name]; }));
-    var scoreOpts = a.prefId ? [['0', 'Any match score'], ['80', '80% and above'], ['70', '70% and above'], ['60', '60% and above'], ['50', '50% and above']]
-      : [['0', 'Pick a preference to score students']];
-    var stageOpts = [['', 'Any stage']].concat(STAGES.map(function (s, i) { return [String(i), s.name + ' or later']; }));
-    var intakeOpts = [['', 'Any intake'], ['2026', '2026'], ['2027', '2027'], ['2028', '2028'], ['2029', '2029']];
-    var filterOpts = [['', 'No saved filter']];
-    if (saved) filterOpts.push(['saved', saved.label]);
+    var programOpts = [['all', 'All']].concat(PROGRAMS.map(function (p) { return [p.id, p.name]; }));
+    var prefOpts = prefs.map(function (p, i) {
+      return [p.id, i === 0 ? p.name + ' (Default)' : p.name];
+    });
+    var pref = cgPrefOf(a) || prefs[0] || null;
+    var tab = a.filterTab === 'saved' ? 'saved' : 'new';
+    var kept = a.savedId ? savedFilterById(a.savedId) : null;
+    var stageIds = STAGES.map(function (_, i) { return String(i); });
+    var stageLabels = {};
+    STAGES.forEach(function (st, i) { stageLabels[String(i)] = st.name; });
+    var actionIds = ACTIONS.map(function (x) { return x.id; });
+    var actionLabels = {};
+    ACTIONS.forEach(function (x) { actionLabels[x.id] = x.name; });
     var matched = list.filter(function (x) { return x.score !== null && x.score >= MATCH_MIN; }).length;
+    var frow = function (label, control) {
+      return '<div class="ar-ffield"><span class="ar-flabel">' + esc(label) + '</span>' + control + '</div>';
+    };
+    var modeBtn = function (id, label) {
+      return '<button type="button" class="ar-seg-btn' + (tab === id ? ' active' : '') + '" data-cga-ftab="' + id + '">' + label + '</button>';
+    };
+    var filterBody;
+    if (tab === 'saved' && !a.savedId) {
+      filterBody = cgAudSavedPickHtml(a);
+    } else {
+      filterBody = (tab === 'saved' && kept
+        ? '<div class="ar-cga-saved-back"><button type="button" class="btn btn-ghost btn-sm ar-seg-saved-back" data-cga-saved-back aria-label="Back">' + ico('arrow_back') + 'Back</button></div>'
+        : '') +
+        frow('Stage', filterChipSelect('stage', stageIds, a.stages.map(String), stageLabels, 'Add a stage')) +
+        frow('Additional user actions', filterChipSelect('action', actionIds, a.actions.slice(), actionLabels, 'Add an action')) +
+        (pref
+          ? filterFieldsHtml(pref, a.filters, 'cga')
+          : '<p class="ar-muted">Pick a program to apply match score, academics, location and other filters.</p>');
+    }
     return '<div class="ar-cg-aud-fields">' +
+      '<div class="ar-cg-aud-body-head"><h4>Build your audience</h4><p>New filter or a saved one — edits stay on this campaign or event.</p></div>' +
+      '<div class="ar-seg ar-seg-form-mode ar-cga-ftabs">' + modeBtn('new', 'New filter') + modeBtn('saved', 'Saved filters') + '</div>' +
       '<div class="ar-evc-row ar-evc-two">' +
       fieldWrap('Program', selectHtml('cga-program', a.program, programOpts), true) +
-      fieldWrap('Target audience preference', selectHtml('cga-prefId', a.prefId, prefOpts)) + '</div>' +
-      '<div class="ar-evc-row ar-evc-two">' +
-      fieldWrap('Match score', selectHtml('cga-minScore', a.minScore, scoreOpts)) +
-      fieldWrap('Funnel stage', selectHtml('cga-stage', a.stage, stageOpts)) + '</div>' +
-      '<div class="ar-evc-row ar-evc-two">' +
-      fieldWrap('Intake', selectHtml('cga-intake', a.intake, intakeOpts)) +
-      fieldWrap('Saved filter', selectHtml('cga-savedFilter', a.savedFilter, filterOpts)) + '</div>' +
+      fieldWrap('Preference', selectHtml('cga-prefId', a.prefId, prefOpts.length ? prefOpts : [['', 'No preference']]), true) + '</div>' +
+      '<div id="cga-filters" class="ar-seg-filters ar-cga-filters">' + filterBody + '</div>' +
       '<div class="ar-evc-target"><span>Total targeted students</span><strong>' + list.length.toLocaleString() + '</strong><small>' +
       esc(cgPrefOf(a) ? matched.toLocaleString() + ' are strong matches for this preference.' : 'Pick a preference to see how well they match.') + '</small></div>' +
       '<div class="ar-cg-chips ar-cg-target-chips">' + cgChipsHtml(a) + '</div></div>';
@@ -7987,7 +8514,8 @@
   function cgAudienceSegmentHtml(a) {
     var seg = SEGMENTS.filter(function (s) { return s.id === a.segmentId; })[0] || null;
     var n = seg ? segRows(seg).length : 0;
-    return '<div class="ar-cg-segpick">' + SEGMENTS.map(function (item) {
+    return '<div class="ar-cg-aud-body-head"><h4>Pick a segment</h4><p>Select one saved segment for this audience.</p></div>' +
+      '<div class="ar-cg-segpick">' + SEGMENTS.map(function (item) {
       var on = item.id === a.segmentId;
       return '<button type="button" class="ar-segc' + (on ? ' on' : '') + '" data-cg-seg="' + esc(item.id) + '">' +
         '<span class="ar-segc-top"><strong>' + esc(item.name) + '</strong><b>' + segRows(item).length + '</b></span>' +
@@ -8004,13 +8532,15 @@
       return '<label class="' + (mode === id ? 'on' : '') + '"><input type="radio" name="cg-aud-mode" value="' + id + '"' + (mode === id ? ' checked' : '') + '>' +
         ico(icon) + '<span><b>' + title + '</b><small>' + note + '</small></span></label>';
     };
-    return '<section class="ar-evc-section"><h3>Audience</h3>' +
+    return '<section class="ar-evc-section ar-cg-aud-step"><h3>Audience</h3>' +
+      '<div class="ar-cg-aud-top">' +
       '<div class="ar-evc-formats ar-cg-aud-modes">' +
-      choice('own', 'tune', 'Choose your own audience', 'Set program, preference, score, stage and intake') +
+      choice('own', 'tune', 'Choose your own audience', 'New or saved filters for program, preference, stage and actions') +
       choice('segment', 'segment', 'Choose segmentation', 'Use a segment you already saved') +
-      '</div>' +
+      '</div></div>' +
+      '<div class="ar-cg-aud-body">' +
       (mode === 'segment' ? cgAudienceSegmentHtml(a) : cgAudienceOwnHtml(a)) +
-      '</section>';
+      '</div></section>';
   }
 
   function cgMessageStepHtml(d) {
@@ -8133,10 +8663,13 @@
     if (ch) d.channel = ch.value;
     var audMode = document.querySelector('[name="cg-aud-mode"]:checked');
     if (audMode) d.audience.mode = audMode.value;
-    ['program', 'prefId', 'minScore', 'stage', 'intake', 'savedFilter'].forEach(function (k) {
+    ensureAudienceShape(d.audience);
+    ['program', 'prefId'].forEach(function (k) {
       var el = $('cga-' + k);
       if (el) d.audience[k] = el.value;
     });
+    d.audience.intake = (d.audience.filters && d.audience.filters.intake) || '';
+    d.audience.minScore = (d.audience.filters && d.audience.filters.min) || d.audience.minScore || '0';
   }
 
   /** Why a step can't be finished yet, as [message, field id to focus], or null. */
@@ -8184,7 +8717,8 @@
     return {
       id: cgForm.id || storeId('cg'), status: status, name: d.name.trim() || 'Untitled campaign', description: d.description.trim(),
       channel: d.channel, template: d.template, subject: d.channel === 'email' ? d.subject : '', text: d.text,
-      audience: clone(d.audience), created: d.created || now, updated: now, sentAt: null, recipients: null,
+      audience: clone(d.audience), createdBy: d.createdBy || CHAT_ME,
+      created: d.created || now, updated: now, sentAt: null, recipients: null,
     };
   }
 
@@ -8339,6 +8873,7 @@
       '<section class="ar-ev-detail-section"><h4>Engagement</h4>' + cgFunnelHtml(m) + '</section>' +
       '<section class="ar-ev-detail-section"><h4>Campaign</h4><div class="ar-cg-kv">' +
       detailKV('Channel', ch.name) + detailKV('Template', templateById(c.template).name) + detailKV('Sent on', fmtDateTime(new Date(c.sentAt))) +
+      detailKV('Created by', staffName(campaignCreatorId(c)) || '—') +
       (desc ? detailKV('Description', desc) : '') + '</div></section>' +
       '</div>' +
       '<section class="ar-ev-detail-section ar-cg-targets">' +
@@ -8522,7 +9057,10 @@
 
   function setProgram(id) {
     state.program = id;
-    state.prefId = null;
+    var prefs = prefsFor(id);
+    state.prefId = prefs[0] ? prefs[0].id : null;
+    visitBannerCache = null;
+    lastSeenKey = null;
     resetFilters();
     renderDashboard();
   }
@@ -8544,10 +9082,43 @@
       return;
     }
 
+    var segCampaignsBtn = t.closest('[data-seg-campaigns]');
+    if (segCampaignsBtn) {
+      e.preventDefault();
+      var wrap = segCampaignsBtn.closest('.ar-seg-cg-wrap');
+      var menu = wrap && wrap.querySelector('.ar-seg-cg-menu');
+      if (!menu) return;
+      var open = menu.hidden;
+      document.querySelectorAll('.ar-seg-cg-menu').forEach(function (m) { m.hidden = true; });
+      document.querySelectorAll('[data-seg-campaigns]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
+      menu.hidden = !open;
+      segCampaignsBtn.setAttribute('aria-expanded', String(open));
+      return;
+    }
+
+    var segCampaign = t.closest('[data-seg-campaign]');
+    if (segCampaign) {
+      e.preventDefault();
+      document.querySelectorAll('.ar-seg-cg-menu').forEach(function (m) { m.hidden = true; });
+      document.querySelectorAll('[data-seg-campaigns]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
+      openSegCampaign(segCampaign.getAttribute('data-seg-campaign'));
+      return;
+    }
+
+    if (t.closest('[data-seg-duplicate]')) {
+      e.preventDefault();
+      openDuplicateSegment(segPage.id);
+      return;
+    }
+
+    if (!t.closest('.ar-seg-cg-wrap')) {
+      document.querySelectorAll('.ar-seg-cg-menu').forEach(function (m) { m.hidden = true; });
+      document.querySelectorAll('[data-seg-campaigns]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
+    }
+
     if (t.closest('#seg-create')) {
-      var first = PROGRAMS[0];
-      var firstPref = prefsFor(first.id)[0];
-      segEditor = { name: '', program: first.id, prefId: firstPref ? firstPref.id : '', shortlisted: 'any', filters: blankFilters(), filterTab: 'new', savedId: '' };
+      var allPref = segPrefsFor('all')[0];
+      segEditor = { name: '', program: 'all', prefId: allPref ? allPref.id : '', shortlisted: 'any', filters: blankFilters(), filterTab: 'new', savedId: '' };
       openSegForm();
       return;
     }
@@ -8586,7 +9157,12 @@
     var segTab = t.closest('[data-seg-ftab]');
     if (segTab && segEditor) {
       segReadEditor();
-      segEditor.filterTab = segTab.getAttribute('data-seg-ftab');
+      var nextTab = segTab.getAttribute('data-seg-ftab');
+      segEditor.filterTab = nextTab;
+      if (nextTab !== 'saved') segEditor.savedId = '';
+      if (nextTab === 'new' && (!segEditor.filters || !Object.keys(segEditor.filters.vals || {}).length)) {
+        segEditor.filters = blankFilters();
+      }
       openSegForm();
       return;
     }
@@ -8594,18 +9170,34 @@
     var segSaved = t.closest('[data-seg-saved]');
     if (segSaved && segEditor) {
       segReadEditor();
-      segEditor.savedId = segSaved.getAttribute('data-seg-saved');
+      var pickedSf = savedFilterById(segSaved.getAttribute('data-seg-saved'));
+      if (!pickedSf) { toast('That saved filter is gone.'); return; }
+      segEditor.savedId = pickedSf.id;
+      segEditor.filterTab = 'saved';
+      segEditor.program = pickedSf.program || segEditor.program || 'all';
+      segEditor.prefId = pickedSf.prefId || (segPrefsFor(segEditor.program)[0] || {}).id || '';
+      segEditor.filters = clone(pickedSf.filters || blankFilters());
+      if (pickedSf.intake) segEditor.filters.intake = pickedSf.intake;
+      openSegForm();
+      return;
+    }
+
+    if (t.closest('[data-seg-saved-back]') && segEditor) {
+      segReadEditor();
+      segEditor.savedId = '';
       segEditor.filterTab = 'saved';
       openSegForm();
       return;
     }
 
     if (segDrawerFilterClick(t)) return;
+    if (audFilterClick(t)) return;
 
     if (t.closest('[data-seg-save]')) {
       segReadEditor();
       var segName = segEditor.name.trim();
       if (!segName) { toast('Give the segment a name.'); if ($('seg-name')) $('seg-name').focus(); return; }
+      var wasDuplicate = !!segEditor.duplicate;
       var made;
       if (segEditor.filterTab === 'upload') {
         var up = segEditor.upload;
@@ -8623,33 +9215,41 @@
         });
         if (!leads.length) { toast('No leads in that file.'); return; }
         made = { id: 'seg-' + Date.now(), name: segName, source: 'upload', leads: leads, createdAt: Date.now() };
+      } else if (segEditor.members && segEditor.members.length) {
+        made = {
+          id: 'seg-' + Date.now(),
+          name: segName,
+          source: 'graded',
+          program: segEditor.program,
+          prefId: segEditor.prefId,
+          shortlisted: segEditor.shortlisted || 'any',
+          members: segEditor.members.slice(),
+          filters: clone(segEditor.filters || blankFilters()),
+          createdAt: Date.now(),
+        };
       } else {
-      var segProgram = segEditor.program;
-      var segPref = segEditor.prefId;
-      var segFilters = JSON.parse(JSON.stringify(segEditor.filters || blankFilters()));
-      if (segEditor.filterTab === 'saved') {
-        var pickedFilter = savedFilterById(segEditor.savedId);
-        if (!pickedFilter) { toast('Choose a saved filter.'); return; }
-        segFilters = JSON.parse(JSON.stringify(pickedFilter.filters || blankFilters()));
-        segFilters.intake = pickedFilter.intake || '';
+      if (segEditor.filterTab === 'saved' && !segEditor.savedId) {
+        toast('Choose a saved filter.');
+        return;
       }
       made = {
         id: 'seg-' + Date.now(),
         name: segName,
         source: 'graded',
-        program: segProgram,
-        prefId: segPref,
-        shortlisted: 'any',
-        filters: segFilters,
+        program: segEditor.program,
+        prefId: segEditor.prefId,
+        shortlisted: segEditor.shortlisted || 'any',
+        filters: clone(segEditor.filters || blankFilters()),
         createdAt: Date.now(),
       };
       }
       SEGMENTS.unshift(made);
       segPage.id = made.id;
+      segCache = {};
       segEditor = null;
       closeDrawer();
       renderSegments();
-      toast('Segment created.');
+      toast(wasDuplicate ? 'Segment duplicated.' : 'Segment created.');
       return;
     }
 
@@ -9243,9 +9843,20 @@
     var prefItem = t.closest('[data-pref]');
     if (prefItem) {
       state.prefId = prefItem.getAttribute('data-pref');
+      visitBannerCache = null;
+      lastSeenKey = null;
       resetFilters();
       closeMenus();
       renderDashboard();
+      return;
+    }
+
+    if (t.closest('[data-visit-dismiss]')) {
+      e.preventDefault();
+      if (visitBannerCache) {
+        dismissVisitBanner(visitBannerCache.programId, visitBannerCache.prefId, visitBannerCache.at);
+      }
+      renderStudentsVisit();
       return;
     }
 
@@ -9316,8 +9927,7 @@
       EF.cohort = '';
       EF.formats = [];
       EF.kinds = [];
-      EF.cities = [];
-      EF.platforms = [];
+      EF.city = '';
       EF.category = '';
       EF.creator = '';
       EF.startFrom = '';
@@ -9485,6 +10095,7 @@
       if (cleared[0] === 'program') { EF.program = 'all'; EF.prefId = null; }
       else if (cleared[0] === 'pref') EF.prefId = null;
       else if (cleared[0] === 'cohort') EF.cohort = '';
+      else if (cleared[0] === 'city') EF.city = '';
       else if (cleared[0] === 'category') EF.category = '';
       else if (cleared[0] === 'creator') EF.creator = '';
       else if (cleared[0] === 'dates') { EF.startFrom = ''; EF.startTo = ''; }
@@ -9604,6 +10215,11 @@
         renderStudents();
         return;
       }
+      if (what === 'engage') {
+        state.filters.engMin = state.filters.engMax = '';
+        renderStudents();
+        return;
+      }
       if (what.indexOf('crit:') === 0) {
         delete state.filters.vals[what.slice(5)];
         renderStudents();
@@ -9612,6 +10228,7 @@
       if (what === 'stage') state.stage = null;
       else if (what === 'action') state.action = null;
       else if (what === 'funnel') state.stage = state.action = null;
+      else if (what === 'createdBy') state.createdBy = '';
       else setProgram('all');
       renderDashboard();
       return;
@@ -9935,7 +10552,7 @@
     var bag = segEditor.filters;
     if (e.target.id === 'seg-program' || e.target.id === 'seg-pref') {
       if (e.target.id === 'seg-program') {
-        var prefsNow = prefsFor(segEditor.program);
+        var prefsNow = segPrefsFor(segEditor.program);
         segEditor.prefId = prefsNow[0] ? prefsNow[0].id : '';
       }
       openSegForm();
@@ -9962,6 +10579,96 @@
       return;
     }
     if (e.target.hasAttribute('data-fintake')) bag.intake = e.target.value;
+  });
+
+  document.addEventListener('change', function (e) {
+    if (!e.target || !e.target.closest('.ar-cg-aud-fields')) return;
+    var a = audDraftAudience();
+    if (!a) return;
+    var bag = a.filters || (a.filters = blankFilters());
+    var ffAdd = e.target.getAttribute('data-ff-add');
+    if (ffAdd) {
+      var ffValue = e.target.value;
+      if (!ffValue) return;
+      if (ffAdd === 'stage') {
+        if (a.stages.indexOf(ffValue) === -1) a.stages.push(ffValue);
+        audRefresh();
+        return;
+      }
+      if (ffAdd === 'action') {
+        if (a.actions.indexOf(ffValue) === -1) a.actions.push(ffValue);
+        audRefresh();
+        return;
+      }
+      var ffCur = ((bag.vals[ffAdd] && bag.vals[ffAdd].vals) || []).slice();
+      if (ffCur.indexOf(ffValue) === -1) ffCur.push(ffValue);
+      bag.vals[ffAdd] = { vals: ffCur };
+      audRefresh();
+      return;
+    }
+    if (e.target.name === 'cga-loc-mode' || e.target.name === 'cga-pref-mode') {
+      var ffKey = e.target.name === 'cga-pref-mode' ? 'preferred' : 'location';
+      if (!e.target.value) delete bag.vals[ffKey];
+      else {
+        var prevLoc = bag.vals[ffKey] || {};
+        bag.vals[ffKey] = { mode: e.target.value, places: prevLoc.places || [] };
+      }
+      audRefresh();
+      return;
+    }
+    if (e.target.hasAttribute('data-fintake')) {
+      bag.intake = e.target.value;
+      a.intake = e.target.value;
+      audRefresh();
+    }
+  });
+
+  document.addEventListener('input', function (e) {
+    if (!e.target || !e.target.closest('.ar-cg-aud-fields')) return;
+    var a = audDraftAudience();
+    if (!a) return;
+    var bag = a.filters || (a.filters = blankFilters());
+    if (e.target.id === 'cga-place-q') { openFilterPlaces('location', e.target); return; }
+    if (e.target.id === 'cga-pref-q') { openFilterPlaces('preferred', e.target); return; }
+    var v = e.target.value.trim();
+    var key = e.target.getAttribute('data-fscore');
+    if (key) {
+      bag[key] = v === '' ? '' : String(Math.max(0, Math.min(100, Math.round(Number(v)) || 0)));
+      a.minScore = bag.min || '0';
+      cgCache = {};
+      return;
+    }
+    var num = e.target.getAttribute('data-fnum');
+    if (!num) return;
+    var bits = num.split(':');
+    var vals = bag.vals;
+    if (bits[0] === 'test') {
+      var slot = bits.pop();
+      var testName = decodeURIComponent(bits.slice(1).join(':'));
+      var next = {};
+      var prevRanges = testRanges(vals.test);
+      Object.keys(prevRanges).forEach(function (n) { next[n] = { min: prevRanges[n].min || '', max: prevRanges[n].max || '' }; });
+      next[testName] = next[testName] || { min: '', max: '' };
+      next[testName][slot] = v === '' || isNaN(Number(v)) ? '' : v;
+      Object.keys(next).forEach(function (n) {
+        if (!next[n].min && !next[n].max) delete next[n];
+      });
+      if (Object.keys(next).length) vals.test = { tests: next };
+      else delete vals.test;
+      cgCache = {};
+      return;
+    }
+    vals[bits[0]] = vals[bits[0]] || {};
+    vals[bits[0]][bits[1]] = v === '' || isNaN(Number(v)) ? '' : v;
+    cgCache = {};
+  });
+
+  document.addEventListener('focusout', function (e) {
+    if (!e.target || !e.target.closest('#cga-filters')) return;
+    if (!e.target.getAttribute('data-fscore') && !e.target.getAttribute('data-fnum')) return;
+    if (e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('#cga-filters')) return;
+    if (!audDraftAudience()) return;
+    audRefresh();
   });
 
   document.addEventListener('input', function (e) {
@@ -10126,6 +10833,8 @@
       EF.prefId = e.target.value || null;
     } else if (e.target.id === 'evf-cohort') {
       EF.cohort = e.target.value;
+    } else if (e.target.id === 'evf-city') {
+      EF.city = e.target.value;
     } else if (e.target.id === 'evf-category') {
       EF.category = e.target.value;
     } else if (e.target.id === 'evf-creator') {
@@ -10183,7 +10892,7 @@
   $('cgf-clear').addEventListener('click', function () {
     CGF.channel = 'all';
     CGF.program = 'all';
-    CGF.sort = 'new';
+    CGF.createdBy = '';
     renderCampaignList();
   });
 
@@ -10259,16 +10968,25 @@
     tplSyncForm();
     readCampaignForm();
     if (tid === 'cga-program') {
-      tplDraft.draft.audience.prefId = '';
-      tplDraft.draft.audience.minScore = '0';
+      var ta = ensureAudienceShape(tplDraft.draft.audience);
+      var tPrefs = ta.program === 'all' ? prefsFor('all') : prefsFor(ta.program);
+      ta.prefId = tPrefs[0] ? tPrefs[0].id : '';
+      ta.minScore = '0';
+      ta.savedId = '';
+      ta.stages = [];
+      ta.actions = [];
+      ta.filters = blankFilters();
     }
-    if (tid === 'cga-prefId' && !tplDraft.draft.audience.prefId) tplDraft.draft.audience.minScore = '0';
+    if (tid === 'cga-prefId' && !tplDraft.draft.audience.prefId) {
+      tplDraft.draft.audience.minScore = '0';
+      if (tplDraft.draft.audience.filters) tplDraft.draft.audience.filters.min = '';
+    }
     renderTemplates();
   });
 
   $('view-campaigns').addEventListener('change', function (e) {
     var id = e.target.id;
-    var filterKey = { 'cgf-channel': 'channel', 'cgf-program': 'program', 'cgf-sort': 'sort' }[id];
+    var filterKey = { 'cgf-channel': 'channel', 'cgf-program': 'program', 'cgf-createdBy': 'createdBy', 'cg-sort': 'sort' }[id];
     if (filterKey) {
       CGF[filterKey] = e.target.value;
       renderCampaignList();
@@ -10293,21 +11011,20 @@
     }
     if (id.indexOf('cga-') === 0) {
       readCampaignForm();
-      var a = d.audience;
+      var a = ensureAudienceShape(d.audience);
       if (id === 'cga-program') {
-        a.prefId = '';
+        var nextPrefs = a.program === 'all' ? prefsFor('all') : prefsFor(a.program);
+        a.prefId = nextPrefs[0] ? nextPrefs[0].id : '';
         a.minScore = '0';
         a.savedFilter = '';
+        a.savedId = '';
+        a.stages = [];
+        a.actions = [];
+        a.filters = blankFilters();
       }
-      if (id === 'cga-prefId' && !a.prefId) a.minScore = '0';
-      if (id === 'cga-savedFilter' && a.savedFilter === 'saved') {
-        var saved = savedFilterInfo('all');
-        if (saved) {
-          a.program = programById(saved.program) ? saved.program : 'all';
-          a.prefId = a.program !== 'all' && saved.prefId ? saved.prefId : '';
-          a.minScore = '0';
-          a.intake = saved.intake || '';
-        }
+      if (id === 'cga-prefId' && !a.prefId) {
+        a.minScore = '0';
+        if (a.filters) a.filters.min = '';
       }
       renderCampaignForm();
     }
@@ -10336,21 +11053,20 @@
     if (tag === 'SELECT' || e.target.type === 'radio' || e.target.type === 'checkbox') {
       if (e.target.id === 'evc-program') evCreate.draft.prefId = '';
       if (e.target.id === 'cga-program' && evCreate.draft.audience) {
-        evCreate.draft.audience.prefId = '';
-        evCreate.draft.audience.minScore = '0';
-        evCreate.draft.audience.savedFilter = '';
-        evCreate.draft.prefId = '';
+        var evAud = ensureAudienceShape(evCreate.draft.audience);
+        var evPrefs = evAud.program === 'all' ? prefsFor('all') : prefsFor(evAud.program);
+        evAud.prefId = evPrefs[0] ? evPrefs[0].id : '';
+        evAud.minScore = '0';
+        evAud.savedFilter = '';
+        evAud.savedId = '';
+        evAud.stages = [];
+        evAud.actions = [];
+        evAud.filters = blankFilters();
+        evCreate.draft.prefId = evAud.prefId;
       }
-      if (e.target.id === 'cga-prefId' && evCreate.draft.audience && !evCreate.draft.audience.prefId) evCreate.draft.audience.minScore = '0';
-      if (e.target.id === 'cga-savedFilter' && evCreate.draft.audience && evCreate.draft.audience.savedFilter === 'saved') {
-        var evSaved = savedFilterInfo('all');
-        if (evSaved) {
-          evCreate.draft.audience.program = programById(evSaved.program) ? evSaved.program : 'all';
-          evCreate.draft.audience.prefId = evCreate.draft.audience.program !== 'all' && evSaved.prefId ? evSaved.prefId : '';
-          evCreate.draft.audience.minScore = '0';
-          evCreate.draft.audience.intake = evSaved.intake || '';
-          if (evCreate.draft.audience.program !== 'all') evCreate.draft.program = evCreate.draft.audience.program;
-        }
+      if (e.target.id === 'cga-prefId' && evCreate.draft.audience && !evCreate.draft.audience.prefId) {
+        evCreate.draft.audience.minScore = '0';
+        if (evCreate.draft.audience.filters) evCreate.draft.audience.filters.min = '';
       }
       var tplMatch = e.target.id && e.target.id.indexOf('evc-flow-template-') === 0;
       if (tplMatch) {
@@ -10731,6 +11447,11 @@
       return;
     }
     if (e.target.hasAttribute('data-fintake')) setIntake(e.target.value);
+    if (e.target.hasAttribute('data-fcreator')) {
+      state.createdBy = e.target.value;
+      renderFilterMenu();
+      renderStudents();
+    }
   });
 
   $('table').addEventListener('change', function (e) {
