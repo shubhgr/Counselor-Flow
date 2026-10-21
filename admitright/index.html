@@ -10,7 +10,7 @@
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=tok1" />
   <link rel="stylesheet" href="css/tokens.css?v=tok1" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar377" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar408" />
 </head>
 <body class="ar ar-locked">
   <section class="ar-gate" id="gate-login" hidden>
@@ -338,24 +338,29 @@
           </section>
         </div>
 
-        <div id="events-create-page" hidden>
-          <header class="topbar ar-subpage-head">
-            <div class="ar-title ar-create-title">
-              <button type="button" class="ar-icon-btn" data-events-back aria-label="Back">
-                <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
-              </button>
-              <div>
-                <h1>Create event</h1>
-                <span class="ar-sub" id="ev-create-sub">Event basics</span>
+        <div id="events-create-page" class="ar-create-flow" hidden>
+          <div class="ar-create-head">
+            <header class="topbar ar-subpage-head">
+              <div class="ar-title ar-create-title">
+                <button type="button" class="ar-icon-btn" data-events-back aria-label="Back">
+                  <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+                </button>
+                <div>
+                  <h1>Create event</h1>
+                  <span class="ar-sub" id="ev-create-sub">Event basics</span>
+                </div>
               </div>
-            </div>
-          </header>
-          <div class="content ar-content ar-event-page">
-            <section class="panel ar-event-page-card">
-              <div id="ev-create-body"></div>
-              <div class="ar-event-page-foot" id="ev-create-foot"></div>
-            </section>
+            </header>
+            <div class="ar-create-steps" id="ev-create-steps"></div>
           </div>
+          <div class="ar-create-scroll">
+            <div class="content ar-content ar-event-page">
+              <section class="panel ar-event-page-card">
+                <div id="ev-create-body"></div>
+              </section>
+            </div>
+          </div>
+          <div class="ar-event-page-foot ar-create-foot" id="ev-create-foot"></div>
         </div>
 
         <div id="events-detail-page" hidden>
@@ -446,24 +451,29 @@
           <div class="ar-cg-list" id="cg-list"></div>
         </div>
 
-        <div id="cg-form-page" hidden>
-          <header class="topbar ar-subpage-head">
-            <div class="ar-title ar-create-title">
-              <button type="button" class="ar-icon-btn" data-cg-back aria-label="Back">
-                <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
-              </button>
-              <div>
-                <h1 id="cg-form-title">Create campaign</h1>
-                <span class="ar-sub" id="cg-form-sub">Campaign details</span>
+        <div id="cg-form-page" class="ar-create-flow" hidden>
+          <div class="ar-create-head">
+            <header class="topbar ar-subpage-head">
+              <div class="ar-title ar-create-title">
+                <button type="button" class="ar-icon-btn" data-cg-back aria-label="Back">
+                  <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+                </button>
+                <div>
+                  <h1 id="cg-form-title">Create campaign</h1>
+                  <span class="ar-sub" id="cg-form-sub">Campaign details</span>
+                </div>
               </div>
-            </div>
-          </header>
-          <div class="content ar-content ar-event-page">
-            <section class="panel ar-event-page-card">
-              <div id="cg-form-body"></div>
-              <div class="ar-event-page-foot" id="cg-form-foot"></div>
-            </section>
+            </header>
+            <div class="ar-create-steps" id="cg-form-steps"></div>
           </div>
+          <div class="ar-create-scroll">
+            <div class="content ar-content ar-event-page">
+              <section class="panel ar-event-page-card">
+                <div id="cg-form-body"></div>
+              </section>
+            </div>
+          </div>
+          <div class="ar-event-page-foot ar-create-foot" id="cg-form-foot"></div>
         </div>
 
         <div id="cg-detail-page" hidden>
@@ -663,6 +673,6 @@
   <div class="ar-toast" id="toast" hidden></div>
 
   <script src="data/students-data.js?v=ar259"></script>
-  <script src="js/admitright.js?v=ar382"></script>
+  <script src="js/admitright.js?v=ar408"></script>
 </body>
 </html>
