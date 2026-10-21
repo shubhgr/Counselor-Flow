@@ -795,7 +795,7 @@
     createdBy: '',
     ppProgram: 'all',
     collapsed: {},
-    filters: { min: '', max: '', vals: {} },
+    filters: { min: '', max: '', engMin: '', engMax: '', vals: {} },
     chatId: null,
   };
 
@@ -1005,12 +1005,37 @@
   function activeFilterCount() {
     if (!filtersOn()) return 0;
     var f = state.filters;
-    return (f.min !== '' || f.max !== '' ? 1 : 0) + activeFilters().length + (state.createdBy ? 1 : 0);
+    return (f.min !== '' || f.max !== '' ? 1 : 0) +
+      (f.engMin !== '' || f.engMax !== '' ? 1 : 0) +
+      activeFilters().length + (state.createdBy ? 1 : 0);
   }
 
   function resetFilters() {
-    state.filters = { min: '', max: '', vals: {} };
+    state.filters = { min: '', max: '', engMin: '', engMax: '', vals: {} };
     state.createdBy = '';
+  }
+
+  function engageFilterBag(bag) {
+    return { min: bag.engMin || '', max: bag.engMax || '' };
+  }
+
+  function engageScoreAttr(k) {
+    return 'data-fscore="' + (k === 'min' ? 'engMin' : 'engMax') + '" min="0" max="100"';
+  }
+
+  function passesEngageRange(s, bag) {
+    if (!bag) return true;
+    var eng = engageScore(s);
+    if (bag.engMin !== '' && bag.engMin != null && (eng === null || eng < Number(bag.engMin))) return false;
+    if (bag.engMax !== '' && bag.engMax != null && (eng === null || eng > Number(bag.engMax))) return false;
+    return true;
+  }
+
+  function engageRangeChip(bag) {
+    if (!bag || (bag.engMin === '' || bag.engMin == null) && (bag.engMax === '' || bag.engMax == null)) return '';
+    if (bag.engMin !== '' && bag.engMax !== '' && bag.engMin != null && bag.engMax != null) return bag.engMin + '–' + bag.engMax + '%';
+    if (bag.engMin !== '' && bag.engMin != null) return bag.engMin + '%+';
+    return 'up to ' + bag.engMax + '%';
   }
 
   var FILTERS_KEY = 'admitright_filters_v1';
@@ -1059,6 +1084,7 @@
   function savedFilterSummary(sf) {
     var vals = sf.filters.vals || {};
     var n = (sf.filters.min !== '' || sf.filters.max !== '' ? 1 : 0) +
+      (sf.filters.engMin !== '' || sf.filters.engMax !== '' ? 1 : 0) +
       Object.keys(vals).filter(function (id) { return filterActive(id, vals[id]); }).length;
     var program = programById(sf.program);
     var pref = prefsFor(sf.program).filter(function (p) { return p.id === sf.prefId; })[0];
@@ -1168,6 +1194,7 @@
     var f = state.filters;
     if (f.min !== '' && (s.score === null || s.score < Number(f.min))) return false;
     if (f.max !== '' && (s.score === null || s.score > Number(f.max))) return false;
+    if (!passesEngageRange(s, f)) return false;
     var ids = activeFilters();
     for (var i = 0; i < ids.length; i++) {
       var id = ids[i];
@@ -1243,12 +1270,10 @@
     return s.score === null ? '—' : s.score + '<small>%</small>';
   }
 
+  /** Profile engagement is event-only: Opened / Registered / Joined → 0–100%. */
   function engageScore(s) {
     if (!s.engage) return null;
-    var camp = Math.min(4, s.engage.campaign || 0) / 4;
-    var ev = Math.min(3, s.engage.event || 0) / 3;
-    var act = ACTIONS.length ? actionsDone(s).length / ACTIONS.length : 0;
-    return Math.round(camp * 50 + ev * 30 + act * 20);
+    return Math.round(Math.min(3, s.engage.event || 0) / 3 * 100);
   }
 
   /* ——— Score changes after a preference edit ——— */
@@ -2512,6 +2537,10 @@
         var range = f.min !== '' && f.max !== '' ? f.min + '–' + f.max + '%' : f.min !== '' ? f.min + '%+' : 'up to ' + f.max + '%';
         chips.push('<button type="button" class="ar-filter-chip" data-clear="score">Match ' + range + ico('close') + '</button>');
       }
+      var engChip = engageRangeChip(f);
+      if (engChip) {
+        chips.push('<button type="button" class="ar-filter-chip" data-clear="engage">Engage ' + engChip + ico('close') + '</button>');
+      }
       var pref = findPref(state.program, state.prefId);
       activeFilters().forEach(function (id) {
         chips.push('<button type="button" class="ar-filter-chip" data-clear="crit:' + id + '">' + esc(filterChipText(id, f.vals[id], pref)) + ico('close') + '</button>');
@@ -2775,6 +2804,7 @@
     $('filter-menu').innerHTML = head +
       '<div class="ar-fmenu-body gr-scroll">' +
       row(label('Match score'), rangeInputs(scoreAttr, f, '%')) +
+      row(label('Engagement score'), rangeInputs(engageScoreAttr, engageFilterBag(f), '%')) +
       FILTER_ORDER.filter(function (id) {
         var critRow = pref.criteria[id];
         if (!critRow) return false;
@@ -3026,7 +3056,7 @@
   }
 
   function blankFilters() {
-    return { min: '', max: '', intake: '', vals: {} };
+    return { min: '', max: '', engMin: '', engMax: '', intake: '', vals: {} };
   }
 
   var SEGMENTS = [
@@ -3074,6 +3104,7 @@
     if (bag.intake && intakeYear(s) !== String(bag.intake)) return false;
     if (bag.min !== '' && bag.min != null && (score === null || score < Number(bag.min))) return false;
     if (bag.max !== '' && bag.max != null && (score === null || score > Number(bag.max))) return false;
+    if (!passesEngageRange(s, bag)) return false;
     var vals = bag.vals || {};
     var ids = Object.keys(vals).filter(function (id) { return filterActive(id, vals[id]); });
     for (var i = 0; i < ids.length; i++) {
@@ -3196,6 +3227,8 @@
       var range = bag.min !== '' && bag.max !== '' ? bag.min + '–' + bag.max + '%' : bag.min !== '' ? bag.min + '%+' : 'up to ' + bag.max + '%';
       bits.push('Match ' + range);
     }
+    var engBit = engageRangeChip(bag);
+    if (engBit) bits.push('Engage ' + engBit);
     Object.keys(bag.vals || {}).forEach(function (id) {
       if (filterActive(id, bag.vals[id])) bits.push(filterChipText(id, bag.vals[id], pref || { criteria: { test: { tests: [] } } }));
     });
@@ -3361,6 +3394,7 @@
     filterWriteBag = bag;
     var html =
       row(label('Match score'), rangeInputs(function (k) { return 'data-fscore="' + k + '" min="0" max="100"'; }, f, '%')) +
+      row(label('Engagement score'), rangeInputs(engageScoreAttr, engageFilterBag(f), '%')) +
       FILTER_ORDER.filter(function (id) {
         var critRow = pref.criteria[id];
         if (!critRow) return false;
@@ -4252,7 +4286,7 @@
 
   function engagementLogHtml(s) {
     var rows = studentEventActivity(s);
-    var body = rows.length ? eventItemsHtml(s, rows) : '<p class="ar-muted">No event registrations yet.</p>';
+    var body = rows.length ? eventItemsHtml(s, rows) : '<p class="ar-muted">No event activity yet.</p>';
     return profileSection('engage', 'Engagement · ' + rows.length, body);
   }
 
@@ -4760,7 +4794,7 @@
       '<div class="ar-cp-sec"><h4>Campaigns <small>' + sent.length + '</small></h4>' +
       (sent.length ? campaignItemsHtml(s, sent) : '<p class="ar-muted">No campaigns yet.</p>') + '</div>' +
       '<div class="ar-cp-sec"><h4>Engagement <small>' + evRows.length + '</small></h4>' +
-      (evRows.length ? eventItemsHtml(s, evRows) : '<p class="ar-muted">No event registrations yet.</p>') + '</div>' +
+      (evRows.length ? eventItemsHtml(s, evRows) : '<p class="ar-muted">No event activity yet.</p>') + '</div>' +
       (chatBulk.on ? '</div>' : '');
     (box.querySelector('.ar-cp-scroll') || box).scrollTop = keepScroll;
   }
@@ -7706,6 +7740,8 @@
     if (!a) return a;
     if (!a.filters) a.filters = blankFilters();
     if (!a.filters.vals) a.filters.vals = {};
+    if (a.filters.engMin == null) a.filters.engMin = '';
+    if (a.filters.engMax == null) a.filters.engMax = '';
     if (!Array.isArray(a.stages)) {
       a.stages = (a.stage !== '' && a.stage != null) ? [String(a.stage)] : [];
     } else {
@@ -7822,6 +7858,8 @@
     if (pref) chips.push('Preference: ' + pref.name);
     if (pref && a.filters && a.filters.min !== '' && a.filters.min != null) chips.push(a.filters.min + '%+ match');
     else if (pref && Number(a.minScore)) chips.push(a.minScore + '%+ match');
+    var audEng = engageRangeChip(a.filters);
+    if (audEng) chips.push(audEng + ' engage');
     if (a.stages && a.stages.length) {
       chips.push(a.stages.map(function (i) { return STAGES[Number(i)] ? STAGES[Number(i)].name : i; }).join(', '));
     } else if (a.stage !== '' && a.stage != null) {
@@ -10174,6 +10212,11 @@
       var what = clear.getAttribute('data-clear');
       if (what === 'score') {
         state.filters.min = state.filters.max = '';
+        renderStudents();
+        return;
+      }
+      if (what === 'engage') {
+        state.filters.engMin = state.filters.engMax = '';
         renderStudents();
         return;
       }
