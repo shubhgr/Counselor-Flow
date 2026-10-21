@@ -5861,10 +5861,10 @@
   var EVENT_CREATE_STEPS = [
     { id: 'basics', name: 'Event basics' },
     { id: 'audience', name: 'Audience' },
-    { id: 'venue', name: 'Venue and date' },
+    { id: 'venue', name: 'Venue' },
     { id: 'messages', name: 'Messages' },
-    { id: 'registration', name: 'Registration details' },
-    { id: 'review', name: 'Review & publish' },
+    { id: 'registration', name: 'Registration' },
+    { id: 'review', name: 'Review' },
   ];
   var evCreate = null; // { step, draft }
   var currentEventId = null;
@@ -5955,10 +5955,13 @@
       if (extra) d.extras[k] = extra.checked;
     });
     if ($('cga-program') || document.querySelector('#events-create-page [name="cg-aud-mode"]')) readEventAudience();
-    ['cover', 'gallery', 'hasMeetingLink', 'time24', 'keepOpen'].forEach(function (k) {
+    ['cover', 'gallery', 'hasMeetingLink', 'keepOpen'].forEach(function (k) {
       var el = $('evc-' + k);
       if (el) d[k] = el.checked;
     });
+    var timeFmt = document.querySelector('[name="evc-timefmt"]:checked');
+    if (timeFmt) d.time24 = timeFmt.value === '24';
+    else if ($('evc-time24')) d.time24 = $('evc-time24').checked;
     if (!d.messages) return;
     ['before', 'start', 'end'].forEach(function (key) {
       var m = d.messages[key];
@@ -5991,6 +5994,10 @@
           var el = $('evc-flow-' + k + '-' + flow.id);
           if (el) flow[k] = el.value;
         });
+        var sub = $('evc-flow-subject-' + flow.id);
+        if (sub) flow.subject = sub.value;
+        var body = $('evc-flow-text-' + flow.id);
+        if (body) flow.text = body.getAttribute('contenteditable') === 'true' ? body.innerHTML : body.value;
       });
     }
   }
@@ -6003,8 +6010,11 @@
     }).join('') + '</div>';
   }
 
-  function evCol(wide, title, note, body) {
-    return '<div class="ar-evc-col ' + (wide ? 'main' : 'side') + '"><div class="ar-evc-col-head"><h3>' + title + '</h3><p>' + note + '</p></div>' + body + '</div>';
+  function evCol(wide, title, note, body, headAction) {
+    var titleRow = headAction
+      ? '<div class="ar-evc-col-title"><h3>' + title + '</h3>' + headAction + '</div>'
+      : '<h3>' + title + '</h3>';
+    return '<div class="ar-evc-col ' + (wide ? 'main' : 'side') + '"><div class="ar-evc-col-head">' + titleRow + '<p>' + note + '</p></div>' + body + '</div>';
   }
 
   function evSplit(left, right) {
@@ -6030,7 +6040,8 @@
 
   function toggleField(id, checked, label, note) {
     return '<label class="ar-evm-toggle ar-evc-toggle"><input type="checkbox" id="' + id + '"' + (checked ? ' checked' : '') + '>' +
-      '<span class="ar-evm-switch" aria-hidden="true"></span><span><b>' + esc(label) + '</b><small>' + esc(note || '') + '</small></span></label>';
+      '<span class="ar-evm-switch" aria-hidden="true"></span><span><b>' + esc(label) + '</b>' +
+      (note ? '<small>' + esc(note) + '</small>' : '') + '</span></label>';
   }
 
   function ensureEventAudience(d) {
@@ -6130,7 +6141,7 @@
 
   function flowTemplates() {
     var list = (typeof TPL_PREBUILT !== 'undefined' ? TPL_PREBUILT : []).concat(Array.isArray(MY_TEMPLATES) ? MY_TEMPLATES : []);
-    return list.map(function (t) { return [t.id, t.name]; });
+    return list.map(function (t) { return [t.id, t.name]; }).concat([['custom', 'Write your own']]);
   }
 
   function flowSelect(id, value, options) {
@@ -6139,21 +6150,54 @@
     }).join('') + '</select>';
   }
 
+  function ensureFlowContent(flow) {
+    if (flow.subject != null && flow.text != null) return flow;
+    if (flow.template === 'custom' || !flow.template) {
+      if (flow.subject == null) flow.subject = '';
+      if (flow.text == null) flow.text = '';
+      return flow;
+    }
+    var tpl = tplById(flow.template);
+    if (!tpl) {
+      if (flow.subject == null) flow.subject = '';
+      if (flow.text == null) flow.text = '';
+      return flow;
+    }
+    if (flow.subject == null) flow.subject = tpl.subject || '';
+    if (flow.text == null) flow.text = tpl.text || '';
+    return flow;
+  }
+
   function flowCard(flow) {
+    ensureFlowContent(flow);
+    var s = STUDENTS[0];
+    var first = s.name.split(' ')[0];
     var ch = function (id, icon, name) {
       return '<label class="' + (flow.channel === id ? 'on' : '') + '"><input type="radio" name="evc-flow-ch-' + flow.id + '" value="' + id + '"' + (flow.channel === id ? ' checked' : '') + '>' + ico(icon) + '<span>' + name + '</span></label>';
     };
-    return '<article class="ar-flow" data-flow="' + esc(flow.id) + '">' +
-      '<div class="ar-flow-head"><div class="ar-evc-formats ar-flow-ch">' + ch('email', 'mail', 'Email') + ch('whatsapp', 'forum', 'WhatsApp') + '</div>' +
-      '<button type="button" class="ar-icon-btn" data-flow-remove="' + esc(flow.id) + '" aria-label="Remove message">' + ico('close') + '</button></div>' +
-      '<p class="ar-flow-sentence">' + esc(flowSentence(flow)) + '</p>' +
-      '<div class="ar-flow-eq"><span class="ar-flow-word">Send</span>' +
-      '<input type="number" min="0" id="evc-flow-amount-' + flow.id + '" value="' + esc(String(flow.amount)) + '" aria-label="Amount">' +
-      flowSelect('evc-flow-unit-' + flow.id, flow.unit, [['days', 'days'], ['hours', 'hours'], ['minutes', 'minutes']]) +
-      flowSelect('evc-flow-when-' + flow.id, flow.when, [['before', 'before'], ['after', 'after']]) +
-      flowSelect('evc-flow-anchor-' + flow.id, flow.anchor, [['registration', 'registration'], ['start', 'event start'], ['end', 'event end']]) +
+    var msgField = flow.channel === 'email'
+      ? cgRteField(flow.text || '', 'evc-flow-text-' + flow.id)
+      : '<textarea id="evc-flow-text-' + flow.id + '" rows="8" placeholder="Write your message">' + esc(flow.text || '') + '</textarea>';
+    var removeBtn = '<button type="button" class="ar-icon-btn" data-flow-remove="' + esc(flow.id) + '" aria-label="Remove message">' + ico('close') + '</button>';
+    var delivery = '<div class="ar-evc-formats ar-flow-ch">' + ch('email', 'mail', 'Email') + ch('whatsapp', 'forum', 'WhatsApp') + '</div>' +
+      '<div class="ar-flow-when ar-flow-when-stack">' +
+      '<label class="ar-evc-field"><span>Send</span><input type="number" min="0" id="evc-flow-amount-' + flow.id + '" value="' + esc(String(flow.amount)) + '" aria-label="Amount"></label>' +
+      '<label class="ar-evc-field"><span>Unit</span>' + flowSelect('evc-flow-unit-' + flow.id, flow.unit, [['days', 'Days'], ['hours', 'Hours'], ['minutes', 'Minutes']]) + '</label>' +
+      '<label class="ar-evc-field"><span>When</span>' + flowSelect('evc-flow-when-' + flow.id, flow.when, [['before', 'Before'], ['after', 'After']]) + '</label>' +
+      '<label class="ar-evc-field"><span>Anchor</span>' + flowSelect('evc-flow-anchor-' + flow.id, flow.anchor, [['registration', 'Registration'], ['start', 'Event start'], ['end', 'Event end']]) + '</label>' +
       '</div>' +
-      fieldWrap('Template', flowSelect('evc-flow-template-' + flow.id, flow.template, flowTemplates())) +
+      '<p class="ar-flow-sentence">' + esc(flowSentence(flow)) + '</p>';
+    var message = fieldWrap('Template', flowSelect('evc-flow-template-' + flow.id, flow.template, flowTemplates())) +
+      (flow.channel === 'email' ? fieldWrap('Subject', textInput('evc-flow-subject-' + flow.id, flow.subject || '', 'Subject line'), true) : '') +
+      fieldWrap('Message', msgField, true) +
+      '<p class="ar-cm-note">' + ico('auto_fix_high') + '{first}, {program} and {university} are filled in for each student.</p>';
+    var preview = '<div class="ar-flow-preview" id="evc-flow-preview-' + esc(flow.id) + '">' +
+      cgPreviewHtml({ channel: flow.channel, subject: flow.subject || '', text: flow.text || '' }, s) +
+      '</div>';
+    return '<article class="ar-flow ar-evc-split-page ar-flow-split" data-flow="' + esc(flow.id) + '">' +
+      evCol(false, 'Delivery', 'Channel and when this message goes out.', delivery, removeBtn) +
+      evCol(true, 'Message', 'What students get in their inbox or chat.', message) +
+      evCol(false, 'Preview for ' + esc(first), 'How it looks with sample student details.', preview) +
       '</article>';
   }
 
@@ -6162,22 +6206,18 @@
     var unit = flow.unit || 'days';
     var n = Number(flow.amount) || 0;
     var word = n === 1 ? unit.replace(/s$/, '') : unit;
-    var tpl = tplById(flow.template);
-    return (flow.channel === 'whatsapp' ? 'WhatsApp' : 'Email') + ' · ' + n + ' ' + word + ' ' + (flow.when || 'after') + ' ' + anchor + (tpl ? ' · ' + tpl.name : '');
+    var tplLabel = flow.template === 'custom' ? 'Write your own' : ((tplById(flow.template) || {}).name || '');
+    return (flow.channel === 'whatsapp' ? 'WhatsApp' : 'Email') + ' · ' + n + ' ' + word + ' ' + (flow.when || 'after') + ' ' + anchor + (tplLabel ? ' · ' + tplLabel : '');
   }
 
   function createMessagesHtml() {
     var d = evDraft();
     if (!d.flows) d.flows = [];
     var add = '<button type="button" class="btn btn-secondary btn-sm btn-icon ar-flow-add" data-flow-add>' + ico('add') + (d.flows.length ? 'Add another message' : 'Add a message') + '</button>';
-    var empty = '<button type="button" class="ar-flow-empty" data-flow-add>' + ico('add') + '<b>Add a message</b><small>Choose Email or WhatsApp, then set when it goes out and which template to use.</small></button>';
-    var preview = d.flows.length
-      ? '<ol class="ar-evc-flow-preview">' + d.flows.map(function (flow) { return '<li>' + esc(flowSentence(flow)) + '</li>'; }).join('') + '</ol>'
-      : '<p class="ar-evc-side-note">Messages you add show up here, in the order students receive them.</p>';
-    return evSplit(
-      evCol(true, 'Post-registration messages', 'Tell people what happens around registration, the start, and the end.', d.flows.length ? d.flows.map(flowCard).join('') + add : empty),
-      evCol(false, 'What students get', 'Email or WhatsApp, timed from registration, the start, or the end.', preview)
-    );
+    var empty = '<button type="button" class="ar-flow-empty" data-flow-add><span class="ar-flow-empty-ico">' + ico('add') + '</span><b>Add a message</b><small>Choose Email or WhatsApp, then set when it goes out and which template to use.</small></button>';
+    return '<div class="ar-evc-messages">' +
+      (d.flows.length ? d.flows.map(flowCard).join('') + '<div class="ar-flow-add-wrap">' + add + '</div>' : '<div class="ar-evc-pad ar-evc-messages-empty">' + empty + '</div>') +
+      '</div>';
   }
 
   function eventPinPlace(pin) {
@@ -6238,14 +6278,20 @@
     var duration = d.endMode !== 'time';
     var endChoice = function (id, label) {
       var on = (duration ? 'duration' : 'time') === id;
-      return '<label><input type="radio" name="evc-end" value="' + id + '"' + (on ? ' checked' : '') + '> ' + label + '</label>';
+      return '<label class="' + (on ? 'on' : '') + '"><input type="radio" name="evc-end" value="' + id + '"' + (on ? ' checked' : '') + '><span>' + label + '</span></label>';
     };
+    var timeFmt = '<div class="ar-evc-field"><span>Time format</span><div class="ar-evc-formats ar-evc-timefmt">' +
+      '<label class="' + (!d.time24 ? 'on' : '') + '"><input type="radio" name="evc-timefmt" value="12"' + (!d.time24 ? ' checked' : '') + '><span>12 hour</span></label>' +
+      '<label class="' + (d.time24 ? 'on' : '') + '"><input type="radio" name="evc-timefmt" value="24"' + (d.time24 ? ' checked' : '') + '><span>24 hour</span></label>' +
+      '</div></div>';
     var endBody = duration
-      ? '<div class="ar-evc-row">' + fieldWrap('Days', selectHtml('evc-days', d.days, ['00', '01', '02', '03', '07'])) +
+      ? '<div class="ar-evc-row ar-evc-duration">' + fieldWrap('Days', selectHtml('evc-days', d.days, ['00', '01', '02', '03', '07'])) +
         fieldWrap('Hours', selectHtml('evc-hours', d.hours, hours)) +
         fieldWrap('Minutes', selectHtml('evc-minutes', d.minutes, ['00', '15', '30', '45'])) + '</div>'
-      : fieldWrap('End date', '<input type="date" id="evc-endDate" value="' + esc(d.endDate || '') + '">') +
-        fieldWrap('End time', eventClock('evc-endTime', d.endTime, d.endPeriod, d.time24), true);
+      : '<div class="ar-evc-row ar-evc-two">' +
+        fieldWrap('End date', '<input type="date" id="evc-endDate" value="' + esc(d.endDate || '') + '">') +
+        fieldWrap('End time', eventClock('evc-endTime', d.endTime, d.endPeriod, d.time24), true) +
+        '</div>';
     var x = d.extras;
     var basic = eventExtraRow('language', 'translate', 'Language — English', x.language) +
       (online ? eventExtraRow('virtualLink', 'link', 'Virtual joining link shared on email', x.virtualLink) : '') +
@@ -6260,13 +6306,18 @@
         eventExtraRow('pets', 'pets', 'Pets not allowed', x.pets)
       : '';
     var where = (meeting || venue || '<p class="ar-evc-side-note">Pick a format on Event basics to set a place.</p>');
-    var when = '<div class="ar-evc-stack"><h4>Start</h4>' +
+    var when = '<div class="ar-evc-when-panel">' +
+      '<div class="ar-evc-row ar-evc-two">' +
       fieldWrap('Start date', '<input type="date" id="evc-startDate" value="' + esc(d.startDate) + '">') +
-      '<div class="ar-evc-when">' +
       fieldWrap('Start time', eventClock('evc-startTime', d.startTime, d.startPeriod, d.time24), true) +
-      toggleField('evc-time24', d.time24, '24 hour format', '') +
+      '</div>' +
+      '<div class="ar-evc-row ar-evc-two">' +
       fieldWrap('Timezone', selectHtml('evc-timezone', d.timezone, zones), true) +
-      '</div><h4>End</h4><div class="ar-evc-radio-row">' + endChoice('duration', 'Event duration') + endChoice('time', 'Event end time') + '</div>' +
+      timeFmt +
+      '</div>' +
+      '<div class="ar-evc-field ar-evc-end-mode"><span>Ends by</span><div class="ar-evc-formats">' +
+      endChoice('duration', 'Event duration') + endChoice('time', 'Event end time') +
+      '</div></div>' +
       endBody + '</div>';
     return evSplit(
       evCol(true, onsite ? 'Venue details' : 'Meeting link', online && onsite ? 'A link for people joining online, and a place for people who come in.' : (online ? 'Meeting credentials go out by email after registration.' : 'Where people should come.'), where + '<div class="ar-evc-extra"><p class="ar-evc-kicker">Additional info</p>' + basic + amenities + '</div>'),
@@ -6277,16 +6328,20 @@
   function createRegistrationHtml() {
     var d = evDraft();
     var option = function (id, title, body) {
-      return '<label class="ar-evc-reg ' + (d.registration === id ? 'on' : '') + '" data-evc-registration="' + id + '"><input type="radio" name="evc-registration" value="' + id + '"' + (d.registration === id ? ' checked' : '') + '>' +
-        '<span><b>' + title + '</b>' + (body || '') + '</span></label>';
+      return '<div class="ar-evc-reg ' + (d.registration === id ? 'on' : '') + '" data-evc-registration="' + id + '">' +
+        '<label class="ar-evc-reg-pick"><input type="radio" name="evc-registration" value="' + id + '"' + (d.registration === id ? ' checked' : '') + '>' +
+        '<span>' + esc(title) + '</span></label>' +
+        (body ? '<div class="ar-evc-reg-body">' + body + '</div>' : '') +
+        '</div>';
     };
-    var methods = option('link', 'Add your registration form link', d.registration === 'link' ? fieldWrap('Registration form link', textInput('evc-formLink', d.formLink, 'https://'), true) : '') +
+    var linkField = '<div class="ar-evc-field"><span>Registration form link<em>*</em></span>' + textInput('evc-formLink', d.formLink, 'https://') + '</div>';
+    var methods = option('link', 'Add your registration form link', d.registration === 'link' ? linkField : '') +
       option('new', 'Create a new form', d.formBuilt ? '<small>A form already exists. You can edit it.</small><button type="button" class="btn btn-secondary btn-sm" data-ev-form-builder>' + ico('edit') + 'Edit</button>' : '<small>Click Next step to open form builder.</small>') +
       option('template', 'Choose a template', d.registration === 'template' ? '<div class="ar-evc-template">Default Registration Template</div><button type="button" class="btn btn-primary btn-sm" data-ev-apply-template>Apply template to continue</button>' : '');
     var deadline = '<div class="ar-evc-stack">' + fieldWrap('End date', '<input type="date" id="evc-regEndDate" value="' + esc(d.regEndDate || '') + '">') +
       fieldWrap('End time', '<input type="time" id="evc-regEndTime" value="' + esc(d.regEndTime || '') + '">', true) +
       fieldWrap('Timezone', selectHtml('evc-timezone', d.timezone, ['IST (GMT +05:30)', 'GMT', 'EST (GMT -05:00)', 'PST (GMT -08:00)']), true) +
-      '<label class="ar-check"><input type="checkbox" id="evc-keepOpen"' + (d.keepOpen ? ' checked' : '') + '> Keep registrations open until event starts</label></div>';
+      '<label class="ar-evc-keep"><input type="checkbox" id="evc-keepOpen"' + (d.keepOpen ? ' checked' : '') + '> Keep registrations open until event starts</label></div>';
     return evSplit(
       evCol(true, 'Registration', 'How a student signs up.', methods),
       evCol(false, 'Deadline', 'Registration closes at this time, unless you keep it open until the event starts.', deadline)
@@ -6340,25 +6395,26 @@
     var format = formatById(d.format);
     var cat = d.category === 'Other' ? ((d.categoryCustom || '').trim() || 'Other') : d.category;
     var flows = d.flows || [];
-    var block = function (label, body) {
-      return '<article class="ar-ev-rev-block"><h4>' + esc(label) + '</h4>' + body + '</article>';
+    var block = function (label, step, body) {
+      return '<article class="ar-ev-rev-block"><h4>' + esc(label) + '</h4><div class="ar-cg-rev-body">' + body + '</div>' +
+        '<button type="button" class="ar-link" data-ev-step="' + step + '">' + ico('edit') + 'Edit</button></article>';
     };
     var messages = flows.length
       ? '<ul>' + flows.map(function (flow) { return '<li>' + esc(flowSentence(flow)) + '</li>'; }).join('') + '</ul>'
       : '<p>No messages yet.</p>';
-    return '<section class="ar-evc-review">' +
-      '<header class="ar-ev-rev-head"><div><h3>Review & publish</h3><p>Check the event, then save a draft or publish it.</p></div>' +
-      '<div class="ar-evc-review-actions"><button type="button" class="btn btn-secondary" data-ev-publish="draft">Save as draft</button>' +
-      '<button type="button" class="btn btn-primary" data-ev-publish="publish">Publish event</button></div></header>' +
-      '<div class="ar-ev-rev-body"><aside class="ar-ev-sum-side"><div class="ar-ev-sum-cover k-' + d.kind + '">' +
+    return '<section class="ar-evc-section ar-evc-review ar-ev-rev-split">' +
+      '<h3>Review & publish</h3>' +
+      '<p class="ar-evc-note">Check the event, then save a draft or publish it from the footer.</p>' +
+      '<div class="ar-cg-rev-cols">' +
+      '<aside class="ar-ev-sum-side"><div class="ar-ev-sum-cover k-' + d.kind + '">' +
       (d.coverImage ? '<img src="' + esc(d.coverImage) + '" alt="">' : ico(kindById(d.kind).icon)) +
-      '</div><div class="ar-ev-sum-meta"><span>' + esc(cat) + '</span><h3>' + esc(d.name || 'Untitled event') + '</h3><p>' + esc(format.name) + ' · ' + esc(program.name) + '</p></div></aside>' +
+      '</div><div class="ar-ev-sum-meta"><span>' + esc(cat) + '</span><strong>' + esc(d.name || 'Untitled event') + '</strong><p>' + esc(format.name) + ' · ' + esc(program.name) + '</p></div></aside>' +
       '<div class="ar-ev-rev-groups">' +
-      block('When', '<p>' + esc(eventWhenLine(d)) + '</p>') +
-      block('Where', '<p>' + esc(eventPlaceLine(d)) + '</p>') +
-      block('Audience', '<p>' + esc(d.audience ? cgTargetChips(d.audience).join(' · ') : program.name) + '</p>') +
-      block('Registration', '<p>' + esc(eventRegLine(d)) + '</p>') +
-      block('Messages', messages) +
+      block('When', 2, '<p>' + esc(eventWhenLine(d)) + '</p>') +
+      block('Where', 2, '<p>' + esc(eventPlaceLine(d)) + '</p>') +
+      block('Audience', 1, '<p>' + esc(d.audience ? cgTargetChips(d.audience).join(' · ') : program.name) + '</p>') +
+      block('Registration', 4, '<p>' + esc(eventRegLine(d)) + '</p>') +
+      block('Messages', 3, messages) +
       '</div></div></section>';
   }
 
@@ -6367,21 +6423,37 @@
     var html = builders[EVENT_CREATE_STEPS[evCreate.step].id]();
     var body = $('events-create-page') && !$('events-create-page').hidden ? $('ev-create-body') : $('drawer-body');
     var foot = $('events-create-page') && !$('events-create-page').hidden ? $('ev-create-foot') : $('drawer-foot');
-    body.innerHTML = stepperHtml() + html;
+    var onPage = $('events-create-page') && !$('events-create-page').hidden;
+    var steps = $('ev-create-steps');
+    if (onPage && steps) {
+      steps.innerHTML = stepperHtml();
+      body.innerHTML = html;
+    } else {
+      body.innerHTML = stepperHtml() + html;
+    }
     var sub = $('ev-create-sub');
     if (sub) sub.textContent = EVENT_CREATE_STEPS[evCreate.step].name;
-    foot.innerHTML = '<button type="button" class="btn btn-ghost btn-sm" data-ev-create-back>Back</button>' +
-      '<button type="button" class="btn btn-primary btn-sm btn-icon" data-ev-create-next>Next step' + ico('arrow_forward') + '</button>';
-    var back = document.querySelector('[data-ev-create-back]');
-    if (back) back.textContent = evCreate.step ? 'Previous step' : 'Cancel';
-    var next = document.querySelector('[data-ev-create-next]');
-    if (next) next.hidden = evCreate.step === EVENT_CREATE_STEPS.length - 1;
+    var last = evCreate.step === EVENT_CREATE_STEPS.length - 1;
+    var named = !!(evCreate.draft.name || '').trim();
+    foot.innerHTML = '<button type="button" class="btn btn-ghost btn-sm" data-ev-create-back>' + (evCreate.step ? 'Previous step' : 'Cancel') + '</button>' +
+      '<div class="ar-cg-foot-right">' +
+      '<button type="button" class="btn btn-secondary btn-sm" data-ev-publish="draft"' + (named ? '' : ' disabled') + '>Save draft</button>' +
+      (last
+        ? '<button type="button" class="btn btn-primary btn-sm btn-icon" data-ev-publish="publish"' + (named ? '' : ' disabled') + '>' + ico('publish') + 'Publish event</button>'
+        : '<button type="button" class="btn btn-primary btn-sm btn-icon" data-ev-create-next' + (named ? '' : ' disabled') + '>Next step' + ico('arrow_forward') + '</button>') +
+      '</div>';
     syncEventSaveBar();
   }
 
   function syncEventSaveBar() {
     var foot = $('ev-create-foot');
-    if (foot) foot.hidden = false;
+    if (!foot) return;
+    foot.hidden = false;
+    if (!evCreate) return;
+    var named = !!(evCreate.draft.name || '').trim();
+    foot.querySelectorAll('[data-ev-create-next], [data-ev-publish]').forEach(function (btn) {
+      btn.disabled = !named;
+    });
   }
 
   function eventCreateNext() {
@@ -7376,7 +7448,8 @@
     return esc(text).replace(/\n/g, '<br>');
   }
 
-  function cgRteField(text) {
+  function cgRteField(text, id) {
+    var editorId = id || 'cg-text';
     var btn = function (cmd, icon, label) {
       return '<button type="button" class="ar-icon-btn" data-rte="' + cmd + '" aria-label="' + label + '" data-tip="' + label + '">' + ico(icon) + '</button>';
     };
@@ -7387,7 +7460,7 @@
       btn('insertUnorderedList', 'format_list_bulleted', 'Bulleted list') +
       btn('insertOrderedList', 'format_list_numbered', 'Numbered list') +
       btn('createLink', 'link', 'Link') +
-      '</div><div id="cg-text" class="ar-rte-body" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Write your message">' +
+      '</div><div id="' + editorId + '" class="ar-rte-body" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Write your message">' +
       cgRteHtml(text) + '</div></div>';
   }
 
@@ -7882,13 +7955,14 @@
     var filterOpts = [['', 'No saved filter']];
     if (saved) filterOpts.push(['saved', saved.label]);
     var matched = list.filter(function (x) { return x.score !== null && x.score >= MATCH_MIN; }).length;
-    return '<div class="ar-evc-group">' +
-      '<div class="ar-evc-row">' +
+    return '<div class="ar-cg-aud-fields">' +
+      '<div class="ar-evc-row ar-evc-two">' +
       fieldWrap('Program', selectHtml('cga-program', a.program, programOpts), true) +
-      fieldWrap('Target audience preference', selectHtml('cga-prefId', a.prefId, prefOpts)) +
-      fieldWrap('Match score', selectHtml('cga-minScore', a.minScore, scoreOpts)) + '</div>' +
-      '<div class="ar-evc-row">' +
-      fieldWrap('Funnel stage', selectHtml('cga-stage', a.stage, stageOpts)) +
+      fieldWrap('Target audience preference', selectHtml('cga-prefId', a.prefId, prefOpts)) + '</div>' +
+      '<div class="ar-evc-row ar-evc-two">' +
+      fieldWrap('Match score', selectHtml('cga-minScore', a.minScore, scoreOpts)) +
+      fieldWrap('Funnel stage', selectHtml('cga-stage', a.stage, stageOpts)) + '</div>' +
+      '<div class="ar-evc-row ar-evc-two">' +
       fieldWrap('Intake', selectHtml('cga-intake', a.intake, intakeOpts)) +
       fieldWrap('Saved filter', selectHtml('cga-savedFilter', a.savedFilter, filterOpts)) + '</div>' +
       '<div class="ar-evc-target"><span>Total targeted students</span><strong>' + list.length.toLocaleString() + '</strong><small>' +
@@ -7928,14 +8002,20 @@
   function cgMessageStepHtml(d) {
     var ch = channelById(d.channel);
     var s = cgSample(d);
-    return '<section class="ar-evc-section ar-cg-wide"><h3>Message</h3><p class="ar-evc-note">Sending by ' + esc(ch.name) + '. Each student gets a personalised copy.</p>' +
-      '<div class="ar-cg-compose"><div>' +
+    var msgField = d.channel === 'email'
+      ? cgRteField(d.text)
+      : '<textarea id="cg-text" rows="12" placeholder="Write your message">' + esc(d.text) + '</textarea>';
+    return '<section class="ar-evc-section ar-cg-msg">' +
+      '<div class="ar-cg-compose">' +
+      '<div class="ar-cg-compose-main">' +
+      '<h3>Message</h3><p class="ar-evc-note">Sending by ' + esc(ch.name) + '. Each student gets a personalised copy.</p>' +
       fieldWrap('Template', selectHtml('cg-template', d.template, CAMPAIGN_TEMPLATES.map(function (t) { return [t.id, t.name]; }))) +
       (d.channel === 'email' ? fieldWrap('Subject', textInput('cg-subject', d.subject, 'Subject line'), true) : '') +
-      fieldWrap('Message', d.channel === 'email' ? cgRteField(d.text) : '<textarea id="cg-text" rows="8" placeholder="Write your message">' + esc(d.text) + '</textarea>', true) +
+      fieldWrap('Message', msgField, true) +
       (d.channel === 'sms' ? '<p class="ar-cg-count" id="cg-sms-count"></p>' : '') +
-      '<p class="ar-cm-note">' + ico('auto_fix_high') + '{first}, {program} and {university} are filled in for each student.</p></div>' +
-      '<div class="ar-cg-preview-col"><span>Preview for ' + esc(s.name.split(' ')[0]) + '</span><div id="cg-preview">' + cgPreviewHtml(d, s) + '</div></div>' +
+      '<p class="ar-cm-note">' + ico('auto_fix_high') + '{first}, {program} and {university} are filled in for each student.</p>' +
+      '</div>' +
+      '<aside class="ar-cg-preview-col"><span>Preview for ' + esc(s.name.split(' ')[0]) + '</span><div id="cg-preview">' + cgPreviewHtml(d, s) + '</div></aside>' +
       '</div></section>';
   }
 
@@ -7958,19 +8038,24 @@
       return '<article class="ar-ev-rev-block"><h4>' + esc(label) + '</h4><div class="ar-cg-rev-body">' + body + '</div>' +
         '<button type="button" class="ar-link" data-cg-step="' + step + '">' + ico('edit') + 'Edit</button></article>';
     };
-    return '<section class="ar-cg-review ar-ev-rev">' +
-      '<header class="ar-ev-rev-head"><div><h3>Review & launch</h3><p>' + n.toLocaleString() + ' student' + (n === 1 ? '' : 's') + ' will get this ' +
-      esc(ch.id === 'whatsapp' ? ch.name : ch.name.toLowerCase()) + '. You can’t edit a campaign after launch.</p></div>' +
-      '<div class="ar-evc-review-actions"><button type="button" class="btn btn-secondary btn-sm" data-cg-save-draft>Save as draft</button>' +
-      '<button type="button" class="btn btn-primary btn-sm btn-icon" data-cg-launch>' + ico('send') + 'Launch campaign</button></div></header>' +
-      '<div class="ar-ev-rev-groups">' +
+    return '<section class="ar-evc-section ar-cg-review ar-ev-rev ar-cg-rev-split">' +
+      '<h3>Review & launch</h3>' +
+      '<p class="ar-evc-note">' + n.toLocaleString() + ' student' + (n === 1 ? '' : 's') + ' will get this ' +
+      esc(ch.id === 'whatsapp' ? ch.name : ch.name.toLowerCase()) + '. You can’t edit a campaign after launch.</p>' +
+      '<div class="ar-cg-rev-cols">' +
+      '<div class="ar-cg-rev-left ar-ev-rev-groups">' +
       block('Campaign', 0, '<p>' + esc(d.name || 'Untitled campaign') + '</p><small>' + esc(ch.name) + (d.description ? ' · ' + esc(d.description) : '') + '</small>') +
       block('Audience', 1, '<p>' + n.toLocaleString() + ' students</p><small>' + esc(cgTargetChips(d.audience).join(' · ')) + '</small>') +
-      block('Message', 2, '<div class="ar-cg-preview-box">' + cgPreviewHtml(d, cgSample(d)) + '</div>') +
-      '<article class="ar-ev-rev-block ar-cg-rev-test"><h4>Send a test</h4><div class="ar-cg-rev-body"><p>Check this ' + esc(test.noun) + ' before you launch it.</p>' +
-      '<div class="ar-cg-test-row"><input type="text" id="cg-test" placeholder="' + esc(test.placeholder) + '" autocomplete="off" aria-label="' + esc(test.label) + '">' +
-      '<button type="button" class="btn btn-secondary btn-sm btn-icon" data-cg-test>' + ico('science') + 'Send test</button></div></div></article>' +
-      '</div></section>';
+      '</div>' +
+      '<div class="ar-cg-rev-right">' +
+      '<div class="ar-cg-rev-panel">' +
+      '<div class="ar-cg-rev-panel-head"><h4>Message</h4><button type="button" class="ar-link" data-cg-step="2">' + ico('edit') + 'Edit</button></div>' +
+      '<div class="ar-cg-preview-box">' + cgPreviewHtml(d, cgSample(d)) + '</div></div>' +
+      '<div class="ar-cg-rev-panel ar-cg-rev-test">' +
+      '<h4>Send a test</h4><p>Send one copy to yourself first.</p>' +
+      fieldWrap(test.label, '<div class="ar-cg-test-row"><input type="text" id="cg-test" placeholder="' + esc(test.placeholder) + '" autocomplete="off" aria-label="' + esc(test.label) + '">' +
+      '<button type="button" class="btn btn-secondary btn-sm btn-icon" data-cg-test>' + ico('science') + 'Send test</button></div>') +
+      '</div></div></div></section>';
   }
 
   function updateCampaignPreview() {
@@ -7996,10 +8081,15 @@
     var d = cgForm.draft;
     $('cg-form-title').textContent = cgForm.id ? 'Edit campaign' : 'Create campaign';
     $('cg-form-sub').textContent = CG_STEPS[cgForm.step];
-    $('cg-form-body').innerHTML = cgStepperHtml() + [cgDetailsStepHtml, cgAudienceStepHtml, cgMessageStepHtml, cgReviewStepHtml][cgForm.step](d);
+    if ($('cg-form-steps')) $('cg-form-steps').innerHTML = cgStepperHtml();
+    $('cg-form-body').innerHTML = [cgDetailsStepHtml, cgAudienceStepHtml, cgMessageStepHtml, cgReviewStepHtml][cgForm.step](d);
+    var last = cgForm.step === 3;
     $('cg-form-foot').innerHTML = '<button type="button" class="btn btn-ghost btn-sm" data-cg-prev>' + (cgForm.step ? 'Previous step' : 'Cancel') + '</button>' +
-      (cgForm.step < 3 ? '<div class="ar-cg-foot-right"><button type="button" class="btn btn-secondary btn-sm" data-cg-save-draft>Save draft</button>' +
-        '<button type="button" class="btn btn-primary btn-sm btn-icon" data-cg-next>Next step' + ico('arrow_forward') + '</button></div>' : '');
+      '<div class="ar-cg-foot-right"><button type="button" class="btn btn-secondary btn-sm" data-cg-save-draft>Save draft</button>' +
+      (last
+        ? '<button type="button" class="btn btn-primary btn-sm btn-icon" data-cg-launch>' + ico('send') + 'Launch campaign</button>'
+        : '<button type="button" class="btn btn-primary btn-sm btn-icon" data-cg-next>Next step' + ico('arrow_forward') + '</button>') +
+      '</div>';
     syncCampaignFoot();
     updateCampaignPreview();
   }
@@ -8011,8 +8101,10 @@
     var blocked = !!cgProblem(cgForm.step);
     var save = $('cg-form-foot').querySelector('[data-cg-save-draft]');
     var next = $('cg-form-foot').querySelector('[data-cg-next]');
+    var launch = $('cg-form-foot').querySelector('[data-cg-launch]');
     if (save) save.disabled = !named;
     if (next) next.disabled = blocked;
+    if (launch) launch.disabled = !named || !!cgProblem(0) || !!cgProblem(1) || !!cgProblem(2);
   }
 
   function readCampaignForm() {
@@ -8768,6 +8860,8 @@
     }
 
     if (t.closest('[data-cg-launch]')) {
+      var launchBtn = t.closest('[data-cg-launch]');
+      if (launchBtn.disabled) return;
       var launchFromTpl = state.view === 'templates';
       if (launchFromTpl) tplSyncForm();
       launchCampaign();
@@ -9169,7 +9263,7 @@
     }
 
     var evReg = t.closest('[data-evc-registration]');
-    if (evReg && evCreate && !t.closest('[data-ev-form-builder], [data-ev-apply-template]')) {
+    if (evReg && evCreate && !t.closest('[data-ev-form-builder], [data-ev-apply-template], .ar-evc-reg-body')) {
       readEventCreate();
       evCreate.draft.registration = evReg.getAttribute('data-evc-registration');
       renderEventCreate();
@@ -9216,6 +9310,7 @@
       readEventCreate();
       if (!evCreate.draft.flows) evCreate.draft.flows = [];
       var firstTpl = flowTemplates()[0];
+      var tpl = firstTpl ? tplById(firstTpl[0]) : null;
       evCreate.draft.flows.push({
         id: 'f' + Date.now(),
         channel: 'email',
@@ -9224,6 +9319,8 @@
         when: 'after',
         anchor: 'registration',
         template: firstTpl ? firstTpl[0] : '',
+        subject: tpl ? (tpl.subject || '') : '',
+        text: tpl ? (tpl.text || '') : '',
       });
       renderEventCreate();
       return;
@@ -9239,6 +9336,7 @@
     }
 
     if (t.closest('[data-ev-create-next]') && evCreate) {
+      if (t.closest('[data-ev-create-next]').disabled) return;
       eventCreateNext();
       return;
     }
@@ -9275,6 +9373,7 @@
 
     var evPublish = t.closest('[data-ev-publish]');
     if (evPublish && evCreate) {
+      if (evPublish.disabled) return;
       publishCreatedEvent(evPublish.getAttribute('data-ev-publish'));
       return;
     }
@@ -10189,6 +10288,24 @@
           if (evCreate.draft.audience.program !== 'all') evCreate.draft.program = evCreate.draft.audience.program;
         }
       }
+      var tplMatch = e.target.id && e.target.id.indexOf('evc-flow-template-') === 0;
+      if (tplMatch) {
+        var flowId = e.target.id.slice('evc-flow-template-'.length);
+        var flow = (evCreate.draft.flows || []).filter(function (f) { return f.id === flowId; })[0];
+        if (flow) {
+          if (e.target.value === 'custom') {
+            flow.template = 'custom';
+            flow.subject = '';
+            flow.text = '';
+          } else {
+            var pickedTpl = tplById(e.target.value);
+            if (pickedTpl) {
+              flow.subject = pickedTpl.subject || '';
+              flow.text = pickedTpl.text || '';
+            }
+          }
+        }
+      }
       var pickedOther = e.target.id === 'evc-category' && evCreate.draft.category === 'Other';
       renderEventCreate();
       if (pickedOther && $('evc-category-custom')) $('evc-category-custom').focus();
@@ -10197,9 +10314,42 @@
     syncEventSaveBar();
   });
 
+  function syncEventFlowPreview(flowId) {
+    if (!evCreate || !flowId) return;
+    var flow = (evCreate.draft.flows || []).filter(function (f) { return f.id === flowId; })[0];
+    var slot = $('evc-flow-preview-' + flowId);
+    if (!flow || !slot) return;
+    ensureFlowContent(flow);
+    slot.innerHTML = cgPreviewHtml({ channel: flow.channel, subject: flow.subject || '', text: flow.text || '' }, STUDENTS[0]);
+  }
+
+  $('events-create-page').addEventListener('mousedown', function (e) {
+    if (e.target.closest('[data-rte]')) e.preventDefault();
+  });
+
+  $('events-create-page').addEventListener('click', function (e) {
+    var rte = e.target.closest('[data-rte]');
+    if (!rte || !evCreate) return;
+    var editor = rte.closest('.ar-rte') && rte.closest('.ar-rte').querySelector('.ar-rte-body');
+    if (!editor) return;
+    var cmd = rte.getAttribute('data-rte');
+    editor.focus();
+    if (cmd === 'createLink') {
+      var url = window.prompt('Link address', 'https://');
+      if (!url) return;
+      if (!/^(https?:|mailto:)/i.test(url)) url = 'https://' + url.replace(/^\/+/, '');
+      document.execCommand('createLink', false, url);
+    } else {
+      document.execCommand(cmd, false, null);
+    }
+    readEventCreate();
+    var flowEl = editor.closest('[data-flow]');
+    if (flowEl) syncEventFlowPreview(flowEl.getAttribute('data-flow'));
+  });
+
   $('events-create-page').addEventListener('input', function (e) {
     if (!evCreate) return;
-    if (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type !== 'file')) readEventCreate();
+    if (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type !== 'file') || e.target.getAttribute('contenteditable') === 'true') readEventCreate();
     var count = e.target.parentElement && e.target.parentElement.querySelector('.ar-evc-count');
     if (count && e.target.maxLength > 0) count.textContent = e.target.value.length + ' / ' + e.target.maxLength + ' characters';
     if (e.target.id === 'evc-pin' && evCreate) {
@@ -10209,6 +10359,8 @@
       if ($('evc-city')) $('evc-city').value = pinNow.city;
       if ($('evc-country')) $('evc-country').value = pinNow.country;
     }
+    var flowEl = e.target.closest && e.target.closest('[data-flow]');
+    if (flowEl) syncEventFlowPreview(flowEl.getAttribute('data-flow'));
     syncEventSaveBar();
   });
 
