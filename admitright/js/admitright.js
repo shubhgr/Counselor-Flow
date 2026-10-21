@@ -1382,7 +1382,7 @@
     return '<div class="ar-card-scorebox">' + scoreDeltaHtml(s) +
       '<div class="ar-card-meters">' +
       meter('Match', match, scoreClass(s), matchColor) +
-      meter('Engage', eng, 'ar-engage', 'var(--brand)') +
+      meter('Events', eng, 'ar-engage', 'var(--brand)') +
       '</div></div>';
   }
 
@@ -2463,7 +2463,7 @@
       return;
     }
     var crits = CRITERIA.filter(function (c) { return c.id !== 'board' && pref.criteria[c.id].weight > 0; });
-    var headCols = '<th class="ar-th-student">Student</th><th class="ar-th-match">Match</th><th>Engage</th>' + crits.map(function (c) {
+    var headCols = '<th class="ar-th-student">Student</th><th class="ar-th-match">Match</th><th>Events</th>' + crits.map(function (c) {
       return '<th title="Percentile among ' + esc(programById(state.program).name) + ' applicants on ' + esc(c.label.toLowerCase()) + '">' +
         esc(c.id === 'activities' ? 'Activities' : c.label) + ' <i class="ar-th-weight">' + pref.criteria[c.id].weight + '</i></th>';
     }).join('') + '<th class="ar-th-save"></th></tr>';
@@ -2539,7 +2539,7 @@
       }
       var engChip = engageRangeChip(f);
       if (engChip) {
-        chips.push('<button type="button" class="ar-filter-chip" data-clear="engage">Engage ' + engChip + ico('close') + '</button>');
+        chips.push('<button type="button" class="ar-filter-chip" data-clear="engage">Events ' + engChip + ico('close') + '</button>');
       }
       var pref = findPref(state.program, state.prefId);
       activeFilters().forEach(function (id) {
@@ -4287,7 +4287,7 @@
   function engagementLogHtml(s) {
     var rows = studentEventActivity(s);
     var body = rows.length ? eventItemsHtml(s, rows) : '<p class="ar-muted">No event activity yet.</p>';
-    return profileSection('engage', 'Engagement · ' + rows.length, body);
+    return profileSection('engage', 'Events · ' + rows.length, body);
   }
 
   function sendCampaign() {
@@ -4777,7 +4777,7 @@
       (pref
         ? '<div class="ar-cp-score"><div class="ar-ring" style="--p:' + (score || 0) + ';--c:' + color + '"><span>' + score + '%</span></div>' +
           '<div class="ar-cp-score-text"><span>Match score</span><strong>' + esc(pref.name) + '</strong></div>' +
-          '<div class="ar-cp-score-text"><span>Engagement</span><strong>' + (engageScore(s) === null ? '—' : engageScore(s) + '%') + '</strong></div></div>'
+          '<div class="ar-cp-score-text"><span>Events</span><strong>' + (engageScore(s) === null ? '—' : engageScore(s) + '%') + '</strong></div></div>'
         : '') +
       '<div class="ar-cp-sec ar-cp-ai"><h4><span>' + ico('auto_awesome') + 'AI summary</span></h4><p>' + aiSummary(s) + '</p></div>' +
       '<div class="ar-cp-sec ar-cp-match"><h4>Preference match' + (pref ? ' <small>' + esc(pref.name) + '</small>' : '') + '</h4>' +
@@ -4793,7 +4793,7 @@
       '<h5>Additional user actions <small>' + have.length + ' of ' + ACTIONS.length + '</small></h5>' + extras + '</div></div>' +
       '<div class="ar-cp-sec"><h4>Campaigns <small>' + sent.length + '</small></h4>' +
       (sent.length ? campaignItemsHtml(s, sent) : '<p class="ar-muted">No campaigns yet.</p>') + '</div>' +
-      '<div class="ar-cp-sec"><h4>Engagement <small>' + evRows.length + '</small></h4>' +
+      '<div class="ar-cp-sec"><h4>Events <small>' + evRows.length + '</small></h4>' +
       (evRows.length ? eventItemsHtml(s, evRows) : '<p class="ar-muted">No event activity yet.</p>') + '</div>' +
       (chatBulk.on ? '</div>' : '');
     (box.querySelector('.ar-cp-scroll') || box).scrollTop = keepScroll;
@@ -5065,7 +5065,7 @@
       '<button type="button" class="ar-icon-btn ar-hero-chat" data-card-chat="' + s.id + '" aria-label="Chat">' + ico('forum') + '</button>' +
       '<div class="ar-hero-scores">' +
       '<div><div class="ar-ring" style="--p:' + (s.score || 0) + ';--c:' + scoreColor(s) + '"><span>' + (s.score === null ? '—' : s.score + '%') + '</span></div><small>Match</small></div>' +
-      '<div><div class="ar-ring" style="--p:' + (engageScore(s) || 0) + ';--c:var(--brand)"><span>' + (engageScore(s) === null ? '—' : engageScore(s) + '%') + '</span></div><small>Engage</small></div></div></div>' +
+      '<div><div class="ar-ring" style="--p:' + (engageScore(s) || 0) + ';--c:var(--brand)"><span>' + (engageScore(s) === null ? '—' : engageScore(s) + '%') + '</span></div><small>Events</small></div></div></div>' +
       profileSection('ai', ico('auto_awesome') + 'AI summary', aiSummary(s), 'ar-ai') +
       profileSection('match', 'Preference match', matchHtml(s, s.pref, { score: s.score, parts: s.parts })) +
       profileSection('profile', 'Profile', profileFactsHtml(s) +
