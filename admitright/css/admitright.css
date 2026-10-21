@@ -9738,6 +9738,7 @@ label.ar-editor-program:focus-within {
   max-width: none;
   width: 100%;
   margin: 0;
+  padding-top: var(--space-5);
 }
 
 .ar-cg-detail,
