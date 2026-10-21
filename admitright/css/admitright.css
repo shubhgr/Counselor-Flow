@@ -6135,22 +6135,16 @@ label.ar-editor-program:focus-within {
   background: var(--bg);
 }
 
-.ar-ev-detail {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
 .ar-ev-detail-top {
   display: grid;
   grid-template-columns: minmax(360px, 0.95fr) minmax(0, 1.05fr);
   gap: var(--space-4);
   align-items: start;
-  padding: var(--space-4);
-  border: 1px solid var(--line);
+  padding: var(--panel-pad-y) var(--panel-pad-x);
+  border: none;
   border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 .ar-ev-detail .ar-ev-cover.big {
@@ -6188,17 +6182,22 @@ label.ar-editor-program:focus-within {
   color: var(--muted);
 }
 
-.ar-ev-date-row span,
-.ar-ev-detail-metrics div,
-.ar-ev-detail-section {
-  border: 1px solid var(--line);
+.ar-ev-date-row span {
+  border: none;
   border-radius: var(--radius-sm);
+  background: var(--brand-soft);
+}
+
+.ar-ev-detail-section,
+.ar-cg-metrics > div {
+  border: none;
+  border-radius: var(--radius-lg);
   background: var(--surface);
+  box-shadow: none;
 }
 
 .ar-ev-date-row span {
   padding: var(--space-2) var(--space-2-5);
-  background: var(--brand-soft);
 }
 
 .ar-ev-date-row b {
@@ -6211,10 +6210,28 @@ label.ar-editor-program:focus-within {
   gap: var(--space-2-5);
 }
 
-.ar-ev-detail-metrics div {
+/* Nested tiles inside event summary — smaller than page cards */
+.ar-ev-detail-top .ar-ev-detail-metrics div {
+  min-height: 0;
+  padding: var(--space-3) var(--space-3-5);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  box-shadow: none;
+}
+
+/* Standalone campaign KPI cards — match Events overview */
+.ar-cg-metrics {
+  gap: var(--space-4);
+}
+
+.ar-cg-metrics > div {
   min-height: 86px;
-  padding: var(--space-3-5);
-  box-shadow: 0 1px 1px rgba(18, 16, 34, 0.02);
+  padding: var(--space-4) var(--space-5);
+  border: none;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: none;
 }
 
 .ar-ev-detail-metrics span,
@@ -6242,8 +6259,7 @@ label.ar-editor-program:focus-within {
 }
 
 .ar-ev-detail-section {
-  padding: var(--space-4);
-  box-shadow: var(--shadow-sm);
+  padding: var(--panel-pad-y) var(--panel-pad-x);
 }
 
 .ar-ev-detail-section h4 {
@@ -6258,11 +6274,10 @@ label.ar-editor-program:focus-within {
   gap: var(--space-3);
 }
 
-.ar-ev-detail-grid > div,
-.ar-ev-detail-cols > div {
+.ar-ev-detail-grid > div {
   padding: var(--space-3);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  border: none;
+  border-radius: var(--radius);
   background: var(--bg);
 }
 
@@ -6274,7 +6289,12 @@ label.ar-editor-program:focus-within {
 .ar-ev-detail-cols {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.ar-ev-detail-cols > .ar-ev-detail-section {
+  min-width: 0;
 }
 
 .ar-ev-detail-cols h4 {
@@ -9686,34 +9706,156 @@ label.ar-editor-program:focus-within {
   gap: var(--space-2);
 }
 
-/* Campaigns: detail */
-.ar-cg-detail {
+/* Campaign + event detail headers — same back icon + title stack */
+#cg-detail-page .ar-subpage-head,
+#events-detail-page .ar-subpage-head {
+  align-items: center;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+#cg-detail-page .ar-create-title h1,
+#events-detail-page .ar-create-title h1 {
+  font-size: var(--text-xl);
+  letter-spacing: -0.02em;
+}
+
+#cg-detail-page .ar-create-title .ar-sub,
+#events-detail-page .ar-create-title .ar-sub {
+  margin-top: 2px;
+}
+
+#cg-detail-page .actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+#cg-detail-page .ar-event-page,
+#events-detail-page .ar-event-page {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding-top: var(--space-5);
+}
+
+.ar-cg-detail,
+#events-detail-page .ar-ev-detail,
+.ar-ev-detail {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3-5);
+  gap: var(--section-gap);
+  padding-top: 0;
 }
 
 .ar-cg-metrics {
+  display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.ar-cg-detail .ar-ev-detail-section,
+.ar-cg-detail .ar-cg-targets,
+.ar-cg-detail .ar-cg-recip-full {
+  padding: var(--panel-pad-y) var(--panel-pad-x);
+  border: none;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: none;
 }
 
 .ar-cg-detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3-5);
-  align-items: start;
+  gap: var(--space-4);
+  align-items: stretch;
 }
 
 .ar-cg-detail-wide {
-  grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
 }
 
-.ar-cg-sub-h {
-  margin-top: var(--space-4);
+.ar-cg-targets .ar-evc-note {
+  margin: calc(-1 * var(--space-1)) 0 var(--space-3);
+}
+
+.ar-cg-targets .ar-cg-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ar-cg-recip-full {
+  width: 100%;
+}
+
+.ar-cg-recip-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.ar-cg-recip-head h4 {
+  margin: 0 0 var(--space-1);
+}
+
+.ar-cg-recip-head .ar-cg-note {
+  margin: 0;
+}
+
+.ar-cg-recip-head .btn {
+  flex: none;
 }
 
 .ar-cg-note {
   margin-bottom: var(--space-3);
+}
+
+.ar-cg-yes,
+.ar-cg-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  line-height: 0;
+}
+
+.ar-cg-yes {
+  background: var(--purple-50);
+  color: var(--brand);
+}
+
+.ar-cg-yes .material-symbols-rounded,
+.ar-cg-no .material-symbols-rounded {
+  font-size: 16px;
+  line-height: 1;
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 20;
+}
+
+.ar-cg-no {
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.ar-cg-no .material-symbols-rounded {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+.ar-cg-recip-table th.ar-cg-flag,
+.ar-cg-recip-table td.ar-cg-flag,
+.ar-cg-recip-table th.ar-cg-num,
+.ar-cg-recip-table td.ar-cg-num {
+  text-align: center;
+}
+
+.ar-cg-recip-table td.ar-cg-flag {
+  vertical-align: middle;
 }
 
 .ar-cg-funnel {
@@ -9757,9 +9899,6 @@ label.ar-editor-program:focus-within {
   background: var(--brand);
 }
 
-.ar-cg-no .material-symbols-rounded {
-  color: var(--line-strong) !important;
-}
 
 @media (max-width: 1100px) {
   .ar-cg-card {

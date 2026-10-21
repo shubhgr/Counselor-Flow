@@ -10,7 +10,7 @@
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=tok1" />
   <link rel="stylesheet" href="css/tokens.css?v=tok1" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar408" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar414" />
 </head>
 <body class="ar ar-locked">
   <section class="ar-gate" id="gate-login" hidden>
@@ -365,10 +365,14 @@
 
         <div id="events-detail-page" hidden>
           <header class="topbar ar-subpage-head">
-            <div class="ar-title">
-              <button type="button" class="ar-link ar-back-link" data-events-back><span class="material-symbols-rounded" aria-hidden="true">arrow_back</span> Events</button>
-              <h1 id="ev-detail-page-title">Event details</h1>
-              <span class="ar-sub" id="ev-detail-page-sub">Event performance and audience</span>
+            <div class="ar-title ar-create-title">
+              <button type="button" class="ar-icon-btn" data-events-back aria-label="Back to events">
+                <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+              </button>
+              <div>
+                <h1 id="ev-detail-page-title">Event details</h1>
+                <span class="ar-sub" id="ev-detail-page-sub">Event performance and audience</span>
+              </div>
             </div>
           </header>
           <div class="content ar-content ar-event-page">
@@ -478,10 +482,14 @@
 
         <div id="cg-detail-page" hidden>
           <header class="topbar ar-subpage-head">
-            <div class="ar-title">
-              <button type="button" class="ar-link ar-back-link" data-cg-back><span class="material-symbols-rounded" aria-hidden="true">arrow_back</span> Campaigns</button>
-              <h1 id="cg-detail-title">Campaign</h1>
-              <span class="ar-sub" id="cg-detail-sub"></span>
+            <div class="ar-title ar-create-title">
+              <button type="button" class="ar-icon-btn" data-cg-back aria-label="Back to campaigns">
+                <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+              </button>
+              <div>
+                <h1 id="cg-detail-title">Campaign</h1>
+                <span class="ar-sub" id="cg-detail-sub"></span>
+              </div>
             </div>
             <div class="actions" id="cg-detail-actions"></div>
           </header>
@@ -673,6 +681,6 @@
   <div class="ar-toast" id="toast" hidden></div>
 
   <script src="data/students-data.js?v=ar259"></script>
-  <script src="js/admitright.js?v=ar408"></script>
+  <script src="js/admitright.js?v=ar413"></script>
 </body>
 </html>
