@@ -5728,11 +5728,11 @@
       detailKV('Type', formatById(e.format).name) + detailKV('Category', e.category || kindById(e.kind).name) +
       detailKV('Program', programById(e.program).name) + detailKV('Audience', pref ? pref.name : 'Everyone in the program') +
       '</div></div>' +
-      '<div class="ar-ev-detail-section"><div class="ar-ev-detail-cols">' +
-      '<div><h4>Registration details</h4>' + factsHtml([['Form', 'AdmitRight event form'], ['Deadline', 'Open until event starts'], ['After registration', FOLLOWUP_CHANNELS.filter(function (c) { return f[c.id].on; }).map(function (c) { return c.name; }).join(', ') || 'None']]) + '</div>' +
-      '<div><h4>Date & time</h4>' + factsHtml([['Start date', fmtDate(e.start)], ['Start time', fmtTime(e.start)], ['End date', fmtDate(e.end)], ['End time', fmtTime(e.end)]]) + '</div>' +
-      '<div><h4>Venue details</h4><div class="ar-ev-type ar-ev-dtype">' + placeHtml(e) + '</div></div>' +
-      '</div></div>' +
+      '<div class="ar-ev-detail-cols">' +
+      '<section class="ar-ev-detail-section"><h4>Registration details</h4>' + factsHtml([['Form', 'AdmitRight event form'], ['Deadline', 'Open until event starts'], ['After registration', FOLLOWUP_CHANNELS.filter(function (c) { return f[c.id].on; }).map(function (c) { return c.name; }).join(', ') || 'None']]) + '</section>' +
+      '<section class="ar-ev-detail-section"><h4>Date & time</h4>' + factsHtml([['Start date', fmtDate(e.start)], ['Start time', fmtTime(e.start)], ['End date', fmtDate(e.end)], ['End time', fmtTime(e.end)]]) + '</section>' +
+      '<section class="ar-ev-detail-section"><h4>Venue details</h4><div class="ar-ev-type ar-ev-dtype">' + placeHtml(e) + '</div></section>' +
+      '</div>' +
       '<div class="ar-ev-detail-section"><h4>Description</h4><p class="ar-ev-detail-desc">' + esc(eventDescription(e)) + '</p></div>' +
       '<div class="ar-ev-detail-section"><h4>After registration</h4><p class="ar-muted">Sent automatically to each student who registers. Shown here with a sample name.</p>' + follow + '</div>' +
       '<div class="ar-ev-detail-section"><div class="ar-ev-table-head"><h4>' + e.registrations + ' Registered users</h4><span class="ar-meta">' + impressions + ' impressions</span></div>' +
@@ -7384,19 +7384,33 @@
   function cgTargetChips(a) {
     if (a.mode === 'segment') {
       var picked = SEGMENTS.filter(function (s) { return s.id === a.segmentId; })[0];
-      return picked ? [picked.name] : ['Segment'];
+      if (!picked) return ['Segment'];
+      var box = document.createElement('div');
+      box.innerHTML = segChips(picked);
+      var bits = [picked.name];
+      Array.prototype.forEach.call(box.querySelectorAll('span'), function (el) {
+        var t = (el.textContent || '').trim();
+        if (t && bits.indexOf(t) === -1) bits.push(t);
+      });
+      return bits;
     }
     var chips = [a.program === 'all' ? 'All programs' : programById(a.program).name];
     var pref = cgPrefOf(a);
-    if (pref) chips.push(pref.name);
+    if (pref) chips.push('Preference: ' + pref.name);
     if (pref && Number(a.minScore)) chips.push(a.minScore + '%+ match');
     if (a.stage !== '' && a.stage != null) chips.push(STAGES[Number(a.stage)].name + ' or later');
     if (a.intake) chips.push(a.intake + ' intake');
+    if (a.savedFilter === 'saved') {
+      var saved = savedFilterInfo('all');
+      if (saved && saved.label) chips.push('Saved filter: ' + saved.label);
+    }
     return chips;
   }
 
   function cgChipsHtml(a) {
-    return cgTargetChips(a).map(function (t) { return '<span class="ar-crit">' + esc(t) + '</span>'; }).join('');
+    var chips = cgTargetChips(a);
+    if (!chips.length) return '<p class="ar-muted">No target filters set.</p>';
+    return chips.map(function (t) { return '<span class="ar-crit">' + esc(t) + '</span>'; }).join('');
   }
 
   function cgSample(c) {
@@ -8241,17 +8255,58 @@
   function cgRecipientsTable(c, m) {
     var list = cgAudience(c.audience).slice(0, Math.min(m.sent, 12));
     var r = m.rates;
-    var mark = function (on) { return on ? ico('check') : '<span class="ar-cg-no">' + ico('remove') + '</span>'; };
-    return '<div class="ar-ev-detail-table"><table><thead><tr><th>GR ID</th><th>Name</th><th>Match</th><th>Delivered</th><th>Opened</th><th>Clicked</th></tr></thead><tbody>' +
+    var showMatch = list.some(function (x) { return x.score != null; });
+    var mark = function (on) {
+      return on
+        ? '<span class="ar-cg-yes" title="Yes">' + ico('check') + '</span>'
+        : '<span class="ar-cg-no" title="No">' + ico('close') + '</span>';
+    };
+    var cols = showMatch ? 6 : 5;
+    return '<div class="ar-ev-detail-table ar-cg-recip-table"><table><thead><tr><th>GR ID</th><th>Name</th>' +
+      (showMatch ? '<th class="ar-cg-num">Match</th>' : '') +
+      '<th class="ar-cg-flag">Delivered</th><th class="ar-cg-flag">Opened</th><th class="ar-cg-flag">Clicked</th></tr></thead><tbody>' +
       (list.length ? list.map(function (x) {
         var roll = hashOf(c.id + ':' + x.s.id) % 1000 / 1000;
         var delivered = roll < r.delivered;
-        var opened = roll < r.delivered * r.opened;
-        var clicked = roll < r.delivered * r.opened * r.clicked;
+        var opened = delivered && roll < r.delivered * r.opened;
+        var clicked = opened && roll < r.delivered * r.opened * r.clicked;
         return '<tr><td>' + esc(String(x.s.id).replace(/^(.{4}).+(.{4})$/, '$1…$2')) + '</td><td>' + esc(x.s.name) + '</td>' +
-          '<td>' + (x.score === null ? '—' : x.score + '%') + '</td><td>' + mark(delivered) + '</td><td>' + mark(opened) + '</td><td>' + mark(clicked) + '</td></tr>';
-      }).join('') : '<tr><td colspan="6">No recipients found.</td></tr>') +
+          (showMatch ? '<td class="ar-cg-num">' + (x.score == null ? '—' : x.score + '%') + '</td>' : '') +
+          '<td class="ar-cg-flag">' + mark(delivered) + '</td><td class="ar-cg-flag">' + mark(opened) + '</td><td class="ar-cg-flag">' + mark(clicked) + '</td></tr>';
+      }).join('') : '<tr><td colspan="' + cols + '">No recipients found.</td></tr>') +
       '</tbody></table></div>';
+  }
+
+  function exportCampaignRecipients(id) {
+    var c = campaignById(id);
+    if (!c) return;
+    var m = cgMetrics(c);
+    var r = m.rates;
+    var list = cgAudience(c.audience);
+    var rows = [['GR ID', 'Name', 'Program', 'Match %', 'Delivered', 'Opened', 'Clicked']].concat(list.map(function (x) {
+      var roll = hashOf(c.id + ':' + x.s.id) % 1000 / 1000;
+      var delivered = roll < r.delivered;
+      var opened = delivered && roll < r.delivered * r.opened;
+      var clicked = opened && roll < r.delivered * r.opened * r.clicked;
+      return [
+        x.s.id,
+        x.s.name,
+        programById(x.s.program).name,
+        x.score == null ? '' : x.score,
+        delivered ? 'Yes' : 'No',
+        opened ? 'Yes' : 'No',
+        clicked ? 'Yes' : 'No',
+      ];
+    }));
+    var csv = rows.map(function (row) {
+      return row.map(function (cell) { return '"' + String(cell).replace(/"/g, '""') + '"'; }).join(',');
+    }).join('\n');
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = 'admitright-campaign-recipients.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('Downloaded ' + list.length.toLocaleString() + ' recipient' + (list.length === 1 ? '' : 's') + '.');
   }
 
   function renderCampaignDetail() {
@@ -8267,6 +8322,7 @@
     showCampaignsPage('detail');
     var ch = channelById(c.channel);
     var m = cgMetrics(c);
+    var desc = (c.description || '').trim();
     $('cg-detail-title').textContent = c.name;
     $('cg-detail-sub').textContent = ch.name + ' campaign · Sent ' + fmtDateTime(new Date(c.sentAt));
     $('cg-detail-actions').innerHTML =
@@ -8283,14 +8339,16 @@
       '<section class="ar-ev-detail-section"><h4>Engagement</h4>' + cgFunnelHtml(m) + '</section>' +
       '<section class="ar-ev-detail-section"><h4>Campaign</h4><div class="ar-cg-kv">' +
       detailKV('Channel', ch.name) + detailKV('Template', templateById(c.template).name) + detailKV('Sent on', fmtDateTime(new Date(c.sentAt))) +
-      detailKV('Description', c.description) + '</div>' +
-      '<h4 class="ar-cg-sub-h">Target filters</h4><div class="ar-cg-chips">' + cgChipsHtml(c.audience) + '</div></section>' +
+      (desc ? detailKV('Description', desc) : '') + '</div></section>' +
       '</div>' +
-      '<div class="ar-cg-detail-grid ar-cg-detail-wide">' +
-      '<section class="ar-ev-detail-section"><h4>Message</h4><div class="ar-cg-preview-box">' + cgPreviewHtml(c, cgSample(c)) + '</div></section>' +
-      '<section class="ar-ev-detail-section"><h4>Recipients</h4><p class="ar-cm-note ar-cg-note">' + ico('lock') + 'Showing the top ' +
-      Math.min(m.sent, 12) + ' of ' + m.sent.toLocaleString() + '. Phone numbers and emails stay private.</p>' + cgRecipientsTable(c, m) + '</section>' +
-      '</div>';
+      '<section class="ar-ev-detail-section ar-cg-targets">' +
+      '<h4>Target filters</h4><p class="ar-evc-note">Program, preference, match, stage, intake and other audience rules used for this send.</p>' +
+      '<div class="ar-cg-chips">' + cgChipsHtml(c.audience) + '</div></section>' +
+      '<section class="ar-ev-detail-section ar-cg-recip-full">' +
+      '<div class="ar-cg-recip-head"><div><h4>Recipients</h4><p class="ar-cm-note ar-cg-note">' + ico('lock') + 'Top ' +
+      Math.min(m.sent, 12) + ' of ' + m.sent.toLocaleString() + ' · contact details stay private</p></div>' +
+      '<button type="button" class="btn btn-secondary btn-sm btn-icon" data-cg-recip-dl="' + esc(c.id) + '">' + ico('download') + 'Download</button></div>' +
+      cgRecipientsTable(c, m) + '</section>';
   }
 
   var MENUS = [['program-btn', 'program-menu'], ['pref-btn', 'pref-menu'], ['range-btn', 'range-menu'], ['bill-range-btn', 'bill-range-menu'], ['intake-btn', 'intake-menu'], ['filter-btn', 'filter-menu'], ['bulk-btn', 'bulk-menu'],
@@ -8656,6 +8714,12 @@
 
     if (t.closest('[data-cg-export]')) {
       exportCampaigns();
+      return;
+    }
+
+    var recipDl = t.closest('[data-cg-recip-dl]');
+    if (recipDl) {
+      exportCampaignRecipients(recipDl.getAttribute('data-cg-recip-dl'));
       return;
     }
 
