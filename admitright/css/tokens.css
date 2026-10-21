@@ -73,12 +73,19 @@
   --dur-fast: 0.15s;
   --dur: 0.3s;
 
-  /* Data visualisation: one colour per admission stage, primary first */
-  --stage-0: #782bff;
-  --stage-1: #5b5bd6;
-  --stage-2: #3b7fc4;
-  --stage-3: #2b93ad;
-  --stage-4: #24978c;
-  --stage-5: #2f8f68;
-  --stage-6: #3d7f4c;
+  /* Stage viz: brand purple scale, light → dark (skip steps for 7 stops) */
+  --stage-recommendation: var(--purple-100); /* #ebe7ff */
+  --stage-pdd: var(--purple-300);            /* #beaeff */
+  --stage-started: var(--purple-400);        /* #9f80ff */
+  --stage-completed: var(--purple-600);      /* #782bff brand */
+  --stage-admit: var(--purple-700);          /* #6816eb */
+  --stage-fee: var(--purple-900);            /* #4911a1 */
+  --stage-enrolled: var(--purple-950);       /* #2b076e */
+  --stage-0: var(--purple-100);
+  --stage-1: var(--purple-300);
+  --stage-2: var(--purple-400);
+  --stage-3: var(--purple-600);
+  --stage-4: var(--purple-700);
+  --stage-5: var(--purple-900);
+  --stage-6: var(--purple-950);
 }

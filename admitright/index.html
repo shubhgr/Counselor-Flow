@@ -9,8 +9,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=tok1" />
-  <link rel="stylesheet" href="css/tokens.css?v=tok1" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar440" />
+  <link rel="stylesheet" href="css/tokens.css?v=tok6" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar467" />
 </head>
 <body class="ar ar-locked">
   <section class="ar-gate" id="gate-login" hidden>
@@ -162,25 +162,32 @@
                     <button type="button" class="ar-seg-btn" data-stage-mode="funnel" role="tab" aria-selected="false" title="How many students reached each stage">Funnel</button>
                     <button type="button" class="ar-seg-btn active" data-stage-mode="snapshot" role="tab" aria-selected="true" title="How many students are at each stage right now">Snapshot</button>
                   </div>
-                  <button type="button" class="ar-clear-chip" data-clear="funnel" id="funnel-clear" hidden><span class="material-symbols-rounded" aria-hidden="true">close</span>Clear</button>
+                  <button type="button" class="ar-clear-chip" data-clear="stage" id="stage-clear" hidden><span class="material-symbols-rounded" aria-hidden="true">close</span>Clear</button>
                   <button type="button" class="ar-icon-btn ar-collapse-btn ar-collapse-alt" data-toggle-insights aria-label="Collapse">
                     <span class="material-symbols-rounded" aria-hidden="true">expand_less</span>
                   </button>
                 </div>
               </div>
               <div class="ar-flist" id="funnel-grid"></div>
-              <div class="ar-trend-chart" id="trend-chart"></div>
               <div class="ar-mini" id="funnel-mini"></div>
             </div>
 
-            <div class="panel ar-actions-panel">
-              <div class="panel-head">
-                <h2 class="ar-insights-head">Additional user actions <span class="ar-head-count" id="actions-count">0</span></h2>
-                <button type="button" class="ar-icon-btn ar-collapse-btn" data-toggle-insights aria-label="Collapse">
-                  <span class="material-symbols-rounded" aria-hidden="true">expand_less</span>
-                </button>
+            <div class="ar-insights-rail">
+              <div class="panel ar-actions-panel ar-actions-h">
+                <div class="panel-head">
+                  <h2 class="ar-insights-head">Additional user actions <span class="ar-head-count" id="actions-count">0</span></h2>
+                  <button type="button" class="ar-clear-chip" data-clear="action" id="actions-clear" hidden><span class="material-symbols-rounded" aria-hidden="true">close</span>Clear</button>
+                </div>
+                <div class="ar-trend-actions" id="trend-actions"></div>
               </div>
-              <div class="ar-trend-actions" id="trend-actions"></div>
+
+              <div class="panel ar-trend-panel">
+                <div class="panel-head">
+                  <h2 class="ar-insights-head">Trend</h2>
+                  <button type="button" class="ar-clear-chip" data-clear="trend" id="trend-clear" hidden><span class="material-symbols-rounded" aria-hidden="true">close</span>Clear</button>
+                </div>
+                <div class="ar-trend-chart" id="trend-chart"></div>
+              </div>
             </div>
           </section>
 
@@ -688,6 +695,6 @@
   <div class="ar-toast" id="toast" hidden></div>
 
   <script src="data/students-data.js?v=ar259"></script>
-  <script src="js/admitright.js?v=ar438"></script>
+  <script src="js/admitright.js?v=ar467"></script>
 </body>
 </html>

@@ -25,6 +25,13 @@
     { id: 'loan', name: 'Loan options explored', icon: 'account_balance' },
   ];
 
+  /** Event ladder steps for the insights side panel (same card UI as actions). */
+  var EVENT_STEPS = [
+    { id: 1, name: 'Opened', icon: 'visibility' },
+    { id: 2, name: 'Registered', icon: 'how_to_reg' },
+    { id: 3, name: 'Joined', icon: 'co_present' },
+  ];
+
   /**
    * The source data still uses the old six steps (recommended, opened, shortlisted, expert, applied, enrolled).
    * Shortlisted and expert become actions; "applied" students are spread over the application → fee steps by GR ID.
@@ -788,6 +795,8 @@
     stage: null,
     stageMode: 'snapshot',
     action: null,
+    eventLevel: null,
+    chartPick: false,
     layout: 'board',
     query: '',
     range: null, // { from, to, preset } as whole days, or null for all time
@@ -948,6 +957,7 @@
       .filter(function (s) {
         if (!savedView() && state.stage !== null && !atStage(s, state.stage)) return false;
         if (!savedView() && state.action && !s.actions[state.action]) return false;
+        if (!savedView() && state.eventLevel && !(s.engage && s.engage.event >= state.eventLevel)) return false;
         if (state.createdBy && studentCreatorId(s) !== state.createdBy) return false;
         if (!passesFilters(s)) return false;
         if (!q) return true;
@@ -1689,7 +1699,9 @@
       b.classList.toggle('active', on);
       b.setAttribute('aria-selected', String(on));
     });
-    $('funnel-clear').hidden = state.stage === null && !state.action;
+    if ($('stage-clear')) $('stage-clear').hidden = state.stage === null;
+    if ($('actions-clear')) $('actions-clear').hidden = !state.action;
+    if ($('trend-clear')) $('trend-clear').hidden = !state.chartPick;
     $('funnel-mini').innerHTML = STAGES.map(function (st, i) {
       return '<button type="button" class="ar-mini-step' + (state.stage === i ? ' active' : '') + '" data-stage="' + i + '" title="' + esc(st.name) + '">' +
         '<span class="ar-mini-top">' + ico(st.icon) + '<b>' + counts[i] + '</b></span><small>' + esc(st.name) + '</small></button>';
@@ -1698,49 +1710,52 @@
     var headN = set.length;
     if ($('stage-count')) $('stage-count').textContent = fmtNum(headN);
     if ($('actions-count')) $('actions-count').textContent = fmtNum(headN);
-    var trend = stageSeries(set, snapshot);
-    $('funnel-grid').innerHTML = '<div class="ar-fstages">' + STAGES.map(function (st, i) {
-      var note;
-      var base = snapshot ? shownTotal : counts[0];
-      var fill = base ? (counts[i] / base) * 100 : 0;
-      if (snapshot) {
-        note = Math.round(fill) + '%';
-      } else {
-        var prev = i ? counts[i - 1] : counts[0];
-        note = i ? (prev ? Math.round((counts[i] / prev) * 100) : 0) + '%' : '';
-      }
+    $('funnel-grid').innerHTML = snapshot ? stagePieHtml(counts) : stageFunnelHtml(counts);
+    if ($('trend-chart')) {
+      $('trend-chart').hidden = false;
+      /* Trend always uses snapshot counting; a stage pick shows that stage alone as a line. */
+      var trendData = stageSeries(set, true);
+      $('trend-chart').innerHTML = state.stage !== null
+        ? stageLineHtml(trendData, state.stage)
+        : stageChartHtml(trendData);
+    }
+    var trendHead = document.querySelector('.ar-trend-panel .ar-insights-head');
+    if (trendHead) {
+      trendHead.textContent = state.stage !== null ? STAGES[state.stage].name : 'Trend';
+    }
+    var of = snapshot ? shownTotal : (counts[0] || headN || 1);
+    $('trend-actions').innerHTML = insightFactionHtml(ACTIONS.map(function (a) {
+      var n = set.filter(function (s) { return s.actions[a.id]; }).length;
+      return {
+        key: a.id,
+        name: a.name,
+        icon: a.icon,
+        n: n,
+        pct: of ? Math.round((n / of) * 100) : 0,
+        active: state.action === a.id,
+        attr: 'data-funnel-action="' + a.id + '"',
+      };
+    }));
+  }
+
+  function insightFactionHtml(rows) {
+    var circ = 188.5;
+    return '<div class="ar-factions">' + rows.map(function (row) {
+      var turn = (circ * row.pct / 100).toFixed(2);
       return (
-        '<button type="button" class="ar-frow' + (state.stage === i ? ' active' : '') + (counts[i] ? '' : ' zero') + '" data-stage="' + i + '" style="--st:' + CHART_COLORS[i] + '">' +
-        '<span class="ar-frow-name"><i class="ar-frow-dot" aria-hidden="true"></i>' + esc(st.name) + '</span>' +
-        '<span class="ar-frow-val">' +
-        '<strong>' + counts[i] + '</strong>' +
-        (note ? '<small title="' + (snapshot ? 'Share of students at this stage now' : 'Conversion from the previous stage') + '">' + note + '</small>' : '') +
-        '</span></button>'
+        '<button type="button" class="ar-faction' + (row.active ? ' active' : '') + (row.n ? '' : ' zero') + '" ' + row.attr + '>' +
+        '<span class="ar-faction-ring"><svg viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="30"></circle><circle cx="36" cy="36" r="30" stroke-dasharray="' + turn + ' ' + circ + '"></circle></svg>' + ico(row.icon) + '</span>' +
+        '<span class="ar-faction-copy"><span class="ar-faction-name">' + esc(row.name) + '</span>' +
+        '<span class="ar-faction-stat"><strong>' + row.n + '</strong></span></span></button>'
       );
     }).join('') + '</div>';
-    $('trend-chart').innerHTML = snapshot ? stageChartHtml(trend) : stageBarsHtml(counts);
-    $('trend-actions').innerHTML =
-      '<div class="ar-factions">' + ACTIONS.map(function (a) {
-        var did = set.filter(function (s) { return s.actions[a.id]; });
-        var n = did.length;
-        var of = snapshot ? shownTotal : counts[0];
-        var pct = of ? Math.round((n / of) * 100) : 0;
-        var circ = 188.5;
-        var turn = (circ * pct / 100).toFixed(2);
-        return (
-          '<button type="button" class="ar-faction' + (state.action === a.id ? ' active' : '') + (n ? '' : ' zero') + '" data-funnel-action="' + a.id + '">' +
-          '<span class="ar-faction-ring"><svg viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="30"></circle><circle cx="36" cy="36" r="30" stroke-dasharray="' + turn + ' ' + circ + '"></circle></svg>' + ico(a.icon) + '</span>' +
-          '<span class="ar-faction-copy"><span class="ar-faction-name">' + esc(a.name) + '</span>' +
-          '<span class="ar-faction-stat"><strong>' + n + '</strong></span></span></button>'
-        );
-      }).join('') + '</div>';
   }
 
   /* ——— Dashboard: stage area chart ——— */
 
-  var CHART_COLORS = STAGES.map(function (st, i) {
-    return getComputedStyle(document.documentElement).getPropertyValue('--stage-' + i).trim() || '#782bff';
-  });
+  function stageColor(i) {
+    return 'var(--stage-' + i + ')';
+  }
   var stageChart = null; // { days: [Date], series: [[count per bucket] per stage], step } for the tooltip
 
   /** Catmull-Rom curve through the points, with control points kept above the baseline so dips never cross it. */
@@ -1896,8 +1911,47 @@
     return k === n - 1 && (n - 1) % every > 1;
   }
 
-  /** Snapshot: one stacked bar per time bucket, seven stage sections from Recommendation up to Enrolled. */
-  function stageChartHtml(data) {
+  /** One stage over time as a line (used when a stage is selected). */
+  function stageLineHtml(data, si) {
+    stageChart = data;
+    var values = data.series[si] || [];
+    var n = data.days.length;
+    var W = 600;
+    var H = 160;
+    var max = Math.max.apply(null, values.concat([1])) * 1.12;
+    var x = function (k) { return n <= 1 ? W / 2 : (k / (n - 1)) * W; };
+    var y = function (v) { return H - 4 - (v / max) * (H - 16); };
+    var pts = values.map(function (v, k) { return [x(k), y(v)]; });
+    var line = pts.length ? smoothPath(pts, H) : '';
+    var color = stageColor(si);
+    var fillId = 'ar-stage-line-fill';
+    var grid = [0.25, 0.5, 0.75].map(function (f) {
+      return '<line x1="0" x2="' + W + '" y1="' + (H * f) + '" y2="' + (H * f) + '" stroke="var(--line)" vector-effect="non-scaling-stroke"/>';
+    }).join('');
+    var paths = line
+      ? '<path d="' + line + 'L' + W + ',' + H + 'L0,' + H + 'Z" fill="url(#' + fillId + ')"/>' +
+        '<path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="2.2" vector-effect="non-scaling-stroke"/>'
+      : '';
+    var labelBits = [];
+    data.days.forEach(function (day, k) {
+      if (!bucketLabelOn(k, n)) return;
+      var left = n <= 1 ? 50 : (k / (n - 1)) * 100;
+      var shift = k === 0 ? '0' : (k === n - 1 ? '-100%' : '-50%');
+      labelBits.push('<span style="left:' + left.toFixed(2) + '%;transform:translateX(' + shift + ')">' + esc(bucketAxis(day, data)) + '</span>');
+    });
+    return '<div class="ar-achart ar-stage-line" data-stage-line="' + si + '">' +
+      '<div class="ar-achart-plot">' +
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' +
+      '<defs><linearGradient id="' + fillId + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="5%" stop-color="' + color + '" stop-opacity="0.28"/>' +
+      '<stop offset="95%" stop-color="' + color + '" stop-opacity="0.03"/></linearGradient></defs>' +
+      grid + paths + '</svg>' +
+      '<span class="ar-achart-cursor" hidden></span><div class="ar-achart-tip" hidden></div></div>' +
+      '<div class="ar-stackchart-labels ar-stackchart-axis">' + labelBits.join('') + '</div></div>';
+  }
+
+  /** Snapshot: one stacked bar per time bucket. bare = chart only, no count tooltips. */
+  function stageChartHtml(data, bare) {
     var n = data.days.length;
     stageChart = data;
     var totals = [];
@@ -1913,73 +1967,163 @@
         var v = data.series[si][k];
         if (!v) continue;
         var dim = state.stage !== null && state.stage !== si;
-        segs += '<i style="flex:' + v + ' 1 0;background:' + CHART_COLORS[si] + (dim ? ';opacity:.28' : '') + '"></i>';
+        segs += '<i style="flex:' + v + ' 1 0;background:' + stageColor(si) + (dim ? ';opacity:.28' : '') + '"></i>';
       }
-      var h = totals[k] ? Math.max(2, (totals[k] / max) * 100).toFixed(1) : 0;
-      var tip = '<em class="ar-stack-tip"><strong>' + esc(bucketTitle(day, data)) + '</strong>' + STAGES.map(function (st, si) {
-        return '<span><i style="background:' + CHART_COLORS[si] + '"></i>' + esc(st.name) + '<b>' + data.series[si][k] + '</b></span>';
-      }).join('') + '</em>';
+      var h = totals[k] ? Math.max(4, (totals[k] / max) * 92).toFixed(1) : 0;
       return '<button type="button" data-k="' + k + '" style="--h:' + h + '%" aria-label="' + esc(bucketTitle(day, data)) + '">' +
-        tip + (segs ? '<span class="ar-stack">' + segs + '</span>' : '<span class="ar-stack empty"></span>') + '</button>';
+        (segs ? '<span class="ar-stack">' + segs + '</span>' : '<span class="ar-stack empty"></span>') + '</button>';
     }).join('');
-    var labels = data.days.map(function (day, k) {
-      return '<span>' + (bucketLabelOn(k, n) ? esc(bucketAxis(day, data)) : '') + '</span>';
-    }).join('');
-    return '<div class="ar-stackchart' + (n > 16 ? ' dense' : '') + '">' +
+    var labelBits = [];
+    data.days.forEach(function (day, k) {
+      if (!bucketLabelOn(k, n)) return;
+      var left = n <= 1 ? 50 : (k / (n - 1)) * 100;
+      var shift = k === 0 ? '0' : (k === n - 1 ? '-100%' : '-50%');
+      labelBits.push('<span style="left:' + left.toFixed(2) + '%;transform:translateX(' + shift + ')">' + esc(bucketAxis(day, data)) + '</span>');
+    });
+    return '<div class="ar-stackchart' + (n > 16 ? ' dense' : '') + (bare ? ' bare' : '') + '">' +
       '<div class="ar-stackchart-plot"><div class="ar-stackchart-grid" aria-hidden="true"><i></i><i></i><i></i><i></i></div>' +
-      '<div class="ar-stackchart-bars">' + bars + '</div></div>' +
-      '<div class="ar-stackchart-labels">' + labels + '</div></div>';
+      '<div class="ar-stackchart-bars">' + bars + '</div>' +
+      (bare ? '' : '<div class="ar-stack-tip" hidden></div>') +
+      '</div>' +
+      '<div class="ar-stackchart-labels ar-stackchart-axis">' + labelBits.join('') + '</div></div>';
   }
 
-  /** Funnel mode: one bar per stage, sized against the biggest stage. */
-  function stageBarsHtml(values) {
-    stageChart = null;
-    var bmax = Math.max.apply(null, values.concat([1])) * 1.1;
-    return '<div class="ar-bchart">' +
-      '<div class="ar-bchart-plot"><div class="ar-bchart-grid" aria-hidden="true"><i></i><i></i><i></i><i></i></div>' +
-      '<div class="ar-bchart-bars">' + STAGES.map(function (st, si) {
-        var v = values[si];
-        var prev = si ? values[si - 1] : 0;
-        var conv = si
-          ? '<span><b>' + (prev ? Math.round((v / prev) * 100) : 0) + '%</b> of ' + esc(STAGES[si - 1].name) + '</span>'
-          : '<span>Top of the funnel</span>';
-        var barH = v ? Math.max(2, (v / bmax) * 100).toFixed(1) : 0;
-        return '<button type="button" class="' + (state.stage !== null && state.stage !== si ? 'dim' : '') + '" data-stage="' + si + '" aria-label="' + esc(st.name) + ': ' + v + '" style="--bar:' + CHART_COLORS[si] + ';--h:' + barH + '%">' +
-          '<em class="ar-bchart-tip"><strong>' + esc(st.name) + '</strong><span>' + v + ' student' + (v === 1 ? '' : 's') + '</span>' + conv + '</em>' +
-          '<b>' + v + '</b><i style="height:' + barH + '%"></i></button>';
-      }).join('') + '</div></div>' +
-      '<div class="ar-bchart-labels">' + STAGES.map(function (st) { return '<span>' + esc(st.name) + '</span>'; }).join('') + '</div></div>';
+  /** Funnel mode: label + count on the left, center-aligned bars on the right. */
+  function stageFunnelHtml(values) {
+    var total = values.reduce(function (a, b) { return a + b; }, 0) || 1;
+    var bmax = Math.max.apply(null, values.concat([1]));
+    return '<div class="ar-funnel-viz">' + values.map(function (v, si) {
+      var st = STAGES[si];
+      var pct = Math.round((v / total) * 100);
+      var w = bmax ? Math.max(v ? 4 : 0, (v / bmax) * 100) : 0;
+      return '<button type="button" class="ar-funnel-row' + (state.stage === si ? ' active' : '') + (state.stage !== null && state.stage !== si ? ' dim' : '') + (v ? '' : ' zero') + '" data-stage="' + si + '" style="--st:' + stageColor(si) + '" aria-label="' + esc(st.name) + ': ' + v + '">' +
+        '<span class="ar-funnel-meta"><i class="ar-frow-dot" aria-hidden="true"></i><span class="ar-funnel-name">' + esc(st.name) + '</span>' +
+        '<strong>' + fmtNum(v) + '</strong><small>' + pct + '%</small></span>' +
+        '<span class="ar-funnel-track"><i style="width:' + w.toFixed(1) + '%"></i></span></button>';
+    }).join('') + '</div>';
+  }
+
+  /** Snapshot mode: pie of students currently at each stage. */
+  function stagePieHtml(values) {
+    var total = values.reduce(function (a, b) { return a + b; }, 0);
+    var cx = 110;
+    var cy = 110;
+    var r = 98;
+    var hole = 52;
+    var angle = -Math.PI / 2;
+    var slices = '';
+    if (!total) {
+      slices = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="var(--line)"></circle>';
+    } else {
+      values.forEach(function (v, si) {
+        if (!v) return;
+        var sweep = (v / total) * Math.PI * 2;
+        var a0 = angle;
+        var a1 = angle + sweep;
+        angle = a1;
+        var x0 = cx + r * Math.cos(a0);
+        var y0 = cy + r * Math.sin(a0);
+        var x1 = cx + r * Math.cos(a1);
+        var y1 = cy + r * Math.sin(a1);
+        var large = sweep > Math.PI ? 1 : 0;
+        var dim = state.stage !== null && state.stage !== si;
+        if (v === total) {
+          slices += '<circle class="ar-pie-slice' + (dim ? ' dim' : '') + (state.stage === si ? ' on' : '') + '" data-stage="' + si + '" cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + stageColor(si) + '"></circle>';
+          return;
+        }
+        slices += '<path class="ar-pie-slice' + (dim ? ' dim' : '') + (state.stage === si ? ' on' : '') + '" data-stage="' + si + '" d="M' + cx + ',' + cy + ' L' + x0.toFixed(2) + ',' + y0.toFixed(2) +
+          ' A' + r + ',' + r + ' 0 ' + large + ' 1 ' + x1.toFixed(2) + ',' + y1.toFixed(2) + ' Z" fill="' + stageColor(si) + '"></path>';
+      });
+    }
+    var legend = STAGES.map(function (st, si) {
+      var v = values[si];
+      var pct = total ? Math.round((v / total) * 100) : 0;
+      return '<button type="button" class="ar-pie-leg' + (state.stage === si ? ' active' : '') + (v ? '' : ' zero') + '" data-stage="' + si + '" style="--st:' + stageColor(si) + '">' +
+        '<i class="ar-frow-dot" aria-hidden="true"></i><span>' + esc(st.name) + '</span><strong>' + fmtNum(v) + '</strong><small>' + pct + '%</small></button>';
+    }).join('');
+    return '<div class="ar-pie-viz">' +
+      '<div class="ar-pie-legend">' + legend + '</div>' +
+      '<div class="ar-pie-plot"><svg viewBox="0 0 220 220" role="img" aria-label="Students by stage">' + slices +
+      '<circle cx="' + cx + '" cy="' + cy + '" r="' + hole + '" fill="var(--surface)"></circle>' +
+      '<text x="' + cx + '" y="' + (cy - 2) + '" text-anchor="middle" class="ar-pie-total">' + fmtNum(total) + '</text>' +
+      '<text x="' + cx + '" y="' + (cy + 16) + '" text-anchor="middle" class="ar-pie-total-label">students</text></svg></div></div>';
+  }
+
+  function stageTipRows(k, titleTag, valueTag) {
+    var open = titleTag || 'strong';
+    var close = open;
+    var vOpen = valueTag || 'b';
+    var vClose = vOpen;
+    return '<' + open + '>' + esc(bucketTitle(stageChart.days[k], stageChart)) + '</' + close + '>' +
+      STAGES.map(function (st, si) {
+        if (state.stage !== null && si !== state.stage) return '';
+        return '<span><i style="background:' + stageColor(si) + '"></i>' + esc(st.name) +
+          '<' + vOpen + '>' + stageChart.series[si][k] + '</' + vClose + '></span>';
+      }).join('');
+  }
+
+  function clampTipLeft(plot, tip, anchorX) {
+    tip.hidden = false;
+    tip.style.left = '0px';
+    tip.style.transform = 'none';
+    var tipW = tip.offsetWidth || 180;
+    var maxL = Math.max(0, plot.clientWidth - tipW - 4);
+    tip.style.left = Math.min(Math.max(anchorX - tipW / 2, 4), maxL) + 'px';
   }
 
   function moveStageChartTip(e) {
-    var plot = e.target.closest('.ar-achart-plot');
-    if (!plot || !stageChart) return;
-    var box = plot.getBoundingClientRect();
+    if (!stageChart) return;
     var n = stageChart.days.length;
-    var k = Math.max(0, Math.min(n - 1, Math.round(((e.clientX - box.left) / box.width) * (n - 1))));
-    var left = n === 1 ? box.width / 2 : (k / (n - 1)) * box.width;
-    var cursor = plot.querySelector('.ar-achart-cursor');
-    var tip = plot.querySelector('.ar-achart-tip');
-    cursor.hidden = false;
-    cursor.style.left = left + 'px';
-    tip.hidden = false;
-    var day = stageChart.days[k];
-    var label = stageChart.step === 1 ? fmtShort(day, true)
-      : stageChart.step === 7 ? 'Week of ' + fmtShort(day, true)
-      : day.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-    tip.innerHTML = '<b>' + esc(label) + '</b>' + STAGES.map(function (st, si) {
-      if (state.stage !== null && si !== state.stage) return '';
-      return '<span><i style="background:' + CHART_COLORS[si] + '"></i>' + esc(st.name) + '<strong>' + stageChart.series[si][k] + '</strong></span>';
-    }).join('');
-    tip.style.left = Math.min(Math.max(left, 112), box.width - 112) + 'px';
+    var linePlot = e.target.closest('#trend-chart .ar-achart-plot');
+    if (linePlot) {
+      var box = linePlot.getBoundingClientRect();
+      var k = Math.max(0, Math.min(n - 1, Math.round(((e.clientX - box.left) / box.width) * (n - 1))));
+      var left = n === 1 ? box.width / 2 : (k / (n - 1)) * box.width;
+      var cursor = linePlot.querySelector('.ar-achart-cursor');
+      var tip = linePlot.querySelector('.ar-achart-tip');
+      if (cursor) {
+        cursor.hidden = false;
+        cursor.style.left = left + 'px';
+      }
+      if (!tip) return;
+      tip.innerHTML = stageTipRows(k, 'b', 'strong');
+      tip.hidden = false;
+      tip.style.left = Math.min(Math.max(left, 112), box.width - 112) + 'px';
+      return;
+    }
+
+    var stackPlot = e.target.closest('#trend-chart .ar-stackchart-plot');
+    if (!stackPlot) return;
+    var tip = stackPlot.querySelector('.ar-stack-tip');
+    if (!tip) return;
+    var col = e.target.closest('[data-k]');
+    if (!col) {
+      tip.hidden = true;
+      return;
+    }
+    var ki = Number(col.getAttribute('data-k'));
+    if (ki < 0 || ki >= n) return;
+    tip.innerHTML = stageTipRows(ki, 'strong', 'b');
+    var plotBox = stackPlot.getBoundingClientRect();
+    var colBox = col.getBoundingClientRect();
+    clampTipLeft(stackPlot, tip, colBox.left + colBox.width / 2 - plotBox.left);
   }
 
   /** The bucket under the pointer, matching the hover tooltip. */
   function chartBucketAt(e) {
+    if (!stageChart || !e.target.closest('#trend-chart')) return null;
+    var n = stageChart.days.length;
+    var k;
     var col = e.target.closest('[data-k]');
-    if (!col || !stageChart || !col.closest('#trend-chart')) return null;
-    var k = Number(col.getAttribute('data-k'));
-    if (k < 0 || k >= stageChart.days.length) return null;
+    if (col) {
+      k = Number(col.getAttribute('data-k'));
+    } else {
+      var plot = e.target.closest('.ar-achart-plot');
+      if (!plot) return null;
+      var box = plot.getBoundingClientRect();
+      k = Math.max(0, Math.min(n - 1, Math.round(((e.clientX - box.left) / box.width) * (n - 1))));
+    }
+    if (k < 0 || k >= n) return null;
     var from = dayStart(stageChart.days[k]);
     var to = dayStart(new Date(stageChart.cuts[k].getTime() - 1));
     var cap = state.range ? dayStart(state.range.to) : dayStart(TODAY);
@@ -1993,6 +2137,7 @@
     var bucket = chartBucketAt(e);
     if (!bucket) return;
     state.range = { from: bucket.from, to: bucket.to, preset: 'custom' };
+    state.chartPick = true;
     $('range-label').textContent = rangeText(bucket.from, bucket.to);
     renderDashboard();
   }
@@ -2527,6 +2672,10 @@
     if (!savedView() && state.action) {
       var act = ACTIONS.filter(function (a) { return a.id === state.action; })[0];
       chips.push('<button type="button" class="ar-filter-chip" data-clear="action">Action: ' + esc(act.name) + ico('close') + '</button>');
+    }
+    if (!savedView() && state.eventLevel) {
+      var evStep = EVENT_STEPS.filter(function (x) { return x.id === state.eventLevel; })[0];
+      chips.push('<button type="button" class="ar-filter-chip" data-clear="event">Event: ' + esc(evStep ? evStep.name : '') + ico('close') + '</button>');
     }
     if (state.createdBy) {
       chips.push('<button type="button" class="ar-filter-chip" data-clear="createdBy">Created by: ' + esc(staffName(state.createdBy)) + ico('close') + '</button>');
@@ -9022,10 +9171,12 @@
     }
     if (!rp.from) {
       state.range = null;
+      state.chartPick = false;
       $('range-label').textContent = 'All time';
       return;
     }
     state.range = { from: rp.from, to: to, preset: rp.preset };
+    state.chartPick = false;
     $('range-label').textContent = rangeText(rp.from, to);
   }
 
@@ -10173,10 +10324,21 @@
       return;
     }
 
+    var funnelEvent = t.closest('[data-funnel-event]');
+    if (funnelEvent) {
+      var fe = Number(funnelEvent.getAttribute('data-funnel-event'));
+      state.eventLevel = state.eventLevel === fe ? null : fe;
+      if (state.eventLevel) state.action = null;
+      renderFunnel();
+      renderStudents();
+      return;
+    }
+
     var funnelAction = t.closest('[data-funnel-action]');
     if (funnelAction) {
       var fa = funnelAction.getAttribute('data-funnel-action');
       state.action = state.action === fa ? null : fa;
+      if (state.action) state.eventLevel = null;
       renderFunnel();
       renderStudents();
       return;
@@ -10227,7 +10389,18 @@
       }
       if (what === 'stage') state.stage = null;
       else if (what === 'action') state.action = null;
-      else if (what === 'funnel') state.stage = state.action = null;
+      else if (what === 'event') state.eventLevel = null;
+      else if (what === 'trend') {
+        state.range = null;
+        state.chartPick = false;
+        if ($('range-label')) $('range-label').textContent = 'All time';
+      }
+      else if (what === 'funnel') {
+        state.stage = state.action = state.eventLevel = null;
+        state.range = null;
+        state.chartPick = false;
+        if ($('range-label')) $('range-label').textContent = 'All time';
+      }
       else if (what === 'createdBy') state.createdBy = '';
       else setProgram('all');
       renderDashboard();
@@ -10435,7 +10608,7 @@
     if (usePref) {
       state.program = state.ppProgram;
       state.prefId = usePref.getAttribute('data-use-pref');
-      state.stage = state.action = null;
+      state.stage = state.action = state.eventLevel = null;
       resetFilters();
       setView('dashboard');
       $('students').scrollIntoView({ behavior: 'smooth' });
@@ -10919,7 +11092,10 @@
   $('trend-chart').addEventListener('click', selectChartDate);
 
   $('trend-chart').addEventListener('mouseleave', function () {
-    document.querySelectorAll('.ar-achart-cursor, .ar-achart-tip').forEach(function (el) { el.hidden = true; });  });
+    document.querySelectorAll('#trend-chart .ar-achart-cursor, #trend-chart .ar-achart-tip, #trend-chart .ar-stack-tip').forEach(function (el) {
+      el.hidden = true;
+    });
+  });
 
   $('view-campaigns').addEventListener('input', function (e) {
     var id = e.target.id;
@@ -11510,7 +11686,7 @@
   function startWith(programId, prefId, keepFilters) {
     state.program = programId;
     state.prefId = prefId;
-    state.stage = state.action = null;
+    state.stage = state.action = state.eventLevel = null;
     if (!keepFilters) applySavedFilters();
     unlock();
     applyRoute();
