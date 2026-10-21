@@ -2804,7 +2804,7 @@
     $('filter-menu').innerHTML = head +
       '<div class="ar-fmenu-body gr-scroll">' +
       row(label('Match score'), rangeInputs(scoreAttr, f, '%')) +
-      row(label('Engagement score'), rangeInputs(engageScoreAttr, engageFilterBag(f), '%')) +
+      row(label('Events score'), rangeInputs(engageScoreAttr, engageFilterBag(f), '%')) +
       FILTER_ORDER.filter(function (id) {
         var critRow = pref.criteria[id];
         if (!critRow) return false;
@@ -3228,7 +3228,7 @@
       bits.push('Match ' + range);
     }
     var engBit = engageRangeChip(bag);
-    if (engBit) bits.push('Engage ' + engBit);
+    if (engBit) bits.push('Events ' + engBit);
     Object.keys(bag.vals || {}).forEach(function (id) {
       if (filterActive(id, bag.vals[id])) bits.push(filterChipText(id, bag.vals[id], pref || { criteria: { test: { tests: [] } } }));
     });
@@ -3394,7 +3394,7 @@
     filterWriteBag = bag;
     var html =
       row(label('Match score'), rangeInputs(function (k) { return 'data-fscore="' + k + '" min="0" max="100"'; }, f, '%')) +
-      row(label('Engagement score'), rangeInputs(engageScoreAttr, engageFilterBag(f), '%')) +
+      row(label('Events score'), rangeInputs(engageScoreAttr, engageFilterBag(f), '%')) +
       FILTER_ORDER.filter(function (id) {
         var critRow = pref.criteria[id];
         if (!critRow) return false;
@@ -7859,7 +7859,7 @@
     if (pref && a.filters && a.filters.min !== '' && a.filters.min != null) chips.push(a.filters.min + '%+ match');
     else if (pref && Number(a.minScore)) chips.push(a.minScore + '%+ match');
     var audEng = engageRangeChip(a.filters);
-    if (audEng) chips.push(audEng + ' engage');
+    if (audEng) chips.push(audEng + ' events');
     if (a.stages && a.stages.length) {
       chips.push(a.stages.map(function (i) { return STAGES[Number(i)] ? STAGES[Number(i)].name : i; }).join(', '));
     } else if (a.stage !== '' && a.stage != null) {

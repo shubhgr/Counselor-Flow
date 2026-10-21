@@ -9611,15 +9611,48 @@ label.ar-editor-program:focus-within {
 }
 
 .ar-cg-segpick {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
   margin-bottom: var(--space-3);
+  padding: var(--space-2);
+  border-radius: 10px;
+  background: var(--surface-2, #f3f2f5);
 }
 
 .ar-cg-segpick .ar-segc {
   width: 100%;
   text-align: left;
+  gap: var(--space-1-5);
+  padding: var(--space-2-5) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.ar-cg-segpick .ar-segc:hover {
+  background: color-mix(in srgb, var(--surface) 92%, var(--brand) 8%);
+}
+
+.ar-cg-segpick .ar-segc.on {
+  border: 1px solid var(--brand);
+  background: var(--surface);
+  box-shadow: none;
+  outline: none;
+}
+
+.ar-cg-segpick .ar-segc-top strong {
+  font-weight: var(--weight-semibold);
+}
+
+.ar-cg-segpick .ar-segc-chips {
+  gap: 4px;
+}
+
+.ar-cg-segpick .ar-segc-chips span {
+  background: color-mix(in srgb, var(--surface-2, #f3f2f5) 85%, var(--ink) 4%);
+  border: 0;
 }
 
 .ar-evc-section.ar-cg-wide {
