@@ -8000,7 +8000,19 @@
     $('cg-form-foot').innerHTML = '<button type="button" class="btn btn-ghost btn-sm" data-cg-prev>' + (cgForm.step ? 'Previous step' : 'Cancel') + '</button>' +
       (cgForm.step < 3 ? '<div class="ar-cg-foot-right"><button type="button" class="btn btn-secondary btn-sm" data-cg-save-draft>Save draft</button>' +
         '<button type="button" class="btn btn-primary btn-sm btn-icon" data-cg-next>Next step' + ico('arrow_forward') + '</button></div>' : '');
+    syncCampaignFoot();
     updateCampaignPreview();
+  }
+
+  function syncCampaignFoot() {
+    if (!cgForm || !$('cg-form-foot')) return;
+    readCampaignForm();
+    var named = !!(cgForm.draft.name || '').trim();
+    var blocked = !!cgProblem(cgForm.step);
+    var save = $('cg-form-foot').querySelector('[data-cg-save-draft]');
+    var next = $('cg-form-foot').querySelector('[data-cg-next]');
+    if (save) save.disabled = !named;
+    if (next) next.disabled = blocked;
   }
 
   function readCampaignForm() {
@@ -8685,6 +8697,7 @@
     }
 
     if (t.closest('[data-cg-next]')) {
+      if (t.closest('[data-cg-next]').disabled) return;
       campaignFormNext();
       return;
     }
@@ -8713,8 +8726,18 @@
     }
 
     if (t.closest('[data-cg-save-draft]')) {
+      var saveBtn = t.closest('[data-cg-save-draft]');
+      if (saveBtn.disabled) return;
       var draftFromTpl = state.view === 'templates';
       if (draftFromTpl) tplSyncForm();
+      if (cgForm) {
+        readCampaignForm();
+        if (!(cgForm.draft.name || '').trim()) {
+          toast('Give the campaign a name.');
+          if ($('cg-name')) $('cg-name').focus();
+          return;
+        }
+      }
       saveCampaignDraft();
       if (draftFromTpl) tplDraft = null;
       return;
@@ -10033,9 +10056,14 @@
       renderCampaignList();
       return;
     }
+    if (id === 'cg-name' || id === 'cg-description') {
+      syncCampaignFoot();
+      return;
+    }
     if (id === 'cg-text' || id === 'cg-subject' || (e.target.closest && e.target.closest('#cg-text'))) {
       readCampaignForm();
       updateCampaignPreview();
+      syncCampaignFoot();
     }
   });
 
