@@ -10,32 +10,94 @@
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=tok1" />
   <link rel="stylesheet" href="css/tokens.css?v=tok6" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar467" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar480" />
 </head>
 <body class="ar ar-locked">
-  <section class="ar-gate" id="gate-login" hidden>
-    <form class="ar-gate-card" id="login-form" novalidate>
-      <img class="ar-gate-logo" src="assets/gradright-logo-dark.png" alt="AdmitRight" />
-      <h1>Log in to AdmitRight</h1>
-      <p class="ar-gate-lead" data-uni=" admissions team"></p>
-      <div class="field">
-        <label for="login-email">Email</label>
-        <input type="email" id="login-email" autocomplete="username" placeholder="name@university.edu" />
+  <section class="ar-gate ar-gate-split" id="gate-login" hidden>
+    <aside class="ar-gate-brand">
+      <div class="ar-gate-lockup">
+        <img class="ar-gate-uni" src="img/udit.png" alt="UDIT" />
+        <span class="ar-gate-x" aria-hidden="true">×</span>
+        <img class="ar-gate-gr" src="assets/gradright-mark.png" alt="GradRight" />
       </div>
-      <div class="field">
-        <label for="login-pass">Password</label>
-        <input type="password" id="login-pass" autocomplete="current-password" placeholder="Enter your password" />
+      <div class="ar-gate-brand-copy">
+        <h1>Your admissions desk, with GradRight.</h1>
+        <p><span data-uni></span> follows every applicant from first interest to enrolment — match, stage, and outreach in one place.</p>
+        <ul>
+          <li>See who is at each stage right now</li>
+          <li>Shortlist, chat, and run campaigns</li>
+          <li>Host events and track what converts</li>
+        </ul>
       </div>
-      <p class="ar-gate-error" id="login-error" hidden></p>
-      <button type="submit" class="btn btn-primary ar-gate-btn">Log in</button>
-    </form>
+    </aside>
+    <div class="ar-gate-pane">
+      <form class="ar-gate-card" id="login-form" novalidate>
+        <div class="ar-login-step" data-login-step="login">
+          <h1>Log in to AdmitRight</h1>
+          <p class="ar-gate-lead">Use your university email and password.</p>
+          <div class="field">
+            <label for="login-email">Email</label>
+            <input type="email" id="login-email" autocomplete="username" placeholder="name@university.edu" />
+          </div>
+          <div class="field">
+            <label for="login-pass">Password</label>
+            <input type="password" id="login-pass" autocomplete="current-password" placeholder="Enter your password" />
+          </div>
+          <button type="button" class="ar-gate-link" id="login-forgot">Forgot password?</button>
+          <p class="ar-gate-error ar-login-error" hidden></p>
+          <button type="submit" class="btn btn-primary ar-gate-btn">Log in</button>
+        </div>
+
+        <div class="ar-login-step" data-login-step="forgot" hidden>
+          <h1>Forgot password</h1>
+          <p class="ar-gate-lead">We’ll send a one-time code to this email.</p>
+          <div class="field">
+            <label for="login-forgot-email">Email</label>
+            <input type="email" id="login-forgot-email" autocomplete="username" placeholder="name@university.edu" />
+          </div>
+          <p class="ar-gate-error ar-login-error" hidden></p>
+          <button type="button" class="btn btn-primary ar-gate-btn" id="login-send-otp">Send OTP</button>
+          <button type="button" class="ar-gate-link ar-gate-back" data-login-back="login">Back to log in</button>
+        </div>
+
+        <div class="ar-login-step" data-login-step="otp" hidden>
+          <h1>Enter the code</h1>
+          <p class="ar-gate-lead">We sent a 6-digit code to <span class="ar-gate-mail"><strong id="login-otp-to"></strong><button type="button" class="ar-gate-edit" data-login-back="forgot">Edit</button></span></p>
+          <div class="field">
+            <label for="login-otp">OTP</label>
+            <input type="text" id="login-otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code" />
+          </div>
+          <p class="ar-gate-error ar-login-error" hidden></p>
+          <button type="button" class="btn btn-primary ar-gate-btn" id="login-verify">Verify OTP</button>
+          <button type="button" class="ar-gate-link ar-gate-back" id="login-resend">Resend OTP</button>
+        </div>
+
+        <div class="ar-login-step" data-login-step="reset" hidden>
+          <h1>Set a new password</h1>
+          <p class="ar-gate-lead">Choose a password, then we’ll sign you in.</p>
+          <div class="field">
+            <label for="login-new">New password</label>
+            <input type="password" id="login-new" autocomplete="new-password" placeholder="Enter a password" />
+          </div>
+          <div class="field">
+            <label for="login-new2">Confirm password</label>
+            <input type="password" id="login-new2" autocomplete="new-password" placeholder="Re-enter the password" />
+          </div>
+          <p class="ar-gate-error ar-login-error" hidden></p>
+          <button type="button" class="btn btn-primary ar-gate-btn" id="login-save">Save and continue</button>
+        </div>
+      </form>
+    </div>
   </section>
 
   <section class="ar-gate ar-gate-wide" id="gate-setup" hidden>
     <div class="ar-setup">
       <header class="ar-setup-head">
         <div>
-          <img class="ar-gate-logo" src="assets/gradright-logo-dark.png" alt="AdmitRight" />
+          <div class="ar-setup-brand">
+            <img class="ar-setup-uni" src="img/udit.png" alt="" />
+            <span data-uni></span>
+          </div>
           <h1>Choose where to start</h1>
           <p class="ar-gate-lead">Pick a course, then open the dashboard with one of its preferences.</p>
         </div>
@@ -695,6 +757,6 @@
   <div class="ar-toast" id="toast" hidden></div>
 
   <script src="data/students-data.js?v=ar259"></script>
-  <script src="js/admitright.js?v=ar467"></script>
+  <script src="js/admitright.js?v=ar478"></script>
 </body>
 </html>
