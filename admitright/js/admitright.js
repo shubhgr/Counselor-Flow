@@ -11748,13 +11748,12 @@
         return '<span class="ar-crit">' + ico(c.icon) + esc(criterionLine(c.id, pref.criteria[c.id])) + '</span>';
       }).join('');
       return (
-        '<article class="panel ar-pp-card">' +
+        '<article class="panel ar-pp-card ar-setup-card">' +
         '<div class="ar-pp-card-head"><h3>' + esc(pref.name) + '</h3>' +
-        (i === 0 ? '<span class="ar-default">Default</span>' : '') + '</div>' +
+        (i === 0 ? '<span class="ar-default">Default</span>' : '') +
+        '<button type="button" class="btn btn-primary btn-sm ar-setup-go" data-setup-pref="' + pref.id + '">Open dashboard' + ico('arrow_forward') + '</button></div>' +
         '<div class="ar-crits">' + chips + '</div>' +
         visitHtml(setupProgram, pref, seen) +
-        '<div class="ar-pp-card-foot">' +
-        '<button type="button" class="btn btn-primary btn-sm ar-setup-go" data-setup-pref="' + pref.id + '">Open dashboard' + ico('arrow_forward') + '</button></div>' +
         '</article>'
       );
     }).join('');

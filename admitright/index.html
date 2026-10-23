@@ -10,7 +10,7 @@
   <title>AdmitRight — University dashboard</title>
   <link rel="stylesheet" href="css/styles.css?v=tok1" />
   <link rel="stylesheet" href="css/tokens.css?v=tok6" />
-  <link rel="stylesheet" href="css/admitright.css?v=ar480" />
+  <link rel="stylesheet" href="css/admitright.css?v=ar493" />
 </head>
 <body class="ar ar-locked">
   <section class="ar-gate ar-gate-split" id="gate-login" hidden>
@@ -92,17 +92,10 @@
 
   <section class="ar-gate ar-gate-wide" id="gate-setup" hidden>
     <div class="ar-setup">
-      <header class="ar-setup-head">
-        <div>
-          <div class="ar-setup-brand">
-            <img class="ar-setup-uni" src="img/udit.png" alt="" />
-            <span data-uni></span>
-          </div>
-          <h1>Choose where to start</h1>
-          <p class="ar-gate-lead">Pick a course, then open the dashboard with one of its preferences.</p>
+      <div class="ar-setup-side">
+        <div class="ar-setup-brand">
+          <img class="ar-setup-uni" src="img/udit.png" alt="University of Design, Innovation & Technology" />
         </div>
-      </header>
-      <div class="ar-pp">
         <aside class="panel ar-pp-programs">
           <div class="panel-head">
             <h2>Courses</h2>
@@ -110,10 +103,10 @@
           </div>
           <div class="ar-pp-list" id="setup-program-list"></div>
         </aside>
-        <section class="ar-pp-main">
-          <div class="ar-pp-cards" id="setup-cards"></div>
-        </section>
       </div>
+      <section class="ar-pp-main">
+        <div class="ar-pp-cards" id="setup-cards"></div>
+      </section>
     </div>
   </section>
 
@@ -757,6 +750,6 @@
   <div class="ar-toast" id="toast" hidden></div>
 
   <script src="data/students-data.js?v=ar259"></script>
-  <script src="js/admitright.js?v=ar478"></script>
+  <script src="js/admitright.js?v=ar492"></script>
 </body>
 </html>
