@@ -2607,19 +2607,20 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin-bottom: var(--space-3);
+  min-width: 0;
+  margin: 0;
 }
 
 .ar-setup-brand span {
-  font-size: var(--text-xl);
-  font-weight: var(--weight-bold);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
   letter-spacing: -0.02em;
-  line-height: 1.15;
+  line-height: 1.25;
   color: var(--ink);
 }
 
 .ar-setup-uni {
-  height: 28px;
+  height: 36px;
   width: auto;
   mix-blend-mode: multiply;
 }
@@ -2683,7 +2684,7 @@
 
 .ar-gate-wide {
   place-items: start center;
-  padding-top: var(--space-12);
+  padding-top: var(--space-8);
 }
 
 .ar-students-visit {
@@ -2823,29 +2824,61 @@
 .ar-setup {
   width: min(1100px, 100%);
   display: grid;
-  gap: var(--space-5);
-}
-
-.ar-setup-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
   gap: var(--space-4);
 }
 
-.ar-setup-head h1 {
-  margin: 0 0 var(--space-2-5);
-  font-size: var(--text-2xl);
-  font-weight: var(--weight-bold);
-  color: var(--ink);
+.ar-setup-card .ar-pp-card-head .ar-setup-go {
+  margin-left: auto;
 }
 
-.ar-setup-head .ar-gate-lead {
-  margin: calc(-1 * var(--space-1-5)) 0 0;
+.ar-setup-card .ar-visit {
+  margin: 0;
 }
 
 .ar-setup .ar-pp-programs {
-  top: 1.5rem;
+  top: auto;
+}
+
+#gate-setup {
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  align-items: stretch;
+  padding-top: var(--space-8);
+  padding-bottom: var(--space-8);
+}
+
+#gate-setup .ar-setup {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+}
+
+#gate-setup .ar-setup-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 0;
+  min-width: 0;
+}
+
+#gate-setup .ar-pp-programs {
+  position: static;
+  margin: 0;
+}
+
+#gate-setup .ar-pp-main {
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: calc(36px + var(--space-4)) var(--space-1) var(--space-8);
+  scroll-padding-top: calc(36px + var(--space-4));
+  scroll-padding-bottom: var(--space-8);
 }
 
 .ar-gate-error {
