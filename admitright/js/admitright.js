@@ -1392,7 +1392,7 @@
     return '<div class="ar-card-scorebox">' + scoreDeltaHtml(s) +
       '<div class="ar-card-meters">' +
       meter('Match', match, scoreClass(s), matchColor) +
-      meter('Events', eng, 'ar-engage', 'var(--brand)') +
+      meter('Engagement', eng, 'ar-engage', 'var(--brand)') +
       '</div></div>';
   }
 
@@ -2608,7 +2608,7 @@
       return;
     }
     var crits = CRITERIA.filter(function (c) { return c.id !== 'board' && pref.criteria[c.id].weight > 0; });
-    var headCols = '<th class="ar-th-student">Student</th><th class="ar-th-match">Match</th><th>Events</th>' + crits.map(function (c) {
+    var headCols = '<th class="ar-th-student">Student</th><th class="ar-th-match">Match</th><th>Engagement</th>' + crits.map(function (c) {
       return '<th title="Percentile among ' + esc(programById(state.program).name) + ' applicants on ' + esc(c.label.toLowerCase()) + '">' +
         esc(c.id === 'activities' ? 'Activities' : c.label) + ' <i class="ar-th-weight">' + pref.criteria[c.id].weight + '</i></th>';
     }).join('') + '<th class="ar-th-save"></th></tr>';
@@ -11670,11 +11670,46 @@
   /* ——— Login and starting preference ——— */
 
   var SESSION_KEY = 'admitright_session';
+  var resetEmail = '';
+
+  function setLoginError(msg) {
+    document.querySelectorAll('.ar-login-error').forEach(function (el) {
+      el.textContent = msg || '';
+      el.hidden = !msg;
+    });
+  }
+
+  function showLoginStep(step) {
+    document.querySelectorAll('[data-login-step]').forEach(function (el) {
+      el.hidden = el.getAttribute('data-login-step') !== step;
+    });
+    setLoginError('');
+  }
+
+  function validEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function sendResetOtp() {
+    var email = $('login-forgot-email').value.trim();
+    if (!validEmail(email)) {
+      setLoginError('Enter a valid email address.');
+      return;
+    }
+    resetEmail = email;
+    $('login-otp').value = '';
+    $('login-new').value = '';
+    $('login-new2').value = '';
+    $('login-otp-to').textContent = email;
+    showLoginStep('otp');
+    toast('OTP sent to ' + email + '.');
+  }
 
   function showGate(id) {
     document.body.classList.add('ar-locked');
     $('gate-login').hidden = id !== 'gate-login';
     $('gate-setup').hidden = id !== 'gate-setup';
+    if (id === 'gate-login') showLoginStep('login');
   }
 
   function unlock() {
@@ -11740,15 +11775,44 @@
   $('login-form').addEventListener('submit', function (e) {
     e.preventDefault();
     var email = $('login-email').value.trim();
-    var pass = $('login-pass').value;
-    var err = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? 'Enter a valid email address.'
-      : !pass ? 'Enter your password.' : '';
-    $('login-error').textContent = err;
-    $('login-error').hidden = !err;
+    var err = validEmail(email) ? '' : 'Enter a valid email address.';
+    setLoginError(err);
     if (err) return;
     try { sessionStorage.setItem(SESSION_KEY, email); } catch (er) { /* blocked */ }
     $('login-pass').value = '';
     afterLogin();
+  });
+
+  $('login-form').addEventListener('click', function (e) {
+    if (e.target.closest('#login-forgot')) {
+      $('login-forgot-email').value = $('login-email').value.trim();
+      showLoginStep('forgot');
+      return;
+    }
+    var back = e.target.closest('[data-login-back]');
+    if (back) {
+      showLoginStep(back.getAttribute('data-login-back'));
+      return;
+    }
+    if (e.target.closest('#login-send-otp') || e.target.closest('#login-resend')) {
+      if (e.target.closest('#login-resend') && resetEmail) $('login-forgot-email').value = resetEmail;
+      sendResetOtp();
+      return;
+    }
+    if (e.target.closest('#login-verify')) {
+      $('login-new').value = '';
+      $('login-new2').value = '';
+      showLoginStep('reset');
+      return;
+    }
+    if (e.target.closest('#login-save')) {
+      try { sessionStorage.setItem(SESSION_KEY, resetEmail); } catch (er) { /* blocked */ }
+      $('login-email').value = resetEmail;
+      $('login-pass').value = '';
+      $('login-new').value = '';
+      $('login-new2').value = '';
+      afterLogin();
+    }
   });
 
   $('gate-setup').addEventListener('click', function (e) {
