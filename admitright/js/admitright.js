@@ -485,10 +485,13 @@
     var eh = hashOf(s.id + ':engage');
     var cr = eh % 100;
     var er = (eh >>> 8) % 100;
-    s.engage = {
-      campaign: cr < 15 ? 0 : cr < 19 ? 1 : cr < 55 ? 2 : cr < 80 ? 3 : 4,
-      event: er < 12 ? 0 : er < 28 ? 1 : er < 70 ? 2 : 3,
-    };
+    /* ~35% have no engagement data yet → Match score alone on the card. */
+    if (er >= 35) {
+      s.engage = {
+        campaign: cr < 15 ? 0 : cr < 19 ? 1 : cr < 55 ? 2 : cr < 80 ? 3 : 4,
+        event: er < 45 ? 0 : er < 60 ? 1 : er < 85 ? 2 : 3,
+      };
+    }
     return s;
   }
 
@@ -620,10 +623,24 @@
         c.class12 = { min: 85, weight: 30 };
         c.budget = { min: 15, max: 30, weight: 15 };
       }),
+      /* Card layout demos: 3 scored % tiles vs 2 inline; engagement presence varies per student. */
+      make('seed-cse-layout-3', 'Layout · Match + 3 scores', function (c) {
+        c.test = { tests: [req('JEE Main', 80), req('CUET UG', 80)], weight: 35 };
+        c.budget = { min: 10, weight: 30 };
+        c.class12 = { min: 75, weight: 35 };
+        c.class10 = { min: 70, weight: 0 };
+      }),
+      make('seed-cse-layout-2', 'Layout · Match + test & fee', function (c) {
+        c.test = { tests: [req('JEE Main', 80), req('CUET UG', 80)], weight: 50 };
+        c.budget = { min: 10, weight: 40 };
+        c.class12 = { min: 70, weight: 0 };
+        c.class10 = { min: 70, weight: 0 };
+        c.academic = { min: 70, weight: 0, saved: 40 };
+      }),
     ];
   }
 
-  var SEEDS_KEY = 'admitright_seeds_v2';
+  var SEEDS_KEY = 'admitright_seeds_v3';
   var RETIRED_SEEDS = ['seed-cse-jan'];
 
   function loadPrefs() {
@@ -1384,16 +1401,17 @@
   function cardScoreBox(s) {
     var eng = engageScore(s);
     var match = s.score;
-    var matchColor = ['var(--success)', 'var(--yellow-600)', 'var(--danger)', 'var(--muted)'][s.bucket];
-    function meter(label, n, cls, color) {
-      if (n === null || n === undefined) return '';
-      return '<div class="ar-meter"><span>' + label + '</span><b class="' + cls + '">' + n + '%</b><i style="--p:' + n + '%;--c:' + color + '"></i></div>';
+    function meter(label, n, cls) {
+      var empty = n === null || n === undefined;
+      return '<div class="ar-meter' + (empty ? ' empty' : '') + '"><span>' + label + '</span>' +
+        '<b class="' + cls + (empty ? ' none' : '') + '">' + (empty ? '—' : n + '%') + '</b></div>';
     }
+    /* No engagement data → Match score alone full-width; 0% still shows the Engagement box. */
+    var meters = meter('Match', match, scoreClass(s));
+    if (eng !== null && eng !== undefined) meters += meter('Engagement', eng, 'ar-engage');
     return '<div class="ar-card-scorebox">' + scoreDeltaHtml(s) +
-      '<div class="ar-card-meters">' +
-      meter('Match', match, scoreClass(s), matchColor) +
-      meter('Engagement', eng, 'ar-engage', 'var(--brand)') +
-      '</div></div>';
+      '<div class="ar-card-meters' + (eng === null || eng === undefined ? ' solo' : '') + '">' +
+      meters + '</div></div>';
   }
 
   function editedHtml(prefId) {
@@ -2258,17 +2276,24 @@
         return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
       };
     }
-    var tiles = on.filter(function (p) { return !isBinary(p.id); }).sort(byOrder(['test', 'budget', 'academic'])).map(function (p) {
+    var scored = on.filter(function (p) { return !isBinary(p.id); }).sort(byOrder(['test', 'budget', 'academic']));
+    var inline = scored.length > 0 && scored.length < 3;
+    var tiles = scored.map(function (p) {
       var rel = p.rel == null ? 0 : p.rel;
       var tone = rel >= 75 ? 'hi' : rel >= 40 ? 'mid' : 'lo';
       var tip = p.tip || p.label + ': ' + p.note + ' · level with or ahead of ' + rel + '% of applicants';
-      return '<div class="ar-stat" title="' + esc(tip) + '"><b class="' + tone + '">' + rel + '%</b><span>' + esc(p.label) + '</span></div>';
+      var pct = '<b class="' + tone + '">' + rel + '%</b>';
+      var name = '<span>' + esc(p.label) + '</span>';
+      return '<div class="ar-stat" title="' + esc(tip) + '">' + (inline ? name + pct : pct + name) + '</div>';
     }).join('');
     var checks = on.filter(function (p) { return isBinary(p.id); }).sort(byOrder(['board', 'stream', 'location', 'preferred', 'activities'])).map(function (p) {
-      var tip = p.label + ': ' + p.note + ' · ' + (partMet(p) ? 'meets' : 'doesn’t meet') + ' the preference';
-      return '<div class="ar-check" title="' + esc(tip) + '">' + yesNoHtml(p, 'ar-check-yn') + '<span>' + esc(p.label) + '</span></div>';
+      var met = partMet(p);
+      var tip = p.label + ': ' + p.note + ' · ' + (met ? 'meets' : 'doesn’t meet') + ' the preference';
+      return '<span class="ar-ynchip ' + (met ? 'yes' : 'no') + '" title="' + esc(tip) + '">' +
+        ico(met ? 'check_circle' : 'cancel') +
+        '<span>' + esc(p.label) + '</span></span>';
     }).join('');
-    return (tiles ? '<div class="ar-card-stats">' + tiles + '</div>' : '') +
+    return (tiles ? '<div class="ar-card-stats' + (inline ? ' inline' : '') + '">' + tiles + '</div>' : '') +
       (checks ? '<div class="ar-card-checks">' + checks + '</div>' : '');
   }
 
@@ -2289,7 +2314,7 @@
       '<div class="ar-card-who"><strong>' + esc(s.name) + '</strong><small>' + esc(s.id) + '</small></div>' +
       cardChatHtml(s.id) + cardSaveHtml(s.id) + cardMoreHtml(s.id) + '</div>' +
       '<div class="ar-card-meta"><span>' + esc(programById(s.program).name) + '</span>' + stagePill(s) + '</div>' +
-      (all ? '<div class="ar-attrs">' + facts + '</div>' : cardStatsHtml(s) + cardScoreBox(s)) +
+      (all ? '<div class="ar-attrs">' + facts + '</div>' : cardScoreBox(s) + cardStatsHtml(s)) +
       '</div>'
     );
   }
