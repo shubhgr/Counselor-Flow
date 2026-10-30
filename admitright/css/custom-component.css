@@ -41,13 +41,13 @@ body {
   box-shadow: 0 0 50px 0 rgba(255, 255, 255, 0.60) inset;
 }
 
-/* Noise overlay — your assets/noise.png (light grain on transparent) */
+/* Noise overlay — assets/noise.png */
 .cc-bg::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  opacity: 0.45;
+  opacity: 0.25;
   mix-blend-mode: overlay;
   background-image: url('../assets/noise.png');
   background-size: 64px 64px;
