@@ -767,46 +767,47 @@ html.icons-ready .settings-back:hover .ico {
   gap: 0.5rem;
 }
 
+/* Profile section navigation, independent of authentication tabs. */
 .profile-view-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.15rem;
-  margin-bottom: 0;
+  gap: 0.25rem;
+  margin: 0;
   min-width: 0;
-  max-width: none;
-  padding: 0.2rem;
-  background: var(--bg);
-  border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  padding: 0;
 }
 
-.profile-view-tabs .auth-tab {
-  padding: 0.4rem 0.7rem;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--muted);
-  white-space: nowrap;
-  text-decoration: none;
-  text-align: center;
+.profile-view-tabs .profile-tab {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  border: 0;
+  border-radius: var(--radius-btn);
   background: transparent;
-  box-shadow: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--btn-font);
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
 }
 
-.profile-view-tabs .auth-tab:hover {
-  color: var(--ink-soft);
-  background: rgba(18, 16, 34, 0.03);
+.profile-view-tabs .profile-tab:hover {
+  color: var(--ink);
+  background: var(--brand-soft);
 }
 
-.profile-view-tabs .auth-tab.active {
+.profile-view-tabs .profile-tab.active {
   background: var(--surface);
   color: var(--ink);
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(18, 16, 34, 0.06);
-  border: 1px solid var(--line-strong);
+}
+
+.profile-view-tabs .profile-tab:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }
 
 .content {
@@ -4127,101 +4128,44 @@ body[data-page='profile'] .content {
   padding-bottom: 1.5rem;
 }
 
-/* Profile */
-body[data-page='profile'] .topbar h1 {
-  font-size: 1.2rem;
-  font-weight: 650;
-  letter-spacing: -0.025em;
-}
-
-body[data-page='profile'] #panel-edit .panel {
-  border: 1px solid var(--line-strong);
-  border-radius: 14px;
-  padding: 1.1rem 1.15rem;
-  box-shadow: none;
-}
-
+/* Profile uses the same surface and control tokens as the workspace. */
 body[data-page='profile'] #panel-edit .panel-head {
-  margin-bottom: 0.35rem;
-}
-
-body[data-page='profile'] #panel-edit .panel-head h2 {
-  font-size: 0.9rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
+  margin-bottom: 0.5rem;
 }
 
 body[data-page='profile'] #panel-edit .panel-lead {
-  margin: 0 0 0.95rem;
-  font-size: 0.78rem;
-  line-height: 1.4;
-}
-
-body[data-page='profile'] #panel-edit .field {
-  margin-bottom: 0.75rem;
-  gap: 0.28rem;
-}
-
-body[data-page='profile'] #panel-edit .field label {
-  font-size: 0.75rem;
-  font-weight: 550;
-  color: var(--muted);
-}
-
-body[data-page='profile'] #panel-edit .field input,
-body[data-page='profile'] #panel-edit .field select,
-body[data-page='profile'] #panel-edit .field textarea {
-  border-radius: 8px;
-  padding: 0.6rem 0.75rem;
-  background: var(--surface);
-  border-color: var(--line-strong);
-  font-size: 0.88rem;
+  margin: 0 0 1rem;
 }
 
 body[data-page='profile'] #panel-edit .field textarea {
-  min-height: 72px;
-}
-
-body[data-page='profile'] #panel-edit .chip {
-  padding: 0.3rem 0.7rem;
-  border-radius: 8px;
-  font-size: 0.76rem;
-  font-weight: 550;
-}
-
-body[data-page='profile'] #panel-edit .chip.selected {
-  background: var(--purple-50);
-  color: var(--brand-pressed);
-  border-color: var(--purple-200);
+  min-height: 80px;
 }
 
 body[data-page='profile'] #panel-edit .intro-video-choice,
 body[data-page='profile'] #panel-edit .media-drop {
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  border-radius: 10px;
+  border: 1px dashed var(--line-strong);
+  background: var(--bg);
+  border-radius: var(--radius-sm);
   padding: 0.8rem 0.9rem;
 }
 
 body[data-page='profile'] #panel-edit .intro-video-choice:hover,
-body[data-page='profile'] #panel-edit .intro-video-choice:focus-visible,
 body[data-page='profile'] #panel-edit .media-drop:hover,
-body[data-page='profile'] #panel-edit .media-drop:focus-visible,
 body[data-page='profile'] #panel-edit .media-drop.is-drag {
-  background: var(--bg);
-  border-color: var(--gray-300);
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+body[data-page='profile'] #panel-edit .intro-video-choice:focus-visible,
+body[data-page='profile'] #panel-edit .media-drop:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
 }
 
 body[data-page='profile'] #panel-edit .media-ico {
-  background: var(--bg);
-  color: var(--ink-soft);
-  border-radius: 8px;
-}
-
-body[data-page='profile'] #panel-edit .intro-video-choice:hover .media-ico,
-body[data-page='profile'] #panel-edit .media-drop:hover .media-ico {
   background: var(--surface);
-  color: var(--ink);
+  color: var(--ink-soft);
+  border-radius: var(--radius-btn);
 }
 
 .profile-hero {
@@ -4230,10 +4174,10 @@ body[data-page='profile'] #panel-edit .media-drop:hover .media-ico {
   justify-content: space-between;
   gap: 1.25rem;
   margin-bottom: 1rem;
-  padding: 1rem 1.15rem;
+  padding: 1.25rem 1.35rem;
   background: var(--surface);
-  border: 1px solid var(--line-strong);
-  border-radius: 14px;
+  border: var(--card-stroke);
+  border-radius: var(--radius-lg);
   box-shadow: none;
 }
 
