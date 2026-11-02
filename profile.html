@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Profile — GradRight Counselor</title>
-  <link rel="stylesheet" href="css/styles.css?v=prof1" />
+  <link rel="stylesheet" href="css/styles.css?v=profile-system2" />
   <link rel="stylesheet" href="css/mobile.css?v=prof1" />
 </head>
 <body data-page="profile" data-verified="false">
@@ -15,12 +15,12 @@
       <header class="topbar">
         <h1>Profile</h1>
         <div class="actions">
-          <div class="auth-tabs profile-view-tabs" role="tablist" aria-label="Profile sections">
-            <button type="button" class="auth-tab active" id="tab-edit" data-profile-tab="edit">Edit profile</button>
-            <button type="button" class="auth-tab" id="tab-services" data-profile-tab="services">Services &amp; fee</button>
-            <button type="button" class="auth-tab" id="tab-testimonials" data-profile-tab="testimonials">Testimonials</button>
-            <a class="auth-tab" id="tab-calendar" href="calendar.html">Calendar</a>
-            <button type="button" class="auth-tab" id="tab-preview" data-profile-tab="preview">Student preview</button>
+          <div class="profile-view-tabs" role="group" aria-label="Profile sections">
+            <button type="button" class="profile-tab active" id="tab-edit" data-profile-tab="edit">Edit profile</button>
+            <button type="button" class="profile-tab" id="tab-services" data-profile-tab="services">Services &amp; fee</button>
+            <button type="button" class="profile-tab" id="tab-testimonials" data-profile-tab="testimonials">Testimonials</button>
+            <a class="profile-tab" id="tab-calendar" href="calendar.html">Calendar</a>
+            <button type="button" class="profile-tab" id="tab-preview" data-profile-tab="preview">Student preview</button>
           </div>
         </div>
       </header>
@@ -63,7 +63,7 @@
             </div>
             <div class="profile-hero-right">
               <div class="progress-meta">
-                <span class="progress-label">Profile</span>
+                <span class="progress-label">Profile completeness</span>
                 <div class="progress-ring" id="progress-ring" title="Profile completion"><span id="progress-pct">65%</span></div>
               </div>
             </div>
@@ -74,7 +74,7 @@
               <div class="profile-edit-col">
                 <section class="panel">
                   <div class="panel-head"><h2>Contact</h2></div>
-                  <p class="panel-lead">How students and GradRight reach you. Mobile stays locked after OTP.</p>
+                  <p class="panel-lead">Your contact details. Your verified mobile number cannot be edited.</p>
                   <div class="field-row">
                     <div class="field">
                       <label for="field-name">Full name</label>
@@ -94,7 +94,7 @@
                       <input id="field-email" name="email" type="email" value="priya.sharma@gmail.com" />
                       <button class="btn-verify-inline" type="button" id="verify-email-btn">Verify</button>
                     </div>
-                    <p class="hint-text" id="email-hint">Not verified · verify from profile anytime</p>
+                    <p class="hint-text" id="email-hint">Verify your email to confirm your contact details.</p>
                   </div>
                   <div class="field">
                     <label for="field-address">Address</label>
@@ -140,7 +140,7 @@
               <div class="profile-edit-col">
                 <section class="panel">
                   <div class="panel-head"><h2>Background</h2></div>
-                  <p class="panel-lead">Shown on your student-facing card after you’re live.</p>
+                  <p class="panel-lead">The experience and expertise students see on your profile.</p>
                   <div class="field">
                     <label>Countries</label>
                     <div class="chip-select" id="countries">
@@ -172,7 +172,7 @@
 
                 <section class="panel">
                   <div class="panel-head"><h2>Documents</h2></div>
-                  <p class="panel-lead">ID, certificate, or agency letter — speeds up admin approval.</p>
+                  <p class="panel-lead">Upload an ID, certificate, or agency letter for account review.</p>
                   <input
                     type="file"
                     id="doc-input"
