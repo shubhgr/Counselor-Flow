@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Profile — GradRight Counselor</title>
-  <link rel="stylesheet" href="css/styles.css?v=notif8" />
-  <link rel="stylesheet" href="css/mobile.css?v=notif8" />
+  <link rel="stylesheet" href="css/styles.css?v=prof1" />
+  <link rel="stylesheet" href="css/mobile.css?v=prof1" />
 </head>
 <body data-page="profile" data-verified="false">
   <div class="app">
@@ -39,8 +39,7 @@
                   aria-label="Upload profile photo"
                 >
                   <span class="photo-circle-empty" id="photo-empty">
-                    <span class="material-symbols-rounded" aria-hidden="true">add_a_photo</span>
-                    <span>Add photo</span>
+                    <span class="material-symbols-rounded" aria-hidden="true">person</span>
                   </span>
                   <img id="photo-preview-img" class="photo-circle-img" alt="Profile photo preview" hidden />
                 </button>
@@ -54,16 +53,19 @@
                 <h2 id="hero-name">Priya Sharma</h2>
                 <p>Higher-education counselor · Mumbai</p>
                 <div class="missing-list" id="missing-list">
-                  <span class="pill warn" data-miss="photo">Missing: photo</span>
-                  <span class="pill warn" data-miss="email">Missing: email verify</span>
-                  <span class="pill" data-miss="docs">2 documents uploaded</span>
-                  <span class="pill" data-miss="video" hidden>Intro video added</span>
-                  <span class="pill">Mobile verified</span>
+                  <span class="pill warn" data-miss="photo">Photo needed</span>
+                  <span class="pill warn" data-miss="email">Email unverified</span>
+                  <span class="pill ok" data-miss="docs">2 documents</span>
+                  <span class="pill ok" data-miss="video" hidden>Intro video</span>
+                  <span class="pill ok">Mobile verified</span>
                 </div>
               </div>
             </div>
             <div class="profile-hero-right">
-              <div class="progress-ring" id="progress-ring" title="Profile completion"><span id="progress-pct">65%</span></div>
+              <div class="progress-meta">
+                <span class="progress-label">Profile</span>
+                <div class="progress-ring" id="progress-ring" title="Profile completion"><span id="progress-pct">65%</span></div>
+              </div>
             </div>
           </div>
 
@@ -1534,33 +1536,40 @@
 
         if (photoUrl) {
           photoPill.classList.remove('warn');
+          photoPill.classList.add('ok');
           photoPill.textContent = 'Photo added';
         } else {
           photoPill.classList.add('warn');
-          photoPill.textContent = 'Missing: photo';
+          photoPill.classList.remove('ok');
+          photoPill.textContent = 'Photo needed';
         }
 
         if (emailVerified) {
           emailPill.classList.remove('warn');
+          emailPill.classList.add('ok');
           emailPill.textContent = 'Email verified';
         } else {
           emailPill.classList.add('warn');
-          emailPill.textContent = 'Missing: email verify';
+          emailPill.classList.remove('ok');
+          emailPill.textContent = 'Email unverified';
         }
 
         if (docs.length) {
           docsPill.classList.remove('warn');
-          docsPill.textContent = docs.length + ' document' + (docs.length === 1 ? '' : 's') + ' uploaded';
+          docsPill.classList.add('ok');
+          docsPill.textContent = docs.length + ' document' + (docs.length === 1 ? '' : 's');
         } else {
           docsPill.classList.add('warn');
-          docsPill.textContent = 'Missing: documents';
+          docsPill.classList.remove('ok');
+          docsPill.textContent = 'Documents needed';
         }
 
         if (videoPill) {
           if (videoUrl) {
             videoPill.hidden = false;
             videoPill.classList.remove('warn');
-            videoPill.textContent = 'Intro video added';
+            videoPill.classList.add('ok');
+            videoPill.textContent = 'Intro video';
           } else {
             videoPill.hidden = true;
           }
