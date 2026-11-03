@@ -7,6 +7,7 @@ export function paintAnalyticsChart({
   grain,
   labels = ['Impressions', 'Connects'],
   sharedScale = false,
+  tooltipRows,
   valueFormatter = (value) => value.toLocaleString('en-IN'),
 }) {
   function pathFrom(points) {
@@ -129,20 +130,20 @@ export function paintAnalyticsChart({
         marker.style.left = (point.x / w) * 100 + '%';
         marker.style.top = (point.y / h) * 100 + '%';
       });
+      const rows = tooltipRows?.(d) || [
+        ['visitors', labels[0], d.visitors],
+        ['connections', labels[1], d.connections],
+      ];
       tip.innerHTML =
         '<strong>' +
         label +
         '</strong>' +
-        '<div><span class="dot visitors"></span>' +
-        labels[0] +
-        '<span>' +
-        valueFormatter(d.visitors) +
-        '</span></div>' +
-        '<div><span class="dot connections"></span>' +
-        labels[1] +
-        '<span>' +
-        valueFormatter(d.connections) +
-        '</span></div>';
+        rows
+          .map(
+            ([color, title, value]) =>
+              `<div><span class="dot ${color}"></span>${title}<span>${valueFormatter(value)}</span></div>`,
+          )
+          .join('');
       const wrap = tip.parentElement.getBoundingClientRect();
       const x = (visPts[i].x / w) * wrap.width;
       const tooltipWidth = tip.getBoundingClientRect().width;

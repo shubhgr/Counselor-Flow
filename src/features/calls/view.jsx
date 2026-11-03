@@ -67,19 +67,23 @@ export const View = memo(function View() {
               <div className={'analytics-stat'}>
                 <span className={'label'}>{'Total meets'}</span>
                 <strong id={'stat-total'}>{'0'}</strong>
+                <span className={'hint trend'} id={'stat-total-trend'} />
               </div>
               <div className={'analytics-stat'}>
                 <span className={'label'}>{'Completed'}</span>
                 <strong id={'stat-done'}>{'0'}</strong>
+                <span className={'hint trend'} id={'stat-done-trend'} />
               </div>
               <div className={'analytics-stat'}>
                 <span className={'label'}>{'Today’s meets'}</span>
                 <strong id={'stat-missed'}>{'0'}</strong>
+                <span className={'hint trend'} id={'stat-missed-trend'} />
               </div>
 
               <div className={'analytics-stat'}>
                 <span className={'label'}>{'Avg. duration'}</span>
                 <strong id={'stat-avg'}>{'—'}</strong>
+                <span className={'hint trend'} id={'stat-avg-trend'} />
               </div>
             </div>
             <div className={'analytics-chart-wrap'}>

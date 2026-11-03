@@ -268,6 +268,9 @@ body {
   width: min(720px, 100vw);
 }
 .notification-drawer {
+  --notification-title-size: 0.875rem;
+  --notification-body-size: 0.8125rem;
+  --notification-meta-size: 0.75rem;
   width: min(440px, 100vw);
   max-width: none;
   height: 100dvh;
@@ -280,17 +283,25 @@ body {
 }
 .notification-header {
   flex-shrink: 0;
-  padding: var(--space-4) var(--space-3) var(--space-5);
+  padding: var(--space-3) var(--space-3) var(--space-4);
 }
 .notification-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
+  gap: var(--space-2);
 }
 .notification-heading h2 {
+  margin: 0;
+  margin-right: auto;
+  line-height: 1.5;
   font-size: 1rem;
   font-weight: 650;
+}
+.notification-mark-read {
+  font-size: var(--notification-meta-size);
+  font-weight: 500;
+  flex-shrink: 0;
 }
 .notification-header > button {
   margin-left: calc(var(--space-3) * -1);
@@ -306,38 +317,17 @@ body {
 .notification-group {
   position: relative;
   isolation: isolate;
-  margin-bottom: var(--space-5);
-}
-.notification-group.is-stacked {
-  margin-bottom: var(--space-9);
-}
-.notification-group.is-stacked::before,
-.notification-group.is-stacked::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--surface) 65%, transparent);
-  border: var(--stroke-1) solid color-mix(in srgb, var(--brand-white) 60%, transparent);
-  pointer-events: none;
-}
-.notification-group.is-stacked::before {
-  transform: translateY(6px) scaleX(0.97);
-}
-.notification-group.is-stacked::after {
-  transform: translateY(12px) scaleX(0.94);
-  z-index: -2;
+  margin-bottom: var(--space-4);
 }
 .notification-group-trigger {
   display: flex;
   align-items: flex-start;
   width: 100%;
-  gap: var(--space-4);
-  padding: var(--space-5);
-  border-radius: var(--radius);
-  border: var(--stroke-1) solid color-mix(in srgb, var(--brand-white) 75%, transparent);
-  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-4);
+  border: var(--stroke-1) solid var(--gray-200);
+  background: var(--surface);
   backdrop-filter: blur(8px);
   text-align: left;
   white-space: normal;
@@ -351,8 +341,8 @@ body {
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: var(--space-8);
+  height: var(--space-8);
   border-radius: var(--radius-2);
   background: var(--purple-50);
   color: var(--brand);
@@ -361,15 +351,18 @@ body {
   display: grid;
   min-width: 0;
   flex: 1;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 .notification-group-title {
+  min-height: var(--space-5);
+  line-height: 1.5;
   display: flex;
   align-items: center;
   gap: var(--space-3);
 }
 .notification-group-title strong {
-  font-size: 0.85rem;
+  line-height: 1.5;
+  font-size: var(--notification-title-size);
   font-weight: 650;
 }
 .notification-group-count {
@@ -379,7 +372,7 @@ body {
   height: 20px;
   border-radius: var(--radius-7);
   background: var(--gray-100);
-  font-size: 0.7rem;
+  font-size: var(--notification-meta-size);
   color: var(--muted);
 }
 .notification-group-preview {
@@ -387,13 +380,14 @@ body {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
-  font-size: 0.78rem;
+  font-size: var(--notification-body-size);
   line-height: 1.5;
   color: var(--ink-soft);
 }
 .notification-group-copy small,
 .notification-item small {
-  font-size: 0.7rem;
+  line-height: 1.5;
+  font-size: var(--notification-meta-size);
   color: var(--muted);
 }
 .notification-group-chevron {
@@ -411,16 +405,25 @@ body {
 .notification-item {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-5);
-  border: var(--stroke-1) solid color-mix(in srgb, var(--brand-white) 70%, transparent);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 0;
+  border-bottom: var(--stroke-1) solid var(--gray-100);
+  border-radius: 0;
+  background: var(--surface);
   color: var(--ink);
 }
+.notification-item:last-child {
+  border-bottom: 0;
+}
 .notification-item:hover {
-  background: color-mix(in srgb, var(--surface) 95%, transparent);
+  background: var(--gray-50);
+}
+.notification-item.is-unread {
+  background: var(--purple-50);
+}
+.notification-item.is-unread:hover {
+  background: var(--purple-100);
 }
 .notification-item:focus-visible,
 .notification-group-trigger:focus-visible {
@@ -431,29 +434,30 @@ body {
   min-width: 0;
 }
 .notification-item strong {
-  font-size: 0.8rem;
+  font-size: var(--notification-title-size);
   font-weight: 600;
 }
 .notification-item p {
-  font-size: 0.78rem;
+  font-size: var(--notification-body-size);
   line-height: 1.5;
-  margin: var(--space-1) 0 var(--space-3);
+  margin: var(--space-1) 0;
   color: var(--ink-soft);
   overflow-wrap: anywhere;
 }
 .notification-unread-dot {
+  align-self: center;
   display: inline-block;
   flex-shrink: 0;
   width: 6px;
   height: 6px;
   border-radius: var(--radius-7);
   background: var(--brand);
-  margin-top: var(--space-1);
+  margin-top: 0;
 }
 .notification-empty {
   padding: var(--space-7);
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--notification-title-size);
   text-align: center;
 }
 @media (prefers-reduced-transparency: reduce) {
@@ -843,14 +847,16 @@ span.app-icon > svg {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: var(--space-3) 0;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--stroke-1) solid var(--gray-200);
 }
 .notification-expanded-heading h3 {
   display: inline-flex;
   align-items: center;
   gap: var(--space-3);
-  font-size: 0.9rem;
-  font-weight: 650;
+  margin: 0;
+  font-size: var(--notification-title-size);
+  font-weight: 600;
 }
 .notification-expanded-heading h3 > svg {
   color: var(--brand);
@@ -858,16 +864,33 @@ span.app-icon > svg {
 .notification-show-less {
   color: var(--muted);
 }
+.notification-group.is-expanded {
+  border: var(--stroke-1) solid var(--gray-200);
+  border-radius: var(--radius-4);
+  background: var(--surface);
+  overflow: hidden;
+}
 .notification-group.is-expanded .notification-group-items {
-  margin-top: var(--space-3);
-  gap: var(--space-4);
+  margin-top: 0;
+  gap: 0;
+}
+.notification-show-less {
+  font-size: var(--notification-meta-size);
+}
+.notification-item strong {
+  display: block;
+  line-height: 1.5;
+}
+.notification-item .notification-unread-dot {
+  align-self: flex-start;
+  margin-top: var(--space-2);
 }
 .notification-item > div {
   flex: 1;
 }
 .notification-group-trigger,
 .notification-item {
-  box-shadow: var(--card-shadow);
+  box-shadow: none;
 }
 
 /* shadcn owns sidebar state, width transitions, tooltips and keyboard toggle. */
@@ -1539,7 +1562,8 @@ body:is(
     [data-page='dashboard'],
     [data-page='students'],
     [data-page='calls'],
-    [data-page='transactions']
+    [data-page='transactions'],
+    [data-page='reviews']
   )
   .analytics-chart-wrap {
   height: 230px;
@@ -1549,7 +1573,8 @@ body:is(
     [data-page='dashboard'],
     [data-page='students'],
     [data-page='calls'],
-    [data-page='transactions']
+    [data-page='transactions'],
+    [data-page='reviews']
   )
   .analytics-chart {
   height: 100%;
@@ -1558,11 +1583,12 @@ body:is(
     [data-page='dashboard'],
     [data-page='students'],
     [data-page='calls'],
-    [data-page='transactions']
+    [data-page='transactions'],
+    [data-page='reviews']
   )
   .analytics-path.visitors {
   stroke: var(--blue-300);
-  stroke-width: 1.2;
+  stroke-width: var(--stroke-2);
   fill: none;
   stroke-dasharray: none;
 }
@@ -1570,11 +1596,12 @@ body:is(
     [data-page='dashboard'],
     [data-page='students'],
     [data-page='calls'],
-    [data-page='transactions']
+    [data-page='transactions'],
+    [data-page='reviews']
   )
   .analytics-path.connections {
   stroke: var(--blue-500);
-  stroke-width: 1.2;
+  stroke-width: var(--stroke-2);
   fill: none;
   stroke-dasharray: none;
 }
@@ -1600,7 +1627,7 @@ body:is(
 .source-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3) var(--space-5);
+  gap: var(--space-3);
   font-size: 0.75rem;
   line-height: 1.5;
 }
@@ -1714,7 +1741,7 @@ body[data-page='dashboard'] .source-donut {
   max-width: 300px;
 }
 body[data-page='dashboard'] .source-legend {
-  gap: var(--space-4) var(--space-5);
+  gap: var(--space-3);
   padding-top: var(--space-3);
   font-family: var(--font);
 }
@@ -1722,7 +1749,8 @@ body:is(
     [data-page='dashboard'],
     [data-page='students'],
     [data-page='calls'],
-    [data-page='transactions']
+    [data-page='transactions'],
+    [data-page='reviews']
   )
   .analytics-stats {
   margin-bottom: 0;
@@ -1731,7 +1759,8 @@ body:is(
     [data-page='dashboard'],
     [data-page='students'],
     [data-page='calls'],
-    [data-page='transactions']
+    [data-page='transactions'],
+    [data-page='reviews']
   )
   .analytics-chart-wrap {
   height: 200px;
@@ -1747,7 +1776,8 @@ body:is(
     [data-page='dashboard'],
     [data-page='students'],
     [data-page='calls'],
-    [data-page='transactions']
+    [data-page='transactions'],
+    [data-page='reviews']
   )
   .analytics-tip {
   min-width: 200px;
@@ -1764,7 +1794,8 @@ body:is(
     [data-page='dashboard'],
     [data-page='students'],
     [data-page='calls'],
-    [data-page='transactions']
+    [data-page='transactions'],
+    [data-page='reviews']
   )
   .analytics-tip
   strong {
@@ -1776,7 +1807,8 @@ body:is(
     [data-page='dashboard'],
     [data-page='students'],
     [data-page='calls'],
-    [data-page='transactions']
+    [data-page='transactions'],
+    [data-page='reviews']
   )
   .analytics-tip
   div {
@@ -1788,7 +1820,8 @@ body:is(
     [data-page='dashboard'],
     [data-page='students'],
     [data-page='calls'],
-    [data-page='transactions']
+    [data-page='transactions'],
+    [data-page='reviews']
   )
   .analytics-tip
   .dot {
@@ -1801,7 +1834,8 @@ body:is(
     [data-page='dashboard'],
     [data-page='students'],
     [data-page='calls'],
-    [data-page='transactions']
+    [data-page='transactions'],
+    [data-page='reviews']
   )
   .analytics-tip
   .dot.visitors {
@@ -1811,7 +1845,8 @@ body:is(
     [data-page='dashboard'],
     [data-page='students'],
     [data-page='calls'],
-    [data-page='transactions']
+    [data-page='transactions'],
+    [data-page='reviews']
   )
   .analytics-tip
   .dot.connections {
@@ -1839,9 +1874,11 @@ body:is(
     [data-page='dashboard'],
     [data-page='students'],
     [data-page='calls'],
-    [data-page='transactions']
+    [data-page='transactions'],
+    [data-page='reviews']
   )
   .analytics-path {
+  vector-effect: non-scaling-stroke;
   pointer-events: none;
 }
 .source-donut {
@@ -2072,6 +2109,13 @@ body[data-page='transactions'] .analytics-chart-wrap {
   display: block;
   width: 100%;
   padding-bottom: var(--space-2);
+}
+.available-earnings #stat-available::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  transform: translateX(-25%);
   background: radial-gradient(
     ellipse at 50% 100%,
     color-mix(in srgb, var(--yellow-300) 35%, transparent),
@@ -2085,6 +2129,7 @@ body[data-page='transactions'] .analytics-chart-wrap {
   left: 0;
   right: 0;
   height: var(--stroke-1);
+  transform: translateX(-25%);
   background: linear-gradient(to right, transparent, var(--yellow-300), transparent);
 }
 body[data-page='transactions'] .bank-panel {
@@ -2165,7 +2210,8 @@ body:is(
     [data-page='dashboard'],
     [data-page='calls'],
     [data-page='students'],
-    [data-page='transactions']
+    [data-page='transactions'],
+    [data-page='reviews']
   )
   .panel
   > :is(.dash-agenda-track, .dash-connect-list, .people-table-track, .txn-table-track, #bank-list) {
@@ -2232,7 +2278,8 @@ body[data-page='dashboard'] .source-donut {
       [data-page='dashboard'],
       [data-page='students'],
       [data-page='calls'],
-      [data-page='transactions']
+      [data-page='transactions'],
+      [data-page='reviews']
     )
     .analytics-panel {
     display: grid;
@@ -2248,7 +2295,8 @@ body[data-page='dashboard'] .source-donut {
       [data-page='dashboard'],
       [data-page='students'],
       [data-page='calls'],
-      [data-page='transactions']
+      [data-page='transactions'],
+      [data-page='reviews']
     )
     .analytics-stats {
     margin: 0;
@@ -2259,7 +2307,8 @@ body[data-page='dashboard'] .source-donut {
       [data-page='dashboard'],
       [data-page='students'],
       [data-page='calls'],
-      [data-page='transactions']
+      [data-page='transactions'],
+      [data-page='reviews']
     )
     .analytics-stat
     .label {
@@ -2271,7 +2320,8 @@ body[data-page='dashboard'] .source-donut {
       [data-page='dashboard'],
       [data-page='students'],
       [data-page='calls'],
-      [data-page='transactions']
+      [data-page='transactions'],
+      [data-page='reviews']
     )
     .analytics-stat
     strong {
@@ -2283,7 +2333,8 @@ body[data-page='dashboard'] .source-donut {
       [data-page='dashboard'],
       [data-page='students'],
       [data-page='calls'],
-      [data-page='transactions']
+      [data-page='transactions'],
+      [data-page='reviews']
     )
     .analytics-stat
     .hint {
@@ -2294,7 +2345,8 @@ body[data-page='dashboard'] .source-donut {
       [data-page='dashboard'],
       [data-page='students'],
       [data-page='calls'],
-      [data-page='transactions']
+      [data-page='transactions'],
+      [data-page='reviews']
     )
     .analytics-chart-wrap {
     height: 100%;
@@ -2305,7 +2357,8 @@ body[data-page='dashboard'] .source-donut {
       [data-page='dashboard'],
       [data-page='students'],
       [data-page='calls'],
-      [data-page='transactions']
+      [data-page='transactions'],
+      [data-page='reviews']
     )
     .analytics-chart {
     height: 100%;
@@ -2319,5 +2372,44 @@ body[data-page='dashboard'] .source-donut {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
+  }
+}
+
+body[data-page='reviews'] .panel {
+  padding: var(--space-6);
+  border-radius: var(--radius-5);
+  gap: var(--space-3);
+}
+body[data-page='reviews'] .rev-split {
+  gap: var(--space-6);
+}
+body[data-page='reviews'] .rev-list {
+  margin-right: calc(var(--space-6) * -1);
+  padding-right: var(--space-6);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+body[data-page='reviews'] .rev-badge {
+  background: var(--gray-50);
+  border-radius: var(--radius-4);
+}
+
+body[data-page='transactions'] .txn-panel {
+  overflow: visible;
+}
+.txn-table-actions {
+  margin-left: auto;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .txn-table-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+  body[data-page='transactions'] .txn-table-actions .people-search {
+    flex: 1;
+    width: auto;
+    min-width: 0;
   }
 }

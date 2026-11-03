@@ -1,3 +1,4 @@
+import { paintAnalyticsChart } from '@/lib/charts/analytics';
 // Route-scoped workflow: subscriptions, timers and generated overlays are
 // owned by createRouteScope and disposed when Next navigation leaves this screen.
 export function initialize(scope) {
@@ -380,124 +381,28 @@ export function initialize(scope) {
       };
     }
 
-    function pathFrom(points) {
-      return points
-        .map(function (p, i) {
-          return (i ? 'L' : 'M') + p.x.toFixed(1) + ' ' + p.y.toFixed(1);
-        })
-        .join(' ');
-    }
-
     function renderChart(series, grain) {
-      const svg = document.getElementById('analytics-chart');
-      const tip = document.getElementById('analytics-tip');
-      if (!svg || !tip) return;
-      const w = 760;
-      const h = 180;
-      const pad = { l: 8, r: 8, t: 16, b: 8 };
-      const innerW = w - pad.l - pad.r;
-      const innerH = h - pad.t - pad.b;
-      const maxRev = Math.max(
-        1,
-        series.reduce(function (n, d) {
-          return Math.max(n, d.reviews);
-        }, 0),
-      );
-      const maxFive = Math.max(
-        1,
-        series.reduce(function (n, d) {
-          return Math.max(n, d.s5);
-        }, 0),
-      );
-
-      function xy(i, value, max) {
-        const x =
-          series.length === 1 ? pad.l + innerW / 2 : pad.l + (i / (series.length - 1)) * innerW;
-        const y = pad.t + innerH - (value / max) * innerH;
-        return { x: x, y: y };
-      }
-
-      const visPts = series.map(function (d, i) {
-        return xy(i, d.reviews, maxRev);
+      paintAnalyticsChart({
+        document,
+        TODAY,
+        formatWhen,
+        formatShort,
+        grain,
+        series: series.map((point) => ({
+          ...point,
+          visitors: point.reviews,
+          connections: point.s5,
+        })),
+        labels: ['Reviews', '5 star'],
+        tooltipRows: (point) => [
+          ['visitors', 'Reviews', point.reviews],
+          ...[5, 4, 3, 2, 1].map((rating) => [
+            'connections',
+            `${rating} star`,
+            point[`s${rating}`],
+          ]),
+        ],
       });
-      const fivePts = series.map(function (d, i) {
-        return xy(i, d.s5, maxFive);
-      });
-
-      let html = '';
-      visPts.forEach(function (p, i) {
-        html +=
-          '<rect class="analytics-hit" data-i="' +
-          i +
-          '" x="' +
-          (p.x - innerW / series.length / 2).toFixed(1) +
-          '" y="0" width="' +
-          Math.max(12, innerW / series.length).toFixed(1) +
-          '" height="' +
-          h +
-          '"></rect>';
-      });
-      html +=
-        '<path class="analytics-path visitors" d="' +
-        pathFrom(visPts) +
-        '"></path>' +
-        '<path class="analytics-path connections" d="' +
-        pathFrom(fivePts) +
-        '"></path>';
-      if (grain === 'hour') {
-        visPts.forEach(function (p, i) {
-          if (!series[i].reviews) return;
-          html +=
-            '<circle class="analytics-dot" cx="' +
-            p.x.toFixed(1) +
-            '" cy="' +
-            p.y.toFixed(1) +
-            '" r="2.4"></circle>';
-        });
-      }
-      svg.innerHTML = html;
-
-      function showTip(i, evt) {
-        const d = series[i];
-        if (!d) return;
-        const label = grain === 'hour' ? formatWhen(d.date, TODAY) : formatShort(d.date);
-        tip.hidden = false;
-        tip.innerHTML =
-          '<strong>' +
-          label +
-          '</strong>' +
-          '<div><span class="dot visitors"></span>Reviews<span>' +
-          d.reviews +
-          '</span></div>' +
-          '<div><span class="dot connections"></span>5 star<span>' +
-          d.s5 +
-          '</span></div>' +
-          '<div><span class="dot connections"></span>4 star<span>' +
-          d.s4 +
-          '</span></div>' +
-          '<div><span class="dot connections"></span>3 star<span>' +
-          d.s3 +
-          '</span></div>' +
-          '<div><span class="dot connections"></span>2 star<span>' +
-          d.s2 +
-          '</span></div>' +
-          '<div><span class="dot connections"></span>1 star<span>' +
-          d.s1 +
-          '</span></div>';
-        const wrap = tip.parentElement.getBoundingClientRect();
-        const x = evt.clientX - wrap.left;
-        tip.style.left = Math.min(wrap.width - 180, Math.max(8, x - 80)) + 'px';
-        tip.style.top = '12px';
-      }
-
-      svg.onmousemove = function (e) {
-        const hit = e.target.closest('[data-i]');
-        if (!hit) return;
-        showTip(Number(hit.getAttribute('data-i')), e);
-      };
-      svg.onmouseleave = function () {
-        tip.hidden = true;
-      };
     }
 
     function starsHtml(n) {
