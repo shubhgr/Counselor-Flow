@@ -4,6 +4,7 @@ import { Icon } from '@/components/icon';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ScrollPanel } from '@/components/ui/scroll-panel';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -62,83 +63,104 @@ export const View = memo(function View() {
               {'Check status'}
             </Link>
           </div>
-          <Card className={'panel analytics-panel'}>
-            <div className={'analytics-stats is-4'}>
-              <div className={'analytics-stat'}>
-                <span className={'label'}>{'Total meets'}</span>
-                <strong id={'stat-total'}>{'0'}</strong>
-                <span className={'hint trend'} id={'stat-total-trend'} />
-              </div>
-              <div className={'analytics-stat'}>
-                <span className={'label'}>{'Completed'}</span>
-                <strong id={'stat-done'}>{'0'}</strong>
-                <span className={'hint trend'} id={'stat-done-trend'} />
-              </div>
-              <div className={'analytics-stat'}>
-                <span className={'label'}>{'Today’s meets'}</span>
-                <strong id={'stat-missed'}>{'0'}</strong>
-                <span className={'hint trend'} id={'stat-missed-trend'} />
-              </div>
+          <div className="calls-top">
+            <Card className={'panel analytics-panel'}>
+              <div className={'analytics-stats is-4'}>
+                <div className={'analytics-stat'}>
+                  <span className={'label'}>{'Total meets'}</span>
+                  <strong id={'stat-total'}>{'0'}</strong>
+                  <span className={'hint trend'} id={'stat-total-trend'} />
+                </div>
+                <div className={'analytics-stat'}>
+                  <span className={'label'}>{'Completed'}</span>
+                  <strong id={'stat-done'}>{'0'}</strong>
+                  <span className={'hint trend'} id={'stat-done-trend'} />
+                </div>
+                <div className={'analytics-stat'}>
+                  <span className={'label'}>{'Today’s meets'}</span>
+                  <strong id={'stat-missed'}>{'0'}</strong>
+                  <span className={'hint trend'} id={'stat-missed-trend'} />
+                </div>
 
-              <div className={'analytics-stat'}>
-                <span className={'label'}>{'Avg. duration'}</span>
-                <strong id={'stat-avg'}>{'—'}</strong>
-                <span className={'hint trend'} id={'stat-avg-trend'} />
+                <div className={'analytics-stat'}>
+                  <span className={'label'}>{'Avg. duration'}</span>
+                  <strong id={'stat-avg'}>{'—'}</strong>
+                  <span className={'hint trend'} id={'stat-avg-trend'} />
+                </div>
               </div>
-            </div>
-            <div className={'analytics-chart-wrap'}>
-              <svg
-                className={'analytics-chart'}
-                id={'analytics-chart'}
-                viewBox={'0 0 760 180'}
-                preserveAspectRatio={'none'}
-              />
-              <span
-                id="dashboard-hover-visitors"
-                className="dashboard-hover-point visitors"
-                hidden
-              />
-              <span
-                id="dashboard-hover-connections"
-                className="dashboard-hover-point connections"
-                hidden
-              />
-              <div id="dashboard-chart-axis" className="dashboard-chart-axis" aria-hidden="true" />
-              <div
-                className="analytics-tip"
-                id="analytics-tip"
-                style={{ backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
-                hidden
-              />
-            </div>
-          </Card>
-          <div className={'calls-stack'}>
-            <Card className={'panel calls-ongoing-panel'}>
-              <div className={'panel-head'}>
-                <h2>{'Ongoing'}</h2>
-                <span className={'pill live'} id={'ongoing-pill'}>
-                  {'Live'}
-                </span>
+              <div className={'analytics-chart-wrap'}>
+                <svg
+                  className={'analytics-chart'}
+                  id={'analytics-chart'}
+                  viewBox={'0 0 760 180'}
+                  preserveAspectRatio={'none'}
+                />
+                <span
+                  id="dashboard-hover-visitors"
+                  className="dashboard-hover-point visitors"
+                  hidden
+                />
+                <span
+                  id="dashboard-hover-connections"
+                  className="dashboard-hover-point connections"
+                  hidden
+                />
+                <div
+                  id="dashboard-chart-axis"
+                  className="dashboard-chart-axis"
+                  aria-hidden="true"
+                />
+                <div
+                  className="analytics-tip"
+                  id="analytics-tip"
+                  style={{ backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
+                  hidden
+                />
               </div>
-              <div id={'ongoing-mount'} />
             </Card>
-            <div className={'calls-split'}>
-              <Card className={'panel calls-col-panel'}>
-                <div className={'panel-head'}>
-                  <h2>{'Upcoming'}</h2>
-                  <span className={'calls-count'} id={'upcoming-count'} />
-                </div>
-                <div id={'upcoming-mount'} className={'dash-agenda-track gr-scroll'} />
+            <div className="calls-live-column">
+              <Card className={'panel calls-ongoing-panel p-0'}>
+                <ScrollPanel
+                  head={
+                    <>
+                      <h2>{'Ongoing'}</h2>
+                      <span className={'pill live'} id={'ongoing-pill'}>
+                        {'Live'}
+                      </span>
+                    </>
+                  }
+                >
+                  <div id={'ongoing-mount'} />
+                </ScrollPanel>
               </Card>
-              <Card className={'panel calls-col-panel'}>
-                <div className={'panel-head'}>
-                  <h2>{'History'}</h2>
-                  <span className={'calls-count'} id={'recent-count'} />
-                </div>
-                <div id={'recent-mount'} className={'dash-agenda-track gr-scroll'} />
+              <Card className={'panel calls-col-panel p-0'}>
+                <ScrollPanel
+                  className={'dash-agenda-track'}
+                  head={
+                    <>
+                      <h2>{'Upcoming'}</h2>
+                      <span className={'calls-count'} id={'upcoming-count'} />
+                    </>
+                  }
+                >
+                  <div id={'upcoming-mount'} />
+                </ScrollPanel>
               </Card>
             </div>
           </div>
+          <Card className={'panel calls-col-panel p-0'}>
+            <ScrollPanel
+              className={'dash-agenda-track'}
+              head={
+                <>
+                  <h2>{'History'}</h2>
+                  <span className={'calls-count'} id={'recent-count'} />
+                </>
+              }
+            >
+              <div id={'recent-mount'} />
+            </ScrollPanel>
+          </Card>
         </div>
         <aside
           className={'community-profile-panel'}

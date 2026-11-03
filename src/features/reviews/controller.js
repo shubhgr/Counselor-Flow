@@ -95,7 +95,7 @@ export function initialize(scope) {
       },
       {
         service: 'College shortlisting',
-        text: 'Clear shortlist logic for USA CS. Explained reach vs match in a way my parents understood too.',
+        text: 'Clear shortlist logic for USA CS. Explained reach vs match in a way my parents understood too. We reviewed course fit, overall costs, and the strength of my projects before narrowing down the options. I left with a realistic list and a clear order for working on my applications.',
       },
       {
         service: 'Pathway consult',
@@ -107,7 +107,7 @@ export function initialize(scope) {
       },
       {
         service: 'Essay workshop',
-        text: 'Cut the generic opening and the essay finally sounded like me. Sending draft 2 this week.',
+        text: 'Cut the generic opening and the essay finally sounded like me. We worked through the structure paragraph by paragraph and picked examples that show what I actually contributed. The feedback gave me a clear revision plan rather than just edits to accept. Sending draft 2 this week.',
       },
       {
         service: 'LOR review',
@@ -139,7 +139,7 @@ export function initialize(scope) {
       },
       {
         service: 'Profile review',
-        text: 'GPA and GRE sat in context. Two safer matches were added and one reach got a stronger SOP angle.',
+        text: 'GPA and GRE sat in context. Two safer matches were added and one reach got a stronger SOP angle. Priya helped me connect my research experience to the courses I want to study, with specific examples to include. I now know which parts of my profile to strengthen before the next deadline.',
       },
       {
         service: 'Interview prep',
@@ -191,8 +191,14 @@ export function initialize(scope) {
       { icon: 'public', label: 'USA expert', locked: false },
       { icon: 'bolt', label: 'Fast reply', locked: false },
       { icon: 'military_tech', label: '100+ sessions', locked: false },
+      { icon: 'school', label: 'Admit guide', locked: false },
+      { icon: 'chat', label: 'Chat pro', locked: false },
       { icon: 'flag', label: 'UK specialist', locked: true },
       { icon: 'star', label: '5.0 streak', locked: true },
+      { icon: 'flight', label: 'Visa coach', locked: true },
+      { icon: 'edit_note', label: 'SOP editor', locked: true },
+      { icon: 'groups', label: 'Parent favourite', locked: true },
+      { icon: 'verified', label: 'Verified counselor', locked: true },
     ];
 
     const MONTHS = [

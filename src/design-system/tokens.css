@@ -169,6 +169,11 @@
   --analytics-card-padding: var(--space-6);
   --analytics-metrics-height: 80px;
   --analytics-chart-gap: var(--space-5);
+  --scroll-head-height: 36px;
+  --scroll-head-gap: var(--space-4);
+  --scroll-head-title-size: 0.875rem;
+  --scroll-head-title-weight: 650;
+  --scroll-head-meta-size: 0.8125rem;
   --sidebar-logo-width: var(--space-13);
   --sidebar-logo-symbol-width: var(--space-7);
   --font: 'Inter Variable', 'Inter', sans-serif;

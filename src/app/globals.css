@@ -253,6 +253,156 @@ body {
   pointer-events: none;
   user-select: none;
 }
+.progressive-blur-edge {
+  inset: auto 0 auto 0;
+  height: var(--progressive-blur-height, 36px);
+  z-index: 3;
+}
+.progressive-blur-edge[data-position='top'] {
+  top: 0;
+}
+.progressive-blur-edge[data-position='bottom'] {
+  bottom: 0;
+}
+
+/* Edge-to-edge scroll cards: card has no padding so overflow clips at the
+   rounded edge. Padding lives on the head label + body rows instead. */
+.scroll-panel {
+  --scroll-panel-inline: var(--space-6);
+  --scroll-panel-block: var(--space-6);
+  --scroll-panel-pad: calc(var(--scroll-panel-block) + var(--scroll-head-height));
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.scroll-panel.has-toolbar {
+  --scroll-panel-pad: calc(var(--scroll-panel-block) + var(--btn-h) + var(--space-2));
+}
+.scroll-panel-viewport {
+  position: relative;
+  z-index: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+}
+.scroll-panel-head {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-end;
+  height: var(--scroll-panel-pad);
+  min-height: var(--scroll-panel-pad);
+  margin: 0;
+  padding: var(--scroll-panel-block) 0 0;
+  background: transparent;
+  pointer-events: none;
+}
+.scroll-panel-head.is-toolbar {
+  height: auto;
+  min-height: var(--scroll-panel-pad);
+  padding-block: var(--scroll-panel-block) var(--space-1);
+}
+.scroll-panel-head-blur.progressive-blur {
+  inset: 0;
+  height: 100% !important;
+  top: 0 !important;
+  bottom: auto !important;
+  z-index: 0;
+}
+.scroll-panel-head-content.panel-head {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--scroll-head-height);
+  min-height: var(--scroll-head-height);
+  margin: 0;
+  padding: 0 var(--scroll-panel-inline);
+  background: transparent;
+  pointer-events: none;
+}
+.scroll-panel-head.is-toolbar .scroll-panel-head-content.panel-head {
+  height: auto;
+  min-height: var(--scroll-head-height);
+}
+.scroll-panel-head-content a,
+.scroll-panel-head-content button,
+.scroll-panel-head-content input,
+.scroll-panel-head-content label,
+.scroll-panel-head-content .filter-menu-wrap,
+.scroll-panel-head-content .bank-head-actions,
+.scroll-panel-head-content .review-list-actions,
+.scroll-panel-head-content .txn-table-actions,
+.scroll-panel-head-content [data-slot='switch'] {
+  pointer-events: auto;
+}
+.scroll-panel-body {
+  position: relative;
+  z-index: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: var(--scroll-panel-pad) var(--scroll-panel-inline) var(--scroll-panel-block);
+}
+/* Full-bleed rows: dividers/hit areas reach the card edge; text stays padded */
+.scroll-panel-body :is(.dash-slot, .dash-connect, .rev-card) {
+  margin-inline: calc(var(--scroll-panel-inline) * -1);
+  padding-inline: var(--scroll-panel-inline);
+}
+.scroll-panel-footer {
+  flex-shrink: 0;
+  margin: 0;
+  padding: var(--space-3) var(--scroll-panel-inline) var(--scroll-panel-block);
+}
+
+/* Table sticky column head shares the same blur band */
+.scroll-sticky-blur-band {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: var(--scroll-head-height);
+  margin-bottom: calc(var(--scroll-head-height) * -1);
+  pointer-events: none;
+}
+.scroll-sticky-blur-band .scroll-panel-head-blur.progressive-blur {
+  inset: 0;
+  height: 100% !important;
+  top: 0 !important;
+  bottom: auto !important;
+  z-index: 0;
+}
+body[data-page='students'] .people-table thead th,
+.txn-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: transparent;
+}
+
+.scroll-fade-surface {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.scroll-fade-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: inherit;
+  scrollbar-width: thin;
+}
 .notification-blur-overlay {
   background: transparent;
 }
@@ -1558,6 +1708,9 @@ body[data-page='dashboard'] .panel {
   padding: var(--space-6);
   box-shadow: none;
 }
+body[data-page='dashboard'] .panel:is(.dash-calls-panel, .dash-connects-panel, .source-panel) {
+  padding: 0;
+}
 body:is(
     [data-page='dashboard'],
     [data-page='students'],
@@ -1614,9 +1767,10 @@ body:is(
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  font-size: 0.75rem;
-  color: var(--gray-600);
-  font-weight: 400;
+  font-size: var(--scroll-head-meta-size);
+  color: var(--muted);
+  font-weight: 550;
+  line-height: 1.25;
 }
 .source-donut {
   width: 100%;
@@ -1672,12 +1826,12 @@ body[data-page='dashboard'] .dash-agenda-track,
 body[data-page='dashboard'] .dash-connect-list {
   height: 560px;
   max-height: 560px;
-  overflow-y: auto;
-  scrollbar-width: thin;
 }
 body[data-page='dashboard'] .panel-head > a {
-  color: var(--gray-900);
-  font-size: 0.875rem;
+  color: var(--muted);
+  font-size: var(--scroll-head-meta-size);
+  font-weight: 550;
+  line-height: 1.25;
 }
 body[data-page='dashboard'] .analytics-star {
   fill: var(--orange-600);
@@ -1736,10 +1890,6 @@ body[data-page='dashboard'] .source-breakdown:has(.source-data-table) {
   padding-right: var(--space-6);
   scrollbar-gutter: stable;
 }
-body[data-page='dashboard'] .source-donut {
-  height: 260px;
-  max-width: 300px;
-}
 body[data-page='dashboard'] .source-legend {
   gap: var(--space-3);
   padding-top: var(--space-3);
@@ -1766,11 +1916,8 @@ body:is(
   height: 200px;
   margin-top: var(--space-5);
 }
-body[data-page='dashboard'] .source-donut {
-  height: 220px;
-}
 body[data-page='dashboard'] .source-breakdown:has(.source-data-table) {
-  max-height: 240px;
+  max-height: none;
 }
 body:is(
     [data-page='dashboard'],
@@ -1939,14 +2086,17 @@ body:is(
 }
 body[data-page='dashboard'] .source-panel {
   min-height: 0;
-  height: 100%;
 }
 body[data-page='dashboard'] .source-breakdown:has(.source-data-table) {
   flex: 1 1 auto;
   min-height: 0;
   max-height: none;
   overflow-y: auto;
+  padding-top: 0;
   padding-bottom: var(--space-4);
+}
+body[data-page='dashboard'] .source-breakdown .source-data-table tr:first-child td {
+  padding-top: var(--space-1);
 }
 
 body[data-page='students'] .analytics-panel {
@@ -1962,18 +2112,42 @@ body[data-page='students'] .analytics-chart-wrap {
 }
 body[data-page='students'] .people-panel {
   border-radius: var(--radius-5);
-  padding: var(--space-6);
+  padding: 0;
   overflow: hidden;
+  gap: 0;
+  display: flex;
+  flex-direction: column;
+}
+body[data-page='students'] .people-table-track .scroll-sticky-blur-band {
+  height: calc(var(--space-6) + var(--scroll-head-height));
+  margin-bottom: calc((var(--space-6) + var(--scroll-head-height)) * -1);
 }
 body[data-page='students'] .people-table th {
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 550;
   color: var(--gray-500);
-  padding-block: var(--space-4);
+  height: calc(var(--space-6) + var(--scroll-head-height));
+  min-height: calc(var(--space-6) + var(--scroll-head-height));
+  padding-top: var(--space-6);
+  padding-bottom: 0;
+  padding-inline: var(--space-6);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  line-height: 1.25;
+  vertical-align: bottom;
 }
 body[data-page='students'] .people-table td {
   padding-block: var(--space-5);
+  padding-inline: var(--space-6);
   font-size: 0.8125rem;
+}
+body[data-page='students'] .people-table th:last-child,
+body[data-page='students'] .people-table td:last-child {
+  padding-right: var(--space-6);
+}
+body[data-page='students'] .people-empty,
+body[data-page='students'] .people-fetch {
+  padding-inline: var(--space-6);
 }
 body[data-page='students'] .role-badge {
   border: 0;
@@ -1995,31 +2169,56 @@ body[data-page='calls'] #join-next[hidden] {
 body[data-page='calls'] .panel {
   border-radius: var(--radius-5);
   padding: var(--space-6);
-  gap: var(--space-3);
+  gap: 0;
+}
+body[data-page='calls'] .panel:is(.calls-col-panel, .calls-ongoing-panel) {
+  padding: 0;
+}
+body[data-page='calls'] .calls-live-column .scroll-panel {
+  --scroll-panel-inline: var(--space-5);
+  --scroll-panel-block: var(--space-5);
 }
 body[data-page='calls'] .analytics-stats.is-4 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
-body[data-page='calls'] .calls-stack {
+body[data-page='calls'] .calls-top {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto minmax(280px, 1fr);
-  gap: var(--space-6);
+  grid-template-columns: minmax(0, 1.9fr) minmax(300px, 1fr);
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+  flex-shrink: 0;
 }
-body[data-page='calls'] .calls-split {
-  display: contents;
+body[data-page='calls'] .calls-top .analytics-panel {
+  margin: 0;
+}
+body[data-page='calls'] .calls-live-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  height: var(--analytics-card-height);
+  min-height: 0;
+}
+body[data-page='calls'] .calls-live-column .panel {
+  margin: 0;
+  min-height: 0;
 }
 body[data-page='calls'] .calls-ongoing-panel {
-  grid-column: 1;
-  grid-row: 1;
+  flex-shrink: 0;
 }
-body[data-page='calls'] .calls-col-panel:has(#upcoming-mount) {
-  grid-column: 1;
-  grid-row: 2;
+body[data-page='calls'] .calls-live-column .calls-col-panel {
+  flex: 1;
+  height: auto;
 }
-body[data-page='calls'] .calls-col-panel:has(#recent-mount) {
-  grid-column: 2;
-  grid-row: 1 / 3;
+body[data-page='calls'] .content > .calls-col-panel {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 280px;
+  margin: 0;
+}
+@media (max-width: 1100px) {
+  body[data-page='calls'] .calls-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 body[data-page='calls'] .dash-agenda-track {
   min-height: 0;
@@ -2095,7 +2294,22 @@ body[data-page='transactions'] .txn-top {
 body[data-page='transactions'] .panel {
   padding: var(--space-6);
   border-radius: var(--radius-5);
-  gap: var(--space-3);
+  gap: 0;
+}
+body[data-page='transactions'] .panel:is(.bank-panel, .txn-panel) {
+  padding: 0;
+}
+body[data-page='transactions'] .txn-table th,
+body[data-page='transactions'] .txn-table td {
+  padding-inline: var(--space-4);
+}
+body[data-page='transactions'] .txn-table th:first-child,
+body[data-page='transactions'] .txn-table td:first-child {
+  padding-left: 0;
+}
+body[data-page='transactions'] .txn-table th:last-child,
+body[data-page='transactions'] .txn-table td:last-child {
+  padding-right: 0;
 }
 body[data-page='transactions'] .analytics-chart-wrap {
   height: 200px;
@@ -2195,17 +2409,26 @@ body[data-page='transactions'] .bank-empty {
   background: var(--gray-50);
   border: var(--stroke-1) dashed var(--gray-200);
   border-radius: var(--radius-4);
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
 }
 body[data-page='transactions'] .txn-table th {
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 550;
   color: var(--gray-500);
+  height: var(--scroll-head-height);
+  min-height: var(--scroll-head-height);
+  padding-block: 0;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  line-height: 1.25;
 }
 body[data-page='transactions'] .txn-table td {
   font-size: 0.8125rem;
   padding-block: var(--space-5);
 }
-/* Bring card scroll surfaces to the edge; retain padding for row contents. */
+/* Scroll panels fill the card; viewport already pulls the scrollbar to the edge. */
 body:is(
     [data-page='dashboard'],
     [data-page='calls'],
@@ -2214,15 +2437,61 @@ body:is(
     [data-page='reviews']
   )
   .panel
-  > :is(.dash-agenda-track, .dash-connect-list, .people-table-track, .txn-table-track, #bank-list) {
-  margin-right: calc(var(--space-6) * -1);
-  padding-right: var(--space-6);
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
+  > :is(
+    .scroll-panel,
+    .dash-agenda-track,
+    .dash-connect-list,
+    .people-table-track,
+    .txn-table-track,
+    .source-list,
+    .rev-badge-scroll,
+    .rev-list-scroll
+  ) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+body[data-page='students'] .people-table-track.scroll-panel-viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+body[data-page='transactions'] .txn-panel .txn-table thead th {
+  /* Column labels sit under the sticky title head; keep them in flow */
+  position: static;
+  background: transparent;
 }
 body[data-page='dashboard'] .source-panel {
-  gap: var(--space-3);
-  padding-bottom: var(--space-5);
+  gap: 0;
+  padding: 0;
+  align-self: stretch;
+  box-sizing: border-box;
+}
+@media (min-width: 861px) {
+  body[data-page='dashboard'] .dash-top .source-panel {
+    height: var(--analytics-card-height);
+    min-height: var(--analytics-card-height);
+    max-height: var(--analytics-card-height);
+  }
+}
+/* Keep Impressions height-linked so the donut can flex-fill (not scroll away to 0). */
+body[data-page='dashboard'] .source-panel > .scroll-panel {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+}
+body[data-page='dashboard'] .source-panel > .scroll-panel,
+body[data-page='dashboard'] .source-panel .scroll-panel-viewport {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+body[data-page='dashboard'] .source-panel .scroll-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 body[data-page='dashboard'] .source-breakdown:not(:has(.source-data-table)) {
   display: flex;
@@ -2230,19 +2499,26 @@ body[data-page='dashboard'] .source-breakdown:not(:has(.source-data-table)) {
   min-height: 0;
   flex-direction: column;
   gap: var(--space-3);
+  overflow: hidden;
 }
 body[data-page='dashboard'] .source-donut {
-  flex: 1 1 auto;
+  flex: 1 1 0%;
+  align-self: stretch;
   width: 100%;
   max-width: none;
-  height: 250px;
-  min-height: 0;
+  min-height: 160px;
+  height: 100%;
 }
 body[data-page='dashboard'] .source-legend {
   flex-shrink: 0;
   padding-top: 0;
   padding-bottom: var(--space-1);
   scroll-behavior: auto;
+}
+body[data-page='dashboard'] .source-panel .scroll-panel-viewport:has(.source-data-table),
+body[data-page='dashboard'] .source-panel .scroll-panel-body:has(.source-data-table) {
+  overflow-y: auto;
+  display: block;
 }
 .source-donut-segment {
   transition-duration: 120ms;
@@ -2253,23 +2529,8 @@ body[data-page='dashboard'] .source-legend {
 .source-donut-segment text {
   animation-duration: 180ms;
 }
-/* The analytics card determines the row height; the source card fits that row. */
 body[data-page='dashboard'] .dash-top {
   align-items: stretch;
-}
-body[data-page='dashboard'] .source-panel {
-  height: auto;
-  min-height: 0;
-  contain: size;
-  align-self: stretch;
-}
-body[data-page='dashboard'] .source-breakdown:not(:has(.source-data-table)) {
-  overflow: hidden;
-}
-body[data-page='dashboard'] .source-donut {
-  flex: 1 1 0;
-  height: 0;
-  min-height: 0;
 }
 
 /* One desktop analytics recipe across every workspace overview. */
@@ -2368,26 +2629,31 @@ body[data-page='dashboard'] .source-donut {
     height: var(--analytics-card-height);
     min-height: 0;
   }
-  body[data-page='transactions'] #bank-list {
+  body[data-page='transactions'] .bank-panel .source-list,
+  body[data-page='transactions'] .bank-panel > .scroll-panel {
     flex: 1 1 auto;
     min-height: 0;
-    overflow-y: auto;
+    height: 100%;
   }
 }
 
 body[data-page='reviews'] .panel {
   padding: var(--space-6);
   border-radius: var(--radius-5);
-  gap: var(--space-3);
+  gap: 0;
+}
+body[data-page='reviews'] .panel:is(.rev-side-panel, .rev-list-panel) {
+  padding: 0;
 }
 body[data-page='reviews'] .rev-split {
   gap: var(--space-6);
 }
+body[data-page='reviews'] .rev-list-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+}
 body[data-page='reviews'] .rev-list {
-  margin-right: calc(var(--space-6) * -1);
-  padding-right: var(--space-6);
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
+  overflow: visible;
 }
 body[data-page='reviews'] .rev-badge {
   background: var(--gray-50);
@@ -2398,9 +2664,12 @@ body[data-page='transactions'] .txn-panel {
   overflow: visible;
 }
 .txn-table-actions {
+  display: flex;
+  align-items: center;
+  min-width: 0;
   margin-left: auto;
   gap: var(--space-3);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 @media (max-width: 600px) {
   .txn-table-actions {
@@ -2412,4 +2681,194 @@ body[data-page='transactions'] .txn-panel {
     width: auto;
     min-width: 0;
   }
+}
+
+/* Keep meeting details and actions compact in the overview column. */
+body[data-page='calls'] .calls-live-column .panel {
+  padding: 0;
+  gap: 0;
+}
+body[data-page='calls'] .calls-live-column .dash-slot {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-4);
+  padding-block: var(--space-2);
+}
+body[data-page='calls'] .calls-live-column .dash-slot-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+body[data-page='calls'] .calls-live-column .dash-call-title {
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+}
+body[data-page='calls'] .calls-live-column .dash-call-title strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+body[data-page='calls'] .calls-live-column .dash-call-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+  margin-left: 0;
+}
+body[data-page='calls'] .calls-live-column .dash-join {
+  white-space: nowrap;
+  padding-inline: var(--space-3);
+}
+body[data-page='calls'] .calls-live-column .dash-call-main > span {
+  margin-top: var(--space-1);
+}
+body[data-page='calls'] .calls-live-column {
+  height: auto;
+  min-height: var(--analytics-card-height);
+  max-height: none;
+}
+body[data-page='calls'] .calls-live-column .calls-col-panel {
+  min-height: 180px;
+  max-height: 240px;
+}
+@media (min-width: 1101px) {
+  body[data-page='calls'] .calls-top {
+    grid-template-columns: minmax(0, 1.9fr) minmax(300px, 1fr);
+    align-items: stretch;
+  }
+  body[data-page='calls'] .calls-top .analytics-panel {
+    height: auto;
+  }
+}
+
+/* Compact meeting rows for the analytics side column. */
+body[data-page='calls'] .calls-live-column .dash-slot {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-4);
+  padding-block: var(--space-2);
+}
+body[data-page='calls'] .calls-live-column .dash-slot-card {
+  flex-wrap: nowrap;
+  gap: var(--space-3);
+}
+body[data-page='calls'] .calls-live-column .dash-call-main {
+  flex-basis: 100%;
+}
+body[data-page='calls'] .calls-live-column .dash-call-title {
+  flex-wrap: wrap;
+  row-gap: var(--space-1);
+}
+body[data-page='calls'] .calls-live-column .dash-call-title strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+body[data-page='calls'] .calls-live-column .dash-call-main > span {
+  display: block;
+  margin-top: var(--space-1);
+}
+body[data-page='calls'] .calls-live-column .dash-call-actions {
+  margin-left: 0;
+}
+
+body[data-page='calls'] .calls-live-column .calls-col-panel {
+  min-height: 160px;
+}
+body[data-page='calls'] .calls-live-column {
+  height: auto;
+  min-height: var(--analytics-card-height);
+}
+body[data-page='calls'] .calls-top .analytics-panel {
+  height: 100%;
+}
+
+body[data-page='calls'] .calls-live-column .dash-call-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+body[data-page='calls'] .calls-live-column .dash-call-main > span {
+  margin-top: 0;
+  line-height: 1.4;
+}
+
+body[data-page='calls'] #upcoming-mount .dash-slot {
+  padding-block: var(--space-4);
+}
+
+/* Let the sticky People header follow the actual row scroll container. */
+body[data-page='students'] .people-table-track > [data-slot='table-container'] {
+  overflow: visible;
+}
+
+body[data-page='reviews'] .reviews-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(300px, 1fr);
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+  flex-shrink: 0;
+}
+body[data-page='reviews'] .reviews-top .panel {
+  margin-bottom: 0;
+}
+body[data-page='reviews'] .rev-list-panel {
+  flex: 1 1 auto;
+  min-height: 280px;
+}
+body[data-page='reviews'] .rev-card p {
+  line-height: 1.6;
+}
+@media (max-width: 980px) {
+  body[data-page='reviews'] .reviews-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  body[data-page='reviews'] .content {
+    overflow-y: auto;
+  }
+  body[data-page='reviews'] .rev-list-panel {
+    flex-shrink: 0;
+  }
+}
+
+body[data-page='reviews'] .rev-list-panel {
+  overflow: visible;
+}
+.review-list-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .rev-list-panel .scroll-panel-head-content.panel-head {
+    flex-wrap: wrap;
+  }
+  .review-list-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+  body[data-page='reviews'] .review-list-actions .people-search {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+}
+
+@media (min-width: 981px) {
+  body[data-page='reviews'] .reviews-top .rev-side-panel {
+    height: var(--analytics-card-height);
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+body[data-page='reviews'] .rev-side-note {
+  flex-shrink: 0;
+  margin: 0;
+  padding-top: 0;
+}
+body[data-page='reviews'] .rev-badge-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+body[data-page='reviews'] .rev-badge-grid {
+  align-content: start;
 }

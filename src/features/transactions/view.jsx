@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { ScrollPanel } from '@/components/ui/scroll-panel';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { PageActions } from '@/components/page-actions';
 
@@ -242,115 +243,132 @@ export const View = memo(function View() {
               />
             </div>
           </Card>
-          <Card className={'panel source-panel bank-panel'}>
-            <div className={'panel-head'}>
-              <h2>{'Banks'}</h2>
-              <div className={'bank-head-actions'}>
-                <Button
-                  type={'button'}
-                  className={''}
-                  id={'add-bank-btn'}
-                  variant={'secondary'}
-                  size={'sm'}
-                >
-                  {'Add bank'}
-                </Button>
-                <Button
-                  type={'button'}
-                  className={''}
-                  id={'withdraw-btn'}
-                  variant={'default'}
-                  size={'sm'}
-                >
-                  {'Withdraw'}
-                </Button>
-              </div>
-            </div>
-            <div className={'source-list gr-scroll'} id={'bank-list'} />
+          <Card className={'panel source-panel bank-panel p-0'}>
+            <ScrollPanel
+              className={'source-list'}
+              toolbar
+              head={
+                <>
+                  <h2>{'Banks'}</h2>
+                  <div className={'bank-head-actions'}>
+                    <Button
+                      type={'button'}
+                      className={''}
+                      id={'add-bank-btn'}
+                      variant={'secondary'}
+                      size={'sm'}
+                    >
+                      {'Add bank'}
+                    </Button>
+                    <Button
+                      type={'button'}
+                      className={''}
+                      id={'withdraw-btn'}
+                      variant={'default'}
+                      size={'sm'}
+                    >
+                      {'Withdraw'}
+                    </Button>
+                  </div>
+                </>
+              }
+            >
+              <div id={'bank-list'} />
+            </ScrollPanel>
           </Card>
         </div>
-        <Card className={'panel txn-panel'}>
-          <div className={'panel-head txn-head'}>
-            <h2>{'All transactions'}</h2>
-            <div className="actions txn-table-actions">
-              <Input
-                type={'search'}
-                className={'people-search'}
-                id={'txn-search'}
-                placeholder={'Search transactions…'}
-              />
-              <div className={'filter-menu-wrap'} id={'filter-wrap'}>
-                <Button
-                  type={'button'}
-                  className={'chip-btn'}
-                  id={'filter-btn'}
-                  aria-expanded={'false'}
-                  variant={'unstyled'}
-                  size={'unstyled'}
-                >
-                  <span id={'filter-label'}>{'All'}</span>
-                  <Icon name="expand_more" className={'app-icon'} aria-hidden={'true'} />
-                </Button>
-                <div className={'filter-menu people-filter-menu'} id={'filter-menu'} hidden>
-                  <Button
-                    type={'button'}
-                    className={'filter-option active'}
-                    data-filter={'all'}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'All'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'filter-option'}
-                    data-filter={'success'}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Success'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'filter-option'}
-                    data-filter={'processing'}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Processing'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'filter-option'}
-                    data-filter={'failed'}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Failed'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'filter-option'}
-                    data-filter={'refunded'}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Refunded'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'filter-option'}
-                    data-filter={'withdrawal'}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Withdrawal'}
-                  </Button>
+        <Card className={'panel txn-panel p-0'}>
+          <ScrollPanel
+            className={'txn-table-track'}
+            toolbar
+            head={
+              <>
+                <h2>{'All transactions'}</h2>
+                <div className="actions txn-table-actions">
+                  <Input
+                    type={'search'}
+                    className={'people-search'}
+                    id={'txn-search'}
+                    placeholder={'Search transactions…'}
+                  />
+                  <div className={'filter-menu-wrap'} id={'filter-wrap'}>
+                    <Button
+                      type={'button'}
+                      className={'chip-btn'}
+                      id={'filter-btn'}
+                      aria-expanded={'false'}
+                      variant={'unstyled'}
+                      size={'unstyled'}
+                    >
+                      <span id={'filter-label'}>{'All'}</span>
+                      <Icon name="expand_more" className={'app-icon'} aria-hidden={'true'} />
+                    </Button>
+                    <div className={'filter-menu people-filter-menu'} id={'filter-menu'} hidden>
+                      <Button
+                        type={'button'}
+                        className={'filter-option active'}
+                        data-filter={'all'}
+                        variant={'unstyled'}
+                        size={'unstyled'}
+                      >
+                        {'All'}
+                      </Button>
+                      <Button
+                        type={'button'}
+                        className={'filter-option'}
+                        data-filter={'success'}
+                        variant={'unstyled'}
+                        size={'unstyled'}
+                      >
+                        {'Success'}
+                      </Button>
+                      <Button
+                        type={'button'}
+                        className={'filter-option'}
+                        data-filter={'processing'}
+                        variant={'unstyled'}
+                        size={'unstyled'}
+                      >
+                        {'Processing'}
+                      </Button>
+                      <Button
+                        type={'button'}
+                        className={'filter-option'}
+                        data-filter={'failed'}
+                        variant={'unstyled'}
+                        size={'unstyled'}
+                      >
+                        {'Failed'}
+                      </Button>
+                      <Button
+                        type={'button'}
+                        className={'filter-option'}
+                        data-filter={'refunded'}
+                        variant={'unstyled'}
+                        size={'unstyled'}
+                      >
+                        {'Refunded'}
+                      </Button>
+                      <Button
+                        type={'button'}
+                        className={'filter-option'}
+                        data-filter={'withdrawal'}
+                        variant={'unstyled'}
+                        size={'unstyled'}
+                      >
+                        {'Withdrawal'}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
-          <div className={'txn-table-track gr-scroll'}>
+              </>
+            }
+            footer={
+              <p className={'people-empty'} id={'txn-empty'} hidden>
+                {'No transactions match this filter.'}
+              </p>
+            }
+          >
             <Table className={'table txn-table'}>
               <colgroup>
                 <col className={'txn-col-date'} />
@@ -374,10 +392,7 @@ export const View = memo(function View() {
               </TableHeader>
               <TableBody id={'txn-body'} />
             </Table>
-            <p className={'people-empty'} id={'txn-empty'} hidden>
-              {'No transactions match this filter.'}
-            </p>
-          </div>
+          </ScrollPanel>
         </Card>
       </div>
       <div className={'cal-modal'} id={'bank-modal'} hidden>
