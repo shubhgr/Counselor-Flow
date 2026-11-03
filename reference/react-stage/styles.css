@@ -1,0 +1,66 @@
+/* The legacy layer gives unconverted screens the same token foundation.
+   Tailwind utilities take precedence on migrated React components. */
+@layer legacy, theme, base, components, utilities;
+@import '../css/styles.css' layer(legacy);
+@import '../css/mobile.css' layer(legacy);
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@source './';
+
+:root {
+  --background: var(--surface);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-white);
+  --primary-hover: var(--brand-hover);
+  --secondary: var(--gray-100);
+  --secondary-foreground: var(--gray-800);
+  --muted-foreground: var(--gray-500);
+  --ui-accent: var(--gray-100);
+  --accent-foreground: var(--gray-900);
+  --destructive: var(--red-600);
+  --input: var(--gray-200);
+  --ring: var(--purple-500);
+}
+
+@theme inline {
+  --font-sans: 'Inter', sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--ui-accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: var(--radius-3);
+  --radius-md: var(--radius-2);
+  --radius-lg: var(--radius-5);
+  --radius-xl: var(--radius-5);
+}
+
+/* Tailwind's standard spacing utilities resolve to the approved Figma values
+   used by these primitives (8, 12, 16, 24, 32px). */
+[data-slot='input'], [data-slot='textarea'], [data-slot='button'] { font-family: var(--font); }
+[data-slot='input'][hidden], [data-slot='textarea'][hidden], [data-slot='button'][hidden] { display: none; }
+.shell-actions-slot { display: flex; align-items: center; min-width: 0; }
+@media (max-width: 640px) { .shell-actions-slot { width: 100%; } }
+
+/* Grid children must be allowed to shrink below input/media intrinsic widths. */
+body[data-page='profile'] .profile-edit-col,
+body[data-page='profile'] .panel,
+body[data-page='profile'] .field-row > .field,
+body[data-page='profile'] .intro-video-copy {
+  min-width: 0;
+}
+body[data-page='profile'] .field-row { margin-bottom: var(--space-5); }
+body[data-page='profile'] .field-row > .field { margin-bottom: var(--space-0); }

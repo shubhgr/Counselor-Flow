@@ -1,0 +1,324 @@
+/* GradRight Counselor — phone / small tablet */
+
+.nav-toggle,
+.nav-backdrop {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  :root {
+    --sidebar-w: min(86vw, 280px);
+  }
+
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .field input,
+  .field select,
+  .field textarea,
+  .people-search,
+  input[type='search'],
+  input[type='text'],
+  input[type='tel'],
+  input[type='email'],
+  input[type='number'] {
+    font-size: 16px;
+  }
+
+  .app {
+    grid-template-columns: 1fr;
+    min-height: 100dvh;
+  }
+
+  .sidebar,
+  .settings-rail {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 120;
+    width: var(--sidebar-w);
+    height: 100dvh;
+    transform: translateX(-105%);
+    transition: transform 0.22s ease;
+    box-shadow: none;
+  }
+
+  body.nav-open .sidebar,
+  body.nav-open .settings-rail {
+    transform: translateX(0);
+    box-shadow: 16px 0 40px color-mix(in srgb, var(--gray-900) 18%, transparent);
+  }
+
+  .nav-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    background: color-mix(in srgb, var(--gray-900) 45%, transparent);
+  }
+
+  body.nav-open .nav-backdrop {
+    display: block;
+  }
+
+  body.nav-open {
+    overflow: hidden;
+  }
+
+  .mobile-topbar {
+    display: flex;
+  }
+
+  .nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    margin-right: var(--space-2);
+    flex-shrink: 0;
+    border: 0;
+    border-radius: var(--radius-2);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .nav-toggle .app-icon {
+    font-size: 22px;
+  }
+
+  .main {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-4);
+    padding: var(--space-4) var(--space-5);
+    background: color-mix(in srgb, var(--gray-50) 92%, transparent);
+  }
+
+  .topbar h1 {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 1.05rem;
+  }
+
+  .topbar .actions,
+  .people-top-actions,
+  .profile-view-tabs {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: var(--space-0);
+  }
+
+  .content,
+  .content-chat {
+    padding: var(--space-4) var(--space-5) var(--space-7);
+  }
+
+  body[data-page='dashboard'] .main,
+  body[data-page='profile'] .main,
+  body[data-page='calls'] .main,
+  body[data-page='chats'] .main,
+  body[data-page='transactions'] .main,
+  body[data-page='reviews'] .main,
+  body[data-page='students'] .main {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  body[data-page='dashboard'] .content,
+  body[data-page='profile'] .content,
+  body[data-page='calls'] .content,
+  body[data-page='transactions'] .content {
+    overflow: visible;
+    height: auto;
+  }
+
+  .dash-grid,
+  .dash-day-layout,
+  .stat-row,
+  .grid-2,
+  .grid-3,
+  .chat-layout,
+  .chat-layout.is-profile-open,
+  .student-grid,
+  .field-row,
+  .profile-identity,
+  .profile-edit-grid,
+  .calls-split,
+  .cal-page-stack,
+  #tab-availability.cal-page-stack-hours,
+  .cal-events,
+  .cal-integrations,
+  .cal-workspace-bar,
+  .cal-booker,
+  .community-workspace,
+  .community-workspace.is-profile-open,
+  body[data-page='students'] .community-workspace.is-profile-open,
+  .txn-head,
+  .preview-card-compare,
+  .c-public-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .community-rail {
+    padding-top: 0;
+    max-height: none;
+  }
+
+  .chat-layout,
+  .calls-workspace,
+  .calls-split,
+  .calls-col-panel,
+  .dash-calls-panel,
+  .dash-connects-panel {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .calls-col-panel {
+    min-height: 16rem;
+  }
+
+  .chat-list {
+    max-height: 42vh;
+    overflow: auto;
+  }
+
+  .chat-pane {
+    min-height: 22rem;
+  }
+
+  .community-workspace.is-profile-open .community-primary {
+    display: block;
+  }
+
+  .profile-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .range-pair,
+  .dates-chip {
+    flex-wrap: wrap;
+  }
+
+  .pending-banner,
+  .setup-next,
+  .panel-head,
+  .sched-card-head,
+  .cal-workspace-bar {
+    flex-wrap: wrap;
+  }
+
+  .sched-day-row,
+  .sched-tz-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .sched-tz-row select,
+  .sched-day-slots {
+    width: 100%;
+    max-width: none;
+  }
+
+  .sched-card,
+  .sched-block,
+  #panel-schedule.sched-card,
+  #week-hours.sched-days {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  #tab-availability.cal-page-stack-hours {
+    overflow: visible;
+  }
+
+  .txn-table-track {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .txn-table {
+    min-width: 640px;
+  }
+
+  .cal-connected-chip {
+    width: 100%;
+  }
+
+  .cal-inner-tabs {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .onboard-page {
+    padding: var(--space-10) var(--space-4) var(--space-6);
+    align-items: flex-start;
+  }
+
+  .onboard-card,
+  .otp-card {
+    padding: var(--space-6) var(--space-5) var(--space-5);
+  }
+
+  .auth-visual {
+    min-height: 0;
+    padding: var(--space-6) var(--space-5);
+  }
+
+  .otp-row input {
+    width: 40px;
+    height: 44px;
+  }
+
+  .cal-modal-card,
+  .cal-oauth-card {
+    width: min(100%, 440px);
+  }
+
+  .notif-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .notif-panel {
+    width: min(100vw, 380px) !important;
+    max-width: 100vw;
+    top: 0 !important;
+    left: auto !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    border-left: 0;
+    border-radius: 0 !important;
+    box-shadow: none;
+  }
+
+  .notif-backdrop {
+    background: color-mix(in srgb, var(--gray-900) 18%, transparent);
+  }
+}
+
+@media (min-width: 861px) {
+  .nav-toggle,
+  .nav-backdrop {
+    display: none !important;
+  }
+}

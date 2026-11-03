@@ -1,0 +1,8 @@
+.next
+node_modules
+reference
+public
+admitright
+
+# Generated Lucide SVG asset map
+src/design-system/icon-markup.json

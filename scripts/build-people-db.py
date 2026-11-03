@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PEOPLE = ROOT / "data" / "people.csv"
 VISITS = ROOT / "data" / "visits.csv"
-OUT = ROOT / "js" / "people-db.js"
+OUT = ROOT / "src" / "lib" / "domain" / "people-db.js"
 
 TEMPLATE = r"""/**
  * GradRight test database
@@ -167,7 +167,7 @@ def main() -> None:
     people = PEOPLE.read_text(encoding="utf-8")
     visits = VISITS.read_text(encoding="utf-8")
     OUT.write_text(
-        TEMPLATE % (json.dumps(people), json.dumps(visits)),
+        "export function initialize(scope) {\n  const { window } = scope;\n" + TEMPLATE % (json.dumps(people), json.dumps(visits)) + "\n}\n",
         encoding="utf-8",
     )
     print(

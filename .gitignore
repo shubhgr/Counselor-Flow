@@ -3,3 +3,12 @@ node_modules/
 .env
 .env.*
 js/cal-config.js
+
+dist/
+
+.next/
+public/assets/
+public/data/
+public/admitright/
+!.env.example
+public/js/
