@@ -1277,13 +1277,13 @@ body[data-page='dashboard'] .dash-grid {
 }
 
 .dash-agenda-track {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
   flex: 1 1 0;
   min-height: 0;
-  overflow-y: auto;
   padding-right: var(--space-0);
+}
+.dash-agenda-track .scroll-panel-body {
+  display: flex;
+  flex-direction: column;
 }
 
 .dash-slot {
@@ -1479,12 +1479,13 @@ body[data-page='dashboard'] .dash-grid {
 }
 
 .dash-connect-list {
-  display: flex;
-  flex-direction: column;
   flex: 1 1 0;
   min-height: 0;
-  overflow-y: auto;
   padding-right: var(--space-0);
+}
+.dash-connect-list .scroll-panel-body {
+  display: flex;
+  flex-direction: column;
 }
 
 .dash-connect {
@@ -1723,14 +1724,104 @@ body[data-page='dashboard'] .pending-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--space-5);
   gap: var(--space-4);
+  flex-shrink: 0;
+  box-sizing: border-box;
+  min-height: var(--scroll-head-height);
+  height: var(--scroll-head-height);
+  margin: 0;
+  padding: 0;
+  background: transparent;
 }
 
 .panel-head h2 {
-  font-size: 0.95rem;
-  font-weight: 650;
+  margin: 0;
+  font-family: var(--font);
+  font-size: var(--scroll-head-title-size);
+  font-weight: var(--scroll-head-title-weight);
   letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.panel-head > a,
+.panel-head .calls-count,
+.panel-head .source-meta,
+.panel-head .source-view-toggle {
+  font-family: var(--font);
+  font-size: var(--scroll-head-meta-size);
+  font-weight: 550;
+  line-height: 1.25;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.panel-head > a:hover {
+  color: var(--ink);
+}
+
+/* Toolbar heads keep the same title type; height grows only for controls */
+.panel-head:has(
+  .review-list-actions,
+  .txn-table-actions,
+  .bank-head-actions,
+  .people-search,
+  .chip-btn,
+  .source-view-toggle,
+  input,
+  [data-slot='switch']
+),
+.scroll-panel-head.is-toolbar .panel-head {
+  height: auto;
+  min-height: var(--scroll-head-height);
+}
+
+/* Scroll cards: padding lives inside ScrollPanel so overflow clips at the card edge */
+.panel:is(
+  .dash-calls-panel,
+  .dash-connects-panel,
+  .rev-side-panel,
+  .rev-list-panel,
+  .bank-panel,
+  .txn-panel,
+  .calls-col-panel,
+  .calls-ongoing-panel,
+  .source-panel,
+  .people-panel
+),
+[data-slot='card'].panel:is(
+  .dash-calls-panel,
+  .dash-connects-panel,
+  .rev-side-panel,
+  .rev-list-panel,
+  .bank-panel,
+  .txn-panel,
+  .calls-col-panel,
+  .calls-ongoing-panel,
+  .source-panel,
+  .people-panel
+) {
+  gap: 0 !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.people-table thead th,
+.txn-table thead th {
+  box-sizing: border-box;
+  height: var(--scroll-head-height);
+  min-height: var(--scroll-head-height);
+  padding-top: 0;
+  padding-bottom: 0;
+  font-family: var(--font);
+  font-size: 0.75rem;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+  text-transform: uppercase;
+  color: var(--gray-500);
+  vertical-align: middle;
+  background: transparent;
 }
 
 .panel-lead {
@@ -3955,8 +4046,8 @@ body[data-page='students'] .people-table-track {
 body[data-page='students'] .people-table thead th {
   position: sticky;
   top: 0;
-  z-index: 1;
-  background: var(--surface);
+  z-index: 3;
+  background: transparent;
 }
 
 body[data-page='students'] .community-workspace.is-profile-open .content {
@@ -4474,7 +4565,6 @@ body[data-page='settings'] .app {
 .dash-top .analytics-panel {
   margin-bottom: 0;
   padding: var(--space-5) var(--space-5) var(--space-4);
-  height: max-content;
 }
 
 .dash-top .analytics-stat strong {
@@ -4489,16 +4579,19 @@ body[data-page='settings'] .app {
 .source-panel {
   display: flex;
   flex-direction: column;
-  padding: var(--space-5) var(--space-5) var(--space-5);
+  padding: 0;
   min-width: 0;
   height: 0;
   min-height: 100%;
   overflow: hidden;
 }
+.source-panel > .scroll-panel {
+  --scroll-panel-inline: var(--space-5);
+  --scroll-panel-block: var(--space-5);
+}
 
 .source-panel .panel-head {
   flex-shrink: 0;
-  margin-bottom: var(--space-3);
 }
 
 .source-meta {
@@ -4508,13 +4601,15 @@ body[data-page='settings'] .app {
 }
 
 .source-list {
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0 var(--space-0) var(--space-1) 0;
+}
+.source-list .scroll-panel-body {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  flex: 1 1 0;
   min-height: 0;
-  overflow-y: auto;
-  padding: 0 var(--space-0) var(--space-1) 0;
 }
 
 .source-row {
@@ -7726,7 +7821,6 @@ body[data-page='calls'] .analytics-panel {
 }
 
 .calls-stack .panel-head {
-  margin-bottom: var(--space-4);
   flex-shrink: 0;
 }
 
@@ -7759,8 +7853,9 @@ body[data-page='calls'] .analytics-panel {
 }
 
 .calls-count {
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: var(--scroll-head-meta-size);
+  font-weight: 550;
+  line-height: 1.25;
   color: var(--muted);
 }
 
@@ -9909,12 +10004,25 @@ body[data-page='transactions'] .analytics-panel {
   flex-shrink: 0;
 }
 
-.bank-panel.is-empty .source-list {
+.bank-panel.is-empty > .scroll-panel,
+.bank-panel.is-empty .scroll-panel-viewport {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   overflow: hidden;
-  justify-content: center;
 }
 
-.bank-panel.is-empty .panel-head {
+.bank-panel.is-empty .scroll-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  justify-content: stretch;
+  padding-bottom: var(--scroll-panel-block, var(--space-5));
+}
+
+.bank-panel.is-empty .scroll-panel-head {
   margin-bottom: 0;
 }
 
@@ -9925,10 +10033,12 @@ body[data-page='transactions'] .analytics-panel {
   justify-content: center;
   text-align: center;
   gap: var(--space-1);
-  flex: 1;
+  flex: 1 1 auto;
+  align-self: stretch;
   width: 100%;
   min-height: 0;
-  padding: var(--space-1) var(--space-3) var(--space-2);
+  box-sizing: border-box;
+  padding: var(--space-6) var(--space-5);
 }
 
 .bank-empty-icon {
@@ -9957,7 +10067,7 @@ body[data-page='transactions'] .analytics-panel {
   font-size: 0.78rem;
   color: var(--muted);
   line-height: 1.4;
-  max-width: 16rem;
+  max-width: 18rem;
 }
 
 .bank-empty .btn {
@@ -10337,9 +10447,7 @@ body[data-page='reviews'] .people-search {
 }
 
 .rev-list {
-  flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
 }
 
 .rev-card {

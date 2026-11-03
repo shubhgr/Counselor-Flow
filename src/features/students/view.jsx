@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { StickyScrollBlur } from '@/components/ui/scroll-panel';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { PageActions } from '@/components/page-actions';
 
@@ -302,8 +303,9 @@ export const View = memo(function View() {
                 />
               </div>
             </Card>
-            <Card className={'panel people-panel'}>
-              <div className={'people-table-track gr-scroll'}>
+            <Card className={'panel people-panel p-0'}>
+              <div className={'people-table-track gr-scroll scroll-panel-viewport'}>
+                <StickyScrollBlur />
                 <Table className={'table people-table'}>
                   <TableHeader>
                     <TableRow>

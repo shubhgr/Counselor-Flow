@@ -272,7 +272,7 @@ export function initialize(scope) {
       );
     }
 
-    function listHtml(items, groupDays) {
+    function listHtml(items, groupDays, hideToday = false) {
       if (!items.length) {
         if (isPendingAccount()) {
           return '<div class="dash-empty"><strong>Nothing here yet</strong><span>Meets show up after you are approved.</span></div>';
@@ -287,10 +287,11 @@ export function initialize(scope) {
       items.forEach(function (call) {
         if (call.day !== last) {
           if (last) html += '</div>';
-          html +=
-            '<div class="dash-agenda-group"><div class="calls-day-label">' +
-            esc(dayLabel(call)) +
-            '</div>';
+          const label = dayLabel(call);
+          html += '<div class="dash-agenda-group">';
+          if (!hideToday || label !== 'Today') {
+            html += '<div class="calls-day-label">' + esc(label) + '</div>';
+          }
           last = call.day;
         }
         html += rowHtml(call);
@@ -471,7 +472,7 @@ export function initialize(scope) {
         ongoingMount.innerHTML = listHtml(live, false);
       }
       document.getElementById('upcoming-count').textContent = String(upcoming.length);
-      document.getElementById('upcoming-mount').innerHTML = listHtml(upcoming, true);
+      document.getElementById('upcoming-mount').innerHTML = listHtml(upcoming, true, true);
       document.getElementById('recent-count').textContent = String(history.length);
       document.getElementById('recent-mount').innerHTML = listHtml(history, true);
       renderStats(rows);

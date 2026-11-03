@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { ScrollPanel } from '@/components/ui/scroll-panel';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { PageActions } from '@/components/page-actions';
 
@@ -13,12 +14,6 @@ export const View = memo(function View() {
     <>
       <PageActions>
         <div className={'actions people-top-actions'}>
-          <Input
-            type={'search'}
-            className={'people-search'}
-            id={'rev-search'}
-            placeholder={'Search reviews…'}
-          />
           <DateRangePicker
             onApply={(range) =>
               window.dispatchEvent(new CustomEvent('counselor:reviews-range', { detail: range }))
@@ -171,75 +166,6 @@ export const View = memo(function View() {
               </div>
             </div>
           </div>
-          <div className={'filter-menu-wrap'} id={'filter-wrap'}>
-            <Button
-              type={'button'}
-              className={'chip-btn'}
-              id={'filter-btn'}
-              aria-expanded={'false'}
-              variant={'unstyled'}
-              size={'unstyled'}
-            >
-              <span id={'filter-label'}>{'All ratings'}</span>
-              <Icon name="expand_more" className={'app-icon'} aria-hidden={'true'} />
-            </Button>
-            <div className={'filter-menu people-filter-menu'} id={'filter-menu'} hidden>
-              <Button
-                type={'button'}
-                className={'filter-option active'}
-                data-filter={'all'}
-                variant={'unstyled'}
-                size={'unstyled'}
-              >
-                {'All ratings'}
-              </Button>
-              <Button
-                type={'button'}
-                className={'filter-option'}
-                data-filter={'5'}
-                variant={'unstyled'}
-                size={'unstyled'}
-              >
-                {'5 stars'}
-              </Button>
-              <Button
-                type={'button'}
-                className={'filter-option'}
-                data-filter={'4'}
-                variant={'unstyled'}
-                size={'unstyled'}
-              >
-                {'4 stars'}
-              </Button>
-              <Button
-                type={'button'}
-                className={'filter-option'}
-                data-filter={'3'}
-                variant={'unstyled'}
-                size={'unstyled'}
-              >
-                {'3 stars'}
-              </Button>
-              <Button
-                type={'button'}
-                className={'filter-option'}
-                data-filter={'2'}
-                variant={'unstyled'}
-                size={'unstyled'}
-              >
-                {'2 stars'}
-              </Button>
-              <Button
-                type={'button'}
-                className={'filter-option'}
-                data-filter={'1'}
-                variant={'unstyled'}
-                size={'unstyled'}
-              >
-                {'1 star'}
-              </Button>
-            </div>
-          </div>
         </div>
       </PageActions>
       <div className={'content'}>
@@ -263,75 +189,169 @@ export const View = memo(function View() {
             {'Student preview'}
           </Link>
         </div>
-        <Card className={'panel analytics-panel'}>
-          <div className={'analytics-stats is-4'}>
-            <div className={'analytics-stat'}>
-              <span className={'label'}>{'Average rating'}</span>
-              <strong className={'analytics-rating'}>
-                <span id={'stat-rating'}>{'—'}</span>
-                <Icon name="star" className={'app-icon analytics-star'} aria-hidden={'true'} />
-              </strong>
-              <span className={'hint'} id={'stat-rating-hint'}>
-                {'From 0 reviews'}
-              </span>
+        <div className="reviews-top">
+          <Card className={'panel analytics-panel'}>
+            <div className={'analytics-stats is-4'}>
+              <div className={'analytics-stat'}>
+                <span className={'label'}>{'Average rating'}</span>
+                <strong className={'analytics-rating'}>
+                  <span id={'stat-rating'}>{'—'}</span>
+                  <Icon name="star" className={'app-icon analytics-star'} aria-hidden={'true'} />
+                </strong>
+                <span className={'hint'} id={'stat-rating-hint'}>
+                  {'From 0 reviews'}
+                </span>
+              </div>
+              <div className={'analytics-stat'}>
+                <span className={'label'}>{'Reviews'}</span>
+                <strong id={'stat-count'}>{'0'}</strong>
+                <span className={'hint'} id={'stat-count-hint'}>
+                  {'In this period'}
+                </span>
+              </div>
+              <div className={'analytics-stat'}>
+                <span className={'label'}>{'Would recommend'}</span>
+                <strong id={'stat-recommend'}>{'—'}</strong>
+                <span className={'hint'} id={'stat-recommend-hint'}>
+                  {'Rated 4 stars or higher'}
+                </span>
+              </div>
+              <div className={'analytics-stat'}>
+                <span className={'label'}>{'Badges'}</span>
+                <strong id={'stat-badges'}>{'4'}</strong>
+                <span className={'hint'}>{'Shown on your public card'}</span>
+              </div>
             </div>
-            <div className={'analytics-stat'}>
-              <span className={'label'}>{'Reviews'}</span>
-              <strong id={'stat-count'}>{'0'}</strong>
-              <span className={'hint'} id={'stat-count-hint'}>
-                {'In this period'}
-              </span>
+            <div className={'analytics-chart-wrap'}>
+              <svg
+                className={'analytics-chart'}
+                id={'analytics-chart'}
+                viewBox={'0 0 760 180'}
+                preserveAspectRatio={'none'}
+              />
+              <span
+                id="dashboard-hover-visitors"
+                className="dashboard-hover-point visitors"
+                hidden
+              />
+              <span
+                id="dashboard-hover-connections"
+                className="dashboard-hover-point connections"
+                hidden
+              />
+              <div id="dashboard-chart-axis" className="dashboard-chart-axis" aria-hidden="true" />
+              <div className={'analytics-tip'} id={'analytics-tip'} hidden />
             </div>
-            <div className={'analytics-stat'}>
-              <span className={'label'}>{'Would recommend'}</span>
-              <strong id={'stat-recommend'}>{'—'}</strong>
-              <span className={'hint'} id={'stat-recommend-hint'}>
-                {'Rated 4 stars or higher'}
-              </span>
-            </div>
-            <div className={'analytics-stat'}>
-              <span className={'label'}>{'Badges'}</span>
-              <strong id={'stat-badges'}>{'4'}</strong>
-              <span className={'hint'}>{'Shown on your public card'}</span>
-            </div>
-          </div>
-          <div className={'analytics-chart-wrap'}>
-            <svg
-              className={'analytics-chart'}
-              id={'analytics-chart'}
-              viewBox={'0 0 760 180'}
-              preserveAspectRatio={'none'}
-            />
-            <span id="dashboard-hover-visitors" className="dashboard-hover-point visitors" hidden />
-            <span
-              id="dashboard-hover-connections"
-              className="dashboard-hover-point connections"
-              hidden
-            />
-            <div id="dashboard-chart-axis" className="dashboard-chart-axis" aria-hidden="true" />
-            <div className={'analytics-tip'} id={'analytics-tip'} hidden />
-          </div>
-        </Card>
-        <div className={'rev-split'}>
-          <Card className={'panel rev-list-panel'}>
-            <div className={'panel-head'}>
-              <h2 id={'rev-list-title'}>{'Student reviews'}</h2>
-            </div>
-            <div className={'rev-list gr-scroll'} id={'rev-list'} />
-            <p className={'people-empty'} id={'rev-empty'} hidden>
-              {'No reviews match this filter.'}
-            </p>
           </Card>
-          <Card className={'panel rev-side-panel'}>
-            <div className={'panel-head'}>
-              <h2>{'Your badges'}</h2>
-            </div>
-            <div className={'rev-badge-grid'} id={'rev-badges'} />
-            <p className={'rev-side-note'}>
-              {'Badges appear on your public counselor card in the GradRight student app.'}
-            </p>
+          <Card className={'panel rev-side-panel p-0'}>
+            <ScrollPanel
+              className={'rev-badge-scroll'}
+              head={<h2>{'Your badges'}</h2>}
+              footer={
+                <p className={'rev-side-note'}>
+                  {'Badges appear on your public counselor card in the GradRight student app.'}
+                </p>
+              }
+            >
+              <div className={'rev-badge-grid'} id={'rev-badges'} />
+            </ScrollPanel>
           </Card>
         </div>
+        <Card className={'panel rev-list-panel p-0'}>
+          <ScrollPanel
+            className={'rev-list-scroll'}
+            toolbar
+            head={
+              <>
+                <h2 id={'rev-list-title'}>{'Student reviews'}</h2>
+                <div className="review-list-actions">
+                  <Input
+                    type={'search'}
+                    className={'people-search'}
+                    id={'rev-search'}
+                    placeholder={'Search reviews…'}
+                  />
+                  <div className={'filter-menu-wrap'} id={'filter-wrap'}>
+                    <Button
+                      type={'button'}
+                      className={'chip-btn'}
+                      id={'filter-btn'}
+                      aria-expanded={'false'}
+                      variant={'unstyled'}
+                      size={'unstyled'}
+                    >
+                      <span id={'filter-label'}>{'All ratings'}</span>
+                      <Icon name="expand_more" className={'app-icon'} aria-hidden={'true'} />
+                    </Button>
+                    <div className={'filter-menu people-filter-menu'} id={'filter-menu'} hidden>
+                      <Button
+                        type={'button'}
+                        className={'filter-option active'}
+                        data-filter={'all'}
+                        variant={'unstyled'}
+                        size={'unstyled'}
+                      >
+                        {'All ratings'}
+                      </Button>
+                      <Button
+                        type={'button'}
+                        className={'filter-option'}
+                        data-filter={'5'}
+                        variant={'unstyled'}
+                        size={'unstyled'}
+                      >
+                        {'5 stars'}
+                      </Button>
+                      <Button
+                        type={'button'}
+                        className={'filter-option'}
+                        data-filter={'4'}
+                        variant={'unstyled'}
+                        size={'unstyled'}
+                      >
+                        {'4 stars'}
+                      </Button>
+                      <Button
+                        type={'button'}
+                        className={'filter-option'}
+                        data-filter={'3'}
+                        variant={'unstyled'}
+                        size={'unstyled'}
+                      >
+                        {'3 stars'}
+                      </Button>
+                      <Button
+                        type={'button'}
+                        className={'filter-option'}
+                        data-filter={'2'}
+                        variant={'unstyled'}
+                        size={'unstyled'}
+                      >
+                        {'2 stars'}
+                      </Button>
+                      <Button
+                        type={'button'}
+                        className={'filter-option'}
+                        data-filter={'1'}
+                        variant={'unstyled'}
+                        size={'unstyled'}
+                      >
+                        {'1 star'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            }
+            footer={
+              <p className={'people-empty'} id={'rev-empty'} hidden>
+                {'No reviews match this filter.'}
+              </p>
+            }
+          >
+            <div className={'rev-list gr-scroll'} id={'rev-list'} />
+          </ScrollPanel>
+        </Card>
       </div>
     </>
   );

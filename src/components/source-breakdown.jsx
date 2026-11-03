@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { arc } from 'd3-shape';
 import { Switch } from './ui/switch';
+import { ScrollPanel } from '@/components/ui/scroll-panel';
 const colors = [
   'var(--gray-900)',
   'var(--blue-300)',
@@ -51,19 +52,24 @@ export function SourceBreakdown() {
   const total = rows.reduce((n, r) => n + r.count, 0);
   let offset = 0;
   return (
-    <>
-      <div className="panel-head">
-        <h2>Impressions</h2>
-        <label className="source-view-toggle">
-          <span>Graph</span>
-          <Switch
-            checked={table}
-            onCheckedChange={setTable}
-            aria-label="Show impressions as table"
-          />
-          <span>Table</span>
-        </label>
-      </div>
+    <ScrollPanel
+      className="source-list"
+      toolbar
+      head={
+        <>
+          <h2>Impressions</h2>
+          <label className="source-view-toggle">
+            <span>Graph</span>
+            <Switch
+              checked={table}
+              onCheckedChange={setTable}
+              aria-label="Show impressions as table"
+            />
+            <span>Table</span>
+          </label>
+        </>
+      }
+    >
       <div id="source-list" className="source-breakdown">
         {table ? (
           <table className="source-data-table">
@@ -216,6 +222,6 @@ export function SourceBreakdown() {
           </>
         )}
       </div>
-    </>
+    </ScrollPanel>
   );
 }

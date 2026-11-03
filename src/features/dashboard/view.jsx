@@ -4,6 +4,7 @@ import { Icon } from '@/components/icon';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ScrollPanel } from '@/components/ui/scroll-panel';
 import { SourceBreakdown } from '@/components/source-breakdown';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { PageActions } from '@/components/page-actions';
@@ -109,28 +110,40 @@ export const View = memo(function View() {
                 />
               </div>
             </Card>
-            <Card className={'panel source-panel'}>
+            <Card className={'panel source-panel p-0'}>
               <SourceBreakdown />
             </Card>
           </div>
           <div className={'grid-2 dash-grid'}>
-            <Card className={'panel dash-calls-panel'}>
-              <div className={'panel-head'}>
-                <h2 id={'dash-calls-title'}>{'Today’s meets'}</h2>
-                <Link href={'/calls'} prefetch={false}>
-                  {'All →'}
-                </Link>
-              </div>
-              <div className={'dash-agenda-track gr-scroll'} id={'today-calls'} />
+            <Card className={'panel dash-calls-panel p-0'}>
+              <ScrollPanel
+                className={'dash-agenda-track'}
+                head={
+                  <>
+                    <h2 id={'dash-calls-title'}>{"Today's meets"}</h2>
+                    <Link href={'/calls'} prefetch={false}>
+                      {'All →'}
+                    </Link>
+                  </>
+                }
+              >
+                <div id={'today-calls'} />
+              </ScrollPanel>
             </Card>
-            <Card className={'panel dash-connects-panel'}>
-              <div className={'panel-head'}>
-                <h2 id={'dash-connects-title'}>{'Today’s connects'}</h2>
-                <Link href={'/students?view=connected'} prefetch={false}>
-                  {'All →'}
-                </Link>
-              </div>
-              <div className={'dash-connect-list gr-scroll'} id={'recent-connects'} />
+            <Card className={'panel dash-connects-panel p-0'}>
+              <ScrollPanel
+                className={'dash-connect-list'}
+                head={
+                  <>
+                    <h2 id={'dash-connects-title'}>{"Today's connects"}</h2>
+                    <Link href={'/students?view=connected'} prefetch={false}>
+                      {'All →'}
+                    </Link>
+                  </>
+                }
+              >
+                <div id={'recent-connects'} />
+              </ScrollPanel>
             </Card>
           </div>
         </div>
