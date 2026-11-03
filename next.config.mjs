@@ -2,6 +2,7 @@ const nextConfig = {
   reactStrictMode: true,
   async redirects() {
     return [
+      { source: '/admitright', destination: '/admitright/index.html', permanent: false },
       { source: '/admitright.html', destination: '/admitright/index.html', permanent: true },
       { source: '/index.html', destination: '/', permanent: true },
       { source: '/login.html', destination: '/?mode=login', permanent: true },
