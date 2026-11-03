@@ -380,6 +380,55 @@ export function initialize(scope) {
       );
 
       document.getElementById('stat-avg').textContent = avg ? avg + 'm' : '—';
+      const eligible = bookings().filter(
+        (call) =>
+          (!query || `${call.name} ${call.service || ''}`.toLowerCase().includes(query)) &&
+          (statusFilter === 'all' || phaseOf(call) === statusFilter),
+      );
+      const previousEnd = new Date(dateRange.start + 'T00:00:00');
+      previousEnd.setDate(previousEnd.getDate() - 1);
+      const days =
+        Math.round(
+          (new Date(dateRange.end + 'T00:00:00') - new Date(dateRange.start + 'T00:00:00')) /
+            86400000,
+        ) + 1;
+      const previousStart = new Date(previousEnd);
+      previousStart.setDate(previousStart.getDate() - days + 1);
+      const previous = eligible.filter(
+        (call) => call.day >= dateKey(previousStart) && call.day <= dateKey(previousEnd),
+      );
+      const previousDone = previous.filter((call) => phaseOf(call) === 'completed');
+      const previousAvg = previousDone.length
+        ? previousDone.reduce((sum, call) => sum + (Number(call.mins) || 30), 0) /
+          previousDone.length
+        : 0;
+      const yesterday = new Date(anchor);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const todayCount = rows.filter((call) => call.day === dateKey(anchor)).length;
+      const yesterdayCount = eligible.filter((call) => call.day === dateKey(yesterday)).length;
+      [
+        ['total', rows.length, previous.length],
+        ['done', done.length, previousDone.length],
+        ['missed', todayCount, yesterdayCount],
+        ['avg', avg, previousAvg],
+      ].forEach(([key, value, prior]) => {
+        const el = document.getElementById(`stat-${key}-trend`);
+        const allTime = dateRange.preset === 'all' && key !== 'missed';
+        const change = prior ? Math.round(((value - prior) / prior) * 100) : null;
+        el.textContent = allTime
+          ? 'Across all time'
+          : change === null
+            ? key === 'missed'
+              ? 'No meets yesterday'
+              : 'No prior-period data'
+            : `${change >= 0 ? '↑' : '↓'} ${Math.abs(change)}% vs ${key === 'missed' ? 'yesterday' : 'previous period'}`;
+        el.style.color =
+          allTime || change === null || key === 'avg'
+            ? 'var(--gray-500)'
+            : change >= 0
+              ? 'var(--green-700)'
+              : 'var(--red-500)';
+      });
       renderChart(rows);
     }
 

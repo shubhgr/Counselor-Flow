@@ -302,6 +302,13 @@ export const View = memo(function View() {
               viewBox={'0 0 760 180'}
               preserveAspectRatio={'none'}
             />
+            <span id="dashboard-hover-visitors" className="dashboard-hover-point visitors" hidden />
+            <span
+              id="dashboard-hover-connections"
+              className="dashboard-hover-point connections"
+              hidden
+            />
+            <div id="dashboard-chart-axis" className="dashboard-chart-axis" aria-hidden="true" />
             <div className={'analytics-tip'} id={'analytics-tip'} hidden />
           </div>
         </Card>
