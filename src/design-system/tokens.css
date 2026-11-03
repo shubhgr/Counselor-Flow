@@ -1,0 +1,175 @@
+/* GradRight Counselor — design tokens (Brand Purple + surfaces) */
+
+:root {
+  /* Figma primitives — shared source of truth for Counselor. */
+  /* Purple */
+  --purple-50: #f4f2ff;
+  --purple-100: #e8e3ff;
+  --purple-200: #cbc1fb;
+  --purple-300: #b29fff;
+  --purple-400: #8e6cf9;
+  --purple-500: #782bff;
+  --purple-600: #520ad0;
+  --purple-700: #390094;
+  --purple-800: #280068;
+  --purple-900: #1a0141;
+
+  /* Gray */
+  --gray-50: #f9f9ff;
+  --gray-100: #f0f0f9;
+  --gray-200: #dfdef0;
+  --gray-300: #c5c4d7;
+  --gray-400: #9594a9;
+  --gray-500: #6b6a83;
+  --gray-600: #53516b;
+  --gray-700: #3c3a53;
+  --gray-800: #26243a;
+  --gray-900: #121022;
+
+  /* Blue */
+  --blue-50: #f5faff;
+  --blue-100: #ddedff;
+  --blue-200: #b6d7ff;
+  --blue-300: #80baff;
+  --blue-400: #3e97ff;
+  --blue-500: #096deb;
+  --blue-600: #055eb0;
+  --blue-700: #03467a;
+  --blue-800: #042f51;
+  --blue-900: #002034;
+
+  /* Red */
+  --red-50: #ffeceb;
+  --red-100: #ffdddb;
+  --red-200: #fdbfbc;
+  --red-300: #ff948f;
+  --red-400: #ff5f56;
+  --red-500: #ff3a30;
+  --red-600: #e61007;
+  --red-700: #ae0900;
+  --red-800: #670600;
+  --red-900: #420300;
+
+  /* Orange */
+  --orange-50: #fff8f0;
+  --orange-100: #ffecd9;
+  --orange-200: #ffdebf;
+  --orange-300: #ffc28f;
+  --orange-400: #ffa150;
+  --orange-500: #ff8e1e;
+  --orange-600: #d26d09;
+  --orange-700: #a25100;
+  --orange-800: #713800;
+  --orange-900: #472300;
+
+  /* Yellow */
+  --yellow-50: #fffde7;
+  --yellow-100: #fffbc1;
+  --yellow-200: #fff486;
+  --yellow-300: #ffe35c;
+  --yellow-400: #ffd50d;
+  --yellow-500: #f3b711;
+  --yellow-600: #bf8c01;
+  --yellow-700: #815f00;
+  --yellow-800: #543e00;
+  --yellow-900: #342600;
+
+  /* Green */
+  --green-50: #f2ffe4;
+  --green-100: #e2ffc6;
+  --green-200: #c6ff93;
+  --green-300: #a7f75f;
+  --green-400: #77e823;
+  --green-500: #58cc02;
+  --green-600: #44a306;
+  --green-700: #2e7104;
+  --green-800: #1f4d02;
+  --green-900: #113201;
+
+  /* Brand aliases */
+  --brand: var(--purple-500);
+  --brand-hover: var(--purple-600);
+  --brand-pressed: var(--purple-700);
+  --brand-soft: var(--gray-100);
+  --brand-soft-2: var(--gray-200);
+  --brand-ink: var(--gray-700);
+  --brand-white: #ffffff;
+  --brand-black: var(--gray-900);
+
+  /* Semantic interface aliases */
+  --ink: var(--gray-900);
+  --ink-soft: var(--gray-800);
+  --muted: var(--gray-500);
+  --line: rgba(18, 16, 34, 0.06); /* whisper stroke */
+  --line-strong: rgba(18, 16, 34, 0.1);
+  --bg: var(--gray-50);
+  --surface: var(--brand-white);
+  --accent: var(--blue-500);
+  --warn: var(--orange-700);
+  --warn-soft: var(--orange-50);
+  --warn-line: var(--orange-200);
+  --danger: var(--red-600);
+  --danger-soft: var(--red-50);
+  --success: var(--green-700);
+  --success-soft: var(--green-50);
+  /* Workspace navigation keeps its dark theme on every page. */
+  --workspace-nav-bg: var(--gray-900);
+  --workspace-nav-fg: var(--brand-white);
+  --workspace-nav-muted: var(--gray-300);
+  --workspace-nav-active: var(--gray-800);
+  --workspace-nav-focus: var(--gray-500);
+  --sidebar: var(--workspace-nav-bg);
+  --sidebar-w: 224px;
+  --sidebar-collapsed-w: var(--space-10);
+  /* Figma layout primitives (values in pixels).
+     Radius names are normalized to sequential indices; spacing keeps Figma indices. */
+  --radius-0: 0px;
+  --radius-1: 4px;
+  --radius-2: 8px;
+  --radius-3: 12px;
+  --radius-4: 16px;
+  --radius-5: 20px;
+  --radius-6: 32px;
+  --radius-7: 999px;
+
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-7: 24px;
+  --space-8: 28px;
+  --space-9: 32px;
+  --space-10: 48px;
+  --space-11: 56px;
+  --space-12: 64px;
+  --space-13: 120px;
+
+  --stroke-0: 0px;
+  --stroke-1: 1px;
+  --stroke-2: 2px;
+  --stroke-3: 3px;
+  --stroke-4: 4px;
+
+  --radius: var(--radius-4);
+  --radius-sm: var(--radius-3);
+  --radius-lg: var(--radius-5);
+  --radius-btn: var(--radius-2);
+  --btn-h: 36px;
+  --btn-font: 0.85rem;
+  --btn-pad-x: var(--space-4);
+  --btn-weight: 550;
+  --shadow: none;
+  --shadow-sm: none;
+  --card-stroke: none;
+  --card-shadow: none;
+  --analytics-card-height: 340px;
+  --analytics-card-padding: var(--space-6);
+  --analytics-metrics-height: 80px;
+  --analytics-chart-gap: var(--space-5);
+  --sidebar-logo-width: var(--space-13);
+  --sidebar-logo-symbol-width: var(--space-7);
+  --font: 'Inter Variable', 'Inter', sans-serif;
+}

@@ -1,0 +1,116 @@
+{
+  "auth": {
+    "route": "/",
+    "title": "GradRight Counselor",
+    "workspace": false,
+    "dataPage": "auth"
+  },
+  "otp": {
+    "route": "/otp",
+    "title": "Verify OTP",
+    "workspace": false,
+    "dataPage": "otp"
+  },
+  "onboarding": {
+    "route": "/onboarding",
+    "title": "Onboarding",
+    "workspace": false,
+    "dataPage": "onboarding"
+  },
+  "approval": {
+    "route": "/approval",
+    "title": "Awaiting approval",
+    "workspace": false,
+    "dataPage": "approval"
+  },
+  "dashboard": {
+    "route": "/dashboard",
+    "title": "Dashboard",
+    "workspace": true,
+    "dataPage": "dashboard"
+  },
+  "students": {
+    "route": "/students",
+    "title": "People",
+    "workspace": true,
+    "dataPage": "students"
+  },
+  "chats": {
+    "route": "/chats",
+    "title": "Chats",
+    "workspace": true,
+    "dataPage": "chats"
+  },
+  "calls": {
+    "route": "/calls",
+    "title": "Meet",
+    "workspace": true,
+    "dataPage": "calls"
+  },
+  "call": {
+    "route": "/call",
+    "title": "In meet",
+    "workspace": true,
+    "dataPage": "call"
+  },
+  "community": {
+    "route": "/community",
+    "title": "Community",
+    "workspace": true,
+    "dataPage": "community"
+  },
+  "community-profile": {
+    "route": "/community-profile",
+    "title": "Public profile",
+    "workspace": false,
+    "dataPage": "community-profile"
+  },
+  "profile": {
+    "route": "/profile",
+    "title": "Profile",
+    "workspace": true,
+    "dataPage": "profile"
+  },
+  "calendar": {
+    "route": "/calendar",
+    "title": "Calendar",
+    "workspace": true,
+    "dataPage": "profile"
+  },
+  "reviews": {
+    "route": "/reviews",
+    "title": "Reviews",
+    "workspace": true,
+    "dataPage": "reviews"
+  },
+  "transactions": {
+    "route": "/transactions",
+    "title": "Transactions",
+    "workspace": true,
+    "dataPage": "transactions"
+  },
+  "settings": {
+    "route": "/settings",
+    "title": "Settings",
+    "workspace": true,
+    "dataPage": "settings"
+  },
+  "person": {
+    "route": "/person",
+    "title": "Profile",
+    "workspace": true,
+    "dataPage": "person"
+  },
+  "marketplace": {
+    "route": "/marketplace",
+    "title": "Find a counselor",
+    "workspace": false,
+    "dataPage": "marketplace"
+  },
+  "counselor-public": {
+    "route": "/counselor-public",
+    "title": "Priya Sharma",
+    "workspace": false,
+    "dataPage": "counselor-public"
+  }
+}

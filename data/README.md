@@ -1,52 +1,14 @@
-# Test people database
+# Demo data
 
-Shared demo data for Students, Chats, Calls, and student profiles.
+`people.csv`, `visits.csv` and `calls.csv` provide the shared student/parent, profile-view and scheduled-call fixtures.
 
-## Files
-
-- `people.csv` — one row per person (student or parent)
-- `visits.csv` — profile views (`person_id`, timestamp, source, seconds)
-- `calls.csv` — scheduled calls for connected people (rebuild with `python3 scripts/build-calls-db.py`)
-
-After editing people or visits, rebuild:
+After editing people or visits, rebuild the browser data modules consumed by Next.js:
 
 ```bash
 python3 scripts/build-people-db.py
 python3 scripts/build-calls-db.py
 ```
 
-That writes `js/people-db.js` and `js/calls-db.js`. Pages load the JS files, not the CSV directly, so `file://` works.
+Outputs are `src/lib/domain/people-db.js` and `src/lib/domain/calls-db.js`. The calls generator also refreshes `data/calls.csv`. They export browser-only initialization functions, called by the shared runtime once per app session.
 
-## `people.csv` columns
-
-| Column | Meaning |
-| --- | --- |
-| `id` | Stable id used in chat, call, and profile URLs |
-| `name`, `initials`, `role` | `student` or `parent` |
-| `connected` | `1` = paid connect (can chat) |
-| `email`, `source` | Visit / acquisition source |
-| `service` | Optional booked service (not shown on Students) |
-| `forWho` | Parent context, e.g. `For Meera Kapoor` |
-| `connectedOn` | `YYYY-MM-DD HH:MM` when they connected |
-| `amount` | Connect fee paid (`1999` when connected, empty otherwise) |
-| `amber` | Avatar tint |
-
-## `visits.csv` columns
-
-| Column | Meaning |
-| --- | --- |
-| `person_id` | Matches `people.id` |
-| `at` | Last profile view stamp `YYYY-MM-DD HH:MM` |
-| `source` | Where that visit came from |
-| `seconds` | Time on profile (analytics) |
-
-## `calls.csv` columns
-
-| Column | Meaning |
-| --- | --- |
-| `id` | Call id (`c-{person_id}`) |
-| `person_id` | Connected person from `people.csv` |
-| `service` | Session type |
-| `day`, `time` | Scheduled slot |
-| `mins` | Booked length |
-| `status` | `upcoming` or `done` |
+People retain stable IDs across People, Chats, Meet, student profiles and transactions. `connected=1` identifies a paid demo connection. All money and activity fixtures are demo data.

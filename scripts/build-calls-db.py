@@ -13,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PEOPLE = ROOT / "data" / "people.csv"
 CALLS = ROOT / "data" / "calls.csv"
-OUT = ROOT / "js" / "calls-db.js"
+OUT = ROOT / "src" / "lib" / "domain" / "calls-db.js"
 
 TODAY = date(2026, 9, 23)
 NOW_HOUR = 18
@@ -118,7 +118,7 @@ def main() -> None:
 
     csv_text = CALLS.read_text(encoding="utf-8")
     OUT.write_text(
-        TEMPLATE % json.dumps(csv_text),
+        "export function initialize(scope) {\n  const { window, document, setTimeout, clearTimeout, setInterval, clearInterval } = scope;\n" + TEMPLATE % json.dumps(csv_text) + "\n}\n",
         encoding="utf-8",
     )
     today_count = sum(1 for row in rows if row["day"] == TODAY.isoformat())
