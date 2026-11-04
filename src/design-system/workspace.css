@@ -3812,7 +3812,7 @@ body[data-page='community'] .community-primary .content {
 
 .cpp-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-3);
   margin: var(--space-5) 0 var(--space-6);
 }
@@ -3830,6 +3830,16 @@ body[data-page='community'] .community-primary .content {
 
 .cpp-stat:hover {
   background: color-mix(in srgb, var(--purple-500) 8%, transparent);
+}
+
+.cpp-stat:not(button) {
+  cursor: default;
+}
+
+.c-profile-username {
+  color: var(--muted);
+  margin-bottom: var(--space-3);
+  overflow-wrap: anywhere;
 }
 
 .cpp-stat strong {
@@ -4252,6 +4262,37 @@ body[data-page='profile'] #panel-edit .media-ico {
   border: var(--card-stroke);
   border-radius: var(--radius-lg);
   box-shadow: none;
+}
+
+.profile-community-summary {
+  margin-bottom: var(--space-5);
+}
+
+.profile-community-summary .panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.profile-community-summary .c-profile-username {
+  margin: var(--space-2) 0 0;
+}
+
+.profile-community-activity {
+  margin-top: var(--space-4);
+}
+
+.profile-community-activity .c-activity-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.profile-community-network {
+  max-height: 60dvh;
+  overflow-y: auto;
 }
 
 .profile-hero-left {

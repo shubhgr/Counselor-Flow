@@ -1,3 +1,4 @@
+import { readPublicIdentity, savePublicIdentity } from '@/lib/domain/public-identity';
 // Route-scoped workflow: subscriptions, timers and generated overlays are
 // owned by createRouteScope and disposed when Next navigation leaves this screen.
 export function initialize(scope) {
@@ -547,8 +548,7 @@ export function initialize(scope) {
         const mb = Math.round(maxBytes / 1024 / 1024);
         if (videoHint && file.type.indexOf('video') === 0) {
           videoHint.hidden = false;
-          videoHint.textContent =
-            'That file is over ' + mb + ' MB. Pick a shorter clip for this demo.';
+          videoHint.textContent = 'That file is over ' + mb + ' MB. Pick a shorter clip.';
         }
         return;
       }
@@ -748,7 +748,7 @@ export function initialize(scope) {
           '<rect x="220" y="120" width="280" height="18" rx="4" fill="#3c3a53"/>' +
           '<rect x="220" y="156" width="200" height="12" rx="3" fill="#85849a"/>' +
           '<rect x="220" y="186" width="240" height="12" rx="3" fill="#bbbacc"/>' +
-          '<text x="48" y="340" font-family="Inter,sans-serif" font-size="18" fill="#6b6a83">Aadhaar / Government ID · demo</text>' +
+          '<text x="48" y="340" font-family="Inter,sans-serif" font-size="18" fill="#6b6a83">Aadhaar / Government ID</text>' +
           '</svg>',
       );
 
@@ -1100,7 +1100,7 @@ export function initialize(scope) {
           const note = document.createElement('p');
           note.className = 'hint-text';
           note.style.marginTop = '0.75rem';
-          note.textContent = 'PDF preview (demo page). Download disabled in this prototype.';
+          note.textContent = 'PDF preview. Download is unavailable.';
           docPreviewBody.appendChild(note);
         }
       } else {
@@ -1391,6 +1391,12 @@ export function initialize(scope) {
       const editOpen =
         document.getElementById('panel-edit') && !document.getElementById('panel-edit').hidden;
       if (!editOpen) return;
+      try {
+        savePublicIdentity({ name: document.getElementById('field-name').value.trim() });
+      } catch {
+        alert('Unable to save your public profile. Try again.');
+        return;
+      }
       savedState = captureState();
       baseline = snapshot();
       setDirty(false);
@@ -1410,6 +1416,11 @@ export function initialize(scope) {
     });
 
     // Init
+    const identity = readPublicIdentity();
+    if (identity.name) {
+      document.getElementById('field-name').value = identity.name;
+      syncPreviewCopy(identity.name, document.getElementById('field-bio').value);
+    }
     renderDocs();
     renderPhoto();
     renderVideo();

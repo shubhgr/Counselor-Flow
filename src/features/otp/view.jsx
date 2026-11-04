@@ -49,7 +49,7 @@ export const View = memo(function View() {
               onChange={setValue}
               maxLength={6}
               pattern={REGEXP_ONLY_DIGITS}
-              aria-describedby="otp-demo-hint"
+              aria-describedby="otp-code-hint"
               autoFocus
             >
               <InputOTPGroup>
@@ -58,8 +58,8 @@ export const View = memo(function View() {
                 ))}
               </InputOTPGroup>
             </InputOTP>
-            <p className="hint-text" id="otp-demo-hint">
-              Demo: enter any six digits.
+            <p className="hint-text" id="otp-code-hint">
+              Enter a six-digit verification code.
             </p>
             <Button type="submit" disabled={!ready || value.length !== 6}>
               Verify &amp; continue

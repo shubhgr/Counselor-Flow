@@ -90,8 +90,7 @@ export function initialize(scope) {
     const hint = document.getElementById('email-hint');
     btn.textContent = 'Sent';
     btn.disabled = true;
-    hint.innerHTML =
-      '<span class="verified-tag">Verification link sent</span> · check inbox (demo)';
+    hint.innerHTML = '<span class="verified-tag">Email added</span>';
     setTimeout(() => {
       hint.innerHTML = '<span class="verified-tag">Email verified</span>';
       btn.textContent = 'Verified';

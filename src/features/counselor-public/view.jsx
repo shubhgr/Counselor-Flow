@@ -1,4 +1,5 @@
 'use client';
+import { PublicProfileDetails, usePublicIdentity } from '@/components/public-profile-details';
 import { memo } from 'react';
 import { Icon } from '@/components/icon';
 import Link from 'next/link';
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
 export const View = memo(function View() {
+  const identity = usePublicIdentity();
   return (
     <>
       <div className={'market-shell'}>
@@ -58,7 +60,8 @@ export const View = memo(function View() {
               <div className={'public-hero'}>
                 <div className={'avatar lg'}>{'PS'}</div>
                 <div>
-                  <h1>{'Priya Sharma'}</h1>
+                  <h1>{identity.name || 'Priya Sharma'}</h1>
+                  <PublicProfileDetails />
                   <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
                     {'Mumbai · Higher-education counselor'}
                   </p>
@@ -202,7 +205,7 @@ export const View = memo(function View() {
                 data-verified-only={''}
                 onClick={(event) => {
                   event.preventDefault();
-                  alert('Student pays connect fee → chat/book unlocks (demo)');
+                  alert('Pay the connect fee to unlock chat and booking');
                 }}
               >
                 {'Connect'}

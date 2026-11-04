@@ -59,6 +59,9 @@ export function initialize(scope) {
         name: extra.name || DEFAULT_PROFILE.name,
         email: extra.email || DEFAULT_PROFILE.email,
         photo: extra.photo || '',
+        username: extra.username || '',
+        secondaryEmail: extra.secondaryEmail || '',
+        communityOriginalName: extra.communityOriginalName || extra.name || DEFAULT_PROFILE.name,
         initials: extra.initials || DEFAULT_PROFILE.initials,
       };
     }

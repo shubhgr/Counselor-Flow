@@ -1,6 +1,8 @@
 'use client';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { readPublicIdentity } from '@/lib/domain/public-identity';
+import { updateCommunityIdentity } from '@/lib/domain/community';
 import { initializeRuntime } from '@/lib/runtime/initialize';
 import { applyAccess, isVerified } from '@/lib/runtime/access';
 const RuntimeContext = createContext({ ready: false, account: null, verified: true });
@@ -20,9 +22,15 @@ export function RuntimeProvider({ children }) {
       try {
         draft = JSON.parse(localStorage.getItem('counselor-account-details') || 'null');
       } catch {}
+      const account = window.GradRightSession.get() || draft;
+      const identity = readPublicIdentity();
+      if (identity.name || identity.username) {
+        const original = account?.communityOriginalName || account?.name || 'Priya Sharma';
+        updateCommunityIdentity(original, identity.name || original, identity.username);
+      }
       setState({
         ready: true,
-        account: window.GradRightSession.get() || draft,
+        account,
         verified: isVerified(),
         error: null,
       });
@@ -34,10 +42,12 @@ export function RuntimeProvider({ children }) {
       });
     window.addEventListener('gradright:session', refresh);
     window.addEventListener('storage', refresh);
+    window.addEventListener('gradright:public-profile', refresh);
     return () => {
       active = false;
       window.removeEventListener('gradright:session', refresh);
       window.removeEventListener('storage', refresh);
+      window.removeEventListener('gradright:public-profile', refresh);
     };
   }, [router]);
   function follow(event) {
