@@ -4208,7 +4208,8 @@ body[data-page='profile'] .content {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding-bottom: var(--space-7);
+  padding-bottom: var(--space-9);
+  background: var(--bg);
 }
 
 /* Profile uses the same surface and control tokens as the workspace. */
@@ -4299,6 +4300,7 @@ body[data-page='profile'] #panel-edit .media-ico {
 body[data-page='profile'] #panel-edit {
   max-width: 1440px;
   margin-inline: auto;
+  padding-block: var(--space-1) var(--space-4);
 }
 
 body[data-page='profile'] #panel-edit .panel {
@@ -4336,7 +4338,7 @@ body[data-page='profile'] #panel-edit .field-row:has(> .field:only-child) {
 
 .profile-overview-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
   gap: var(--space-6);
   align-items: start;
 }
@@ -4393,21 +4395,23 @@ body[data-page='profile'] #panel-edit .profile-overview-aside > .profile-strengt
 .profile-strength-header h2 {
   font-size: 1rem;
   font-weight: 650;
+  letter-spacing: -0.015em;
 }
 
 .profile-strength-header p {
   color: var(--muted);
   font-size: 0.8rem;
+  margin-top: var(--space-1);
 }
 
 .profile-strength-ring {
-  width: var(--space-12);
-  height: var(--space-12);
+  width: var(--space-13);
+  height: var(--space-13);
   flex-shrink: 0;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: conic-gradient(var(--brand) var(--profile-strength), var(--brand-soft) 0);
+  background: conic-gradient(var(--brand) var(--profile-strength), var(--gray-100) 0);
 }
 
 .profile-strength-ring span {
@@ -4417,7 +4421,9 @@ body[data-page='profile'] #panel-edit .profile-overview-aside > .profile-strengt
   background: var(--surface);
   display: grid;
   place-items: center;
+  font-size: 0.95rem;
   font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 .profile-strength ul {
@@ -4425,16 +4431,29 @@ body[data-page='profile'] #panel-edit .profile-overview-aside > .profile-strengt
   margin: 0;
   padding: 0;
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-2);
 }
 
 .profile-strength li a {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  margin-inline: calc(-1 * var(--space-3));
+  border-radius: var(--radius-sm);
   color: var(--ink);
   text-decoration: none;
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  transition: background-color 120ms ease;
+}
+
+.profile-strength li a:hover {
+  background: var(--bg);
+}
+
+.profile-strength li a.is-complete {
+  color: var(--muted);
 }
 
 .profile-strength li svg {
@@ -4457,7 +4476,8 @@ body[data-page='profile'] #panel-edit .profile-overview-aside > .profile-strengt
 .profile-strength li strong {
   margin-left: auto;
   color: var(--brand);
-  font-weight: 600;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 .profile-identity-grid {
@@ -4480,17 +4500,38 @@ body[data-page='profile'] #panel-edit .profile-identity-grid .profile-identity-s
 }
 
 body[data-page='profile'] #panel-edit .profile-identity-grid .photo-circle {
-  width: var(--space-13);
-  height: var(--space-13);
+  width: var(--identity-photo-size, var(--space-13));
+  height: var(--identity-photo-size, var(--space-13));
   color: var(--brand);
-  border: var(--stroke-1) dashed var(--brand);
+  border: var(--stroke-1) dashed color-mix(in srgb, var(--brand) 55%, var(--line-strong));
+  background: color-mix(in srgb, var(--brand-soft) 70%, var(--surface));
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    transform 140ms ease;
+}
+
+body[data-page='profile'] #panel-edit .profile-identity-grid .photo-circle:hover,
+body[data-page='profile'] #panel-edit .profile-identity-grid .photo-circle:focus-visible {
+  border-color: var(--brand);
   background: var(--brand-soft);
+  transform: translateY(-1px);
 }
 
 .profile-identity-grid .photo-circle-empty {
+  display: grid;
+  place-items: center;
+  gap: var(--space-2);
   color: inherit;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.profile-identity-grid .photo-circle-empty .app-icon {
+  font-size: 1.35rem;
+  line-height: 1;
 }
 
 .student-preview-heading {
@@ -4501,10 +4542,17 @@ body[data-page='profile'] #panel-edit .profile-identity-grid .photo-circle {
 }
 
 .student-preview-heading h2 {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
+body[data-page='profile'] #panel-edit .student-profile-summary {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--brand-soft) 35%, var(--surface)), var(--surface) 42%);
+  border: var(--stroke-1) solid var(--line);
 }
 
 .profile-video-presentation {
@@ -4517,11 +4565,32 @@ body[data-page='profile'] #panel-edit .profile-identity-grid .photo-circle {
 .profile-video-placeholder {
   aspect-ratio: 3 / 2;
   display: grid;
-  place-items: center;
-  background: var(--brand-soft);
-  color: var(--brand);
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-3);
+  background:
+    radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--brand-soft) 80%, transparent), transparent 62%),
+    var(--bg);
+  color: var(--muted);
   border: var(--stroke-1) dashed var(--line-strong);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 550;
+}
+
+.profile-video-placeholder-mark {
+  display: grid;
+  place-items: center;
+  width: var(--space-11);
+  height: var(--space-11);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--brand);
+  border: var(--stroke-1) solid var(--line);
+}
+
+.profile-video-placeholder-mark .app-icon {
+  font-size: 1.35rem;
 }
 
 .profile-video-guidance {
@@ -4529,6 +4598,12 @@ body[data-page='profile'] #panel-edit .profile-identity-grid .photo-circle {
   gap: var(--space-4);
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+.profile-video-guidance > p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.5;
 }
 
 .profile-video-guidance .intro-video-copy > span {
@@ -4604,9 +4679,10 @@ body[data-page='profile'] #panel-edit form.profile-overview-form {
 
 body[data-page='profile'] #panel-edit .profile-overview-form > .overview-section {
   padding: var(--space-7);
-  border: var(--card-stroke);
+  border: var(--stroke-1) solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface);
+  box-shadow: none;
 }
 
 .profile-overview-tools,
@@ -4701,14 +4777,16 @@ body[data-page='profile'] #panel-edit .profile-country-picker .chip.selected {
 }
 
 .profile-overview-aside {
+  position: sticky;
+  top: var(--space-5);
   display: grid;
   gap: var(--space-5);
   min-width: 0;
-}
-
-.profile-overview-form > .overview-section + .overview-section {
-  padding-top: var(--space-6);
-  border-top: var(--stroke-1) solid var(--line);
+  max-height: calc(100dvh - var(--space-12));
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-bottom: var(--space-2);
 }
 
 .profile-overview-form .profile-public-form {
@@ -4771,7 +4849,23 @@ body[data-page='profile'] #panel-edit .profile-overview-form .panel-head {
   height: auto;
   min-height: 0;
   margin: 0;
-  padding: 0;
+  padding: 0 0 var(--space-4);
+  border-bottom: var(--stroke-1) solid var(--line);
+  align-items: center;
+}
+
+body[data-page='profile'] #panel-edit .profile-overview-form .panel-head h2 {
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+body[data-page='profile'] #panel-edit .profile-overview-form .panel-head .pill {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 body[data-page='profile'] #panel-edit .profile-overview-form .panel-lead,
@@ -4802,9 +4896,6 @@ body[data-page='profile'] #panel-edit .profile-public-form > .panel-head {
   margin-top: var(--space-3);
 }
 
-.profile-overview-form > .overview-section + .overview-section {
-  padding-top: var(--space-7);
-}
 
 .profile-overview-aside .c-profile-username,
 .profile-overview-aside .profile-community-activity,
@@ -4882,6 +4973,9 @@ body[data-page='profile'] #panel-edit .profile-public-form > .panel-head {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg) 70%, var(--surface));
 }
 
 .student-profile-summary-stats strong,
@@ -4890,15 +4984,22 @@ body[data-page='profile'] #panel-edit .profile-public-form > .panel-head {
 }
 
 .student-profile-summary-stats strong {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 650;
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 
 .student-profile-summary-bio,
 .student-profile-summary-contact {
   font-size: 0.85rem;
+  line-height: 1.45;
   overflow-wrap: anywhere;
+}
+
+body[data-page='profile'] #panel-edit .student-profile-summary {
+  display: grid;
+  gap: var(--space-4);
 }
 
 .profile-overview-aside .profile-community-summary {
@@ -4936,6 +5037,9 @@ body[data-page='profile'] #panel-edit .profile-public-form > .panel-head {
   }
 
   .profile-overview-aside {
+    position: static;
+    max-height: none;
+    overflow: visible;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
   }
@@ -5005,11 +5109,54 @@ body[data-page='profile'] .profile-identity-summary {
   font-weight: 600;
 }
 
-.profile-overview-form .contact-editor-summary {
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg);
-  border-radius: var(--radius-sm);
+.profile-overview-form .contact-editor {
+  display: grid;
+  gap: var(--space-3);
 }
+
+.profile-overview-form .contact-editor-compose {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.profile-overview-form .contact-editor-input {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.profile-overview-form .contact-editor-input [data-slot='input'] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.profile-overview-form .contact-editor-input .pill {
+  flex-shrink: 0;
+}
+
+.profile-overview-form .contact-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.contact-verify-dialog {
+  gap: var(--space-5);
+}
+
+.contact-verify-body {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.contact-verify-dialog [data-slot='dialog-description'] strong {
+  color: var(--ink);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
 
 body[data-page='profile'] #panel-edit .intro-video-chooser {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6798,15 +6945,20 @@ body.intro-record-open {
   }
 }
 
+#doc-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
 .doc-file {
   display: flex;
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-4) var(--space-5);
   background: var(--bg);
-  border: none;
+  border: var(--stroke-1) solid var(--line);
   border-radius: var(--radius-sm);
-  margin-top: var(--space-3);
+  margin-top: 0;
   font-size: 0.85rem;
 }
 

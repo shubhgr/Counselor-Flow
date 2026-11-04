@@ -92,11 +92,8 @@ export const View = memo(function View() {
                             size={'unstyled'}
                           >
                             <span className={'photo-circle-empty'} id={'photo-empty'}>
-                              <span>
-                                Add
-                                <br />
-                                photo
-                              </span>
+                              <Icon name="add_a_photo" className="app-icon" aria-hidden="true" />
+                              <span>Add photo</span>
                             </span>
                             <img
                               id={'photo-preview-img'}
@@ -257,7 +254,10 @@ export const View = memo(function View() {
                         id="video-placeholder"
                         aria-hidden="true"
                       >
-                        <Icon name="play_arrow" />
+                        <span className="profile-video-placeholder-mark">
+                          <Icon name="videocam" className="app-icon" />
+                        </span>
+                        <span>No intro yet</span>
                       </div>
                       <div className="video-preview" id="video-preview" hidden>
                         <video id="video-preview-el" controls playsInline preload="metadata" />

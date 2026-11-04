@@ -47,6 +47,7 @@ export function ProfileStrength() {
   ];
   const score = steps.reduce((sum, step) => sum + (step.done ? step.weight : 0), 0);
   const remaining = steps.filter((step) => !step.done).length;
+  const ordered = [...steps.filter((step) => !step.done), ...steps.filter((step) => step.done)];
   useEffect(() => {
     const identity = document.getElementById('profile-identity-status');
     if (identity) {
@@ -78,7 +79,7 @@ export function ProfileStrength() {
         </div>
       </div>
       <ul>
-        {steps.map((step) => (
+        {ordered.map((step) => (
           <li key={step.label}>
             <a href={`#${step.target}`} className={step.done ? 'is-complete' : ''}>
               {step.done ? <Check aria-hidden="true" /> : <Circle aria-hidden="true" />}
