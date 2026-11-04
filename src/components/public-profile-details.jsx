@@ -147,19 +147,13 @@ export function PublicProfileDetails({ editable = false, embedded = false }) {
           value={form.email}
           onVerified={(email) => {
             setStatus('');
-            updateForm((previous) => ({ ...previous, email }));
+            updateForm((previous) => ({
+              ...previous,
+              email,
+              showEmail: email ? true : false,
+            }));
           }}
         />
-        {form.email && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => updateForm({ ...form, email: '' })}
-          >
-            Remove public email
-          </Button>
-        )}
       </div>
       <div className="profile-public-contact-field">
         <ContactEditor
@@ -183,19 +177,13 @@ export function PublicProfileDetails({ editable = false, embedded = false }) {
           value={form.phone}
           onVerified={(phone) => {
             setStatus('');
-            updateForm((previous) => ({ ...previous, phone }));
+            updateForm((previous) => ({
+              ...previous,
+              phone,
+              showPhone: phone ? true : false,
+            }));
           }}
         />
-        {form.phone && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => updateForm({ ...form, phone: '' })}
-          >
-            Remove public number
-          </Button>
-        )}
       </div>
     </div>
   );
