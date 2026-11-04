@@ -1,17 +1,28 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 
-export function ContactEditor({ label, kind, value, onVerified, excludedValue }) {
+export function ContactEditor({
+  label,
+  kind,
+  value,
+  onVerified,
+  excludedValue,
+  inline = false,
+  labelAction,
+}) {
   const id = useId();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(inline && !value);
   const [candidate, setCandidate] = useState('');
   const [pending, setPending] = useState(null);
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
+  useEffect(() => {
+    if (inline && !value) setEditing(true);
+  }, [inline, value]);
   function requestCode() {
     const next = kind === 'email' ? candidate.trim().toLowerCase() : candidate.replace(/\D/g, '');
     if (kind === 'email' ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next) : !/^\d{10}$/.test(next)) {
@@ -41,9 +52,19 @@ export function ContactEditor({ label, kind, value, onVerified, excludedValue })
     setError('');
   }
   return (
-    <div className="field">
-      <Label htmlFor={`${id}-contact`}>{label}</Label>
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="field contact-editor">
+      {labelAction ? (
+        <div className="contact-editor-heading">
+          <Label htmlFor={`${id}-contact`}>{label}</Label>
+          {labelAction}
+        </div>
+      ) : (
+        <Label htmlFor={`${id}-contact`}>{label}</Label>
+      )}
+      <div
+        className="contact-editor-summary flex flex-wrap items-center gap-2"
+        hidden={inline && !value}
+      >
         <span className="break-all text-sm">{value || 'Not added'}</span>
         {value && <span className="pill ok">Verified</span>}
         {!editing && (
@@ -98,23 +119,26 @@ export function ContactEditor({ label, kind, value, onVerified, excludedValue })
                 Verify {kind === 'email' ? 'email' : 'number'}
               </Button>
             </>
-          ) : (
+          ) : !inline || candidate.trim() ? (
             <Button type="button" variant="outline" size="sm" onClick={requestCode}>
-              Continue to verification
+              {inline ? 'Verify' : 'Continue to verification'}
+            </Button>
+          ) : null}
+          {(!inline || candidate || pending || value) && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setEditing(inline && !value);
+                setCandidate('');
+                setPending(null);
+                setError('');
+              }}
+            >
+              {inline && !value ? 'Clear' : 'Cancel change'}
             </Button>
           )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setEditing(false);
-              setPending(null);
-              setError('');
-            }}
-          >
-            Cancel change
-          </Button>
         </>
       )}
       {error && (

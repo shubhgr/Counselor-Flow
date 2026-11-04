@@ -133,6 +133,12 @@ function WorkspaceChrome({ children }) {
   }
   const { account, verified } = useRuntime();
   const { isMobile, setOpenMobile, state, setOpen } = useSidebar();
+  const [profileCompleteness, setProfileCompleteness] = useState(null);
+  useEffect(() => {
+    const sync = (event) => setProfileCompleteness(event.detail);
+    window.addEventListener('gradright:profile-completeness', sync);
+    return () => window.removeEventListener('gradright:profile-completeness', sync);
+  }, []);
   const [profileExpanded, setProfileExpanded] = useState(activeProfilePage(page));
   useEffect(() => {
     if (activeProfilePage(page)) setProfileExpanded(true);
@@ -204,6 +210,15 @@ function WorkspaceChrome({ children }) {
                               >
                                 <Icon name="person" className="ico" />
                                 <span className="workspace-nav-text">Profile</span>
+                                {profileCompleteness !== null && (
+                                  <span
+                                    className="profile-completeness-chip"
+                                    aria-label={`Profile completeness: ${profileCompleteness}%`}
+                                    title={`Profile completeness: ${profileCompleteness}%`}
+                                  >
+                                    {profileCompleteness}%
+                                  </span>
+                                )}
                                 <ChevronRight
                                   className={`profile-nav-chevron ml-auto ${profileExpanded ? 'rotate-90' : ''}`}
                                 />

@@ -50,9 +50,6 @@ export function CommunitySummary() {
           <h2>Community</h2>
           <p className="c-profile-username">@{username}</p>
         </div>
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/community">Go to community</Link>
-        </Button>
       </div>
       <div className="c-profile-stats cpp-stats">
         <div className="cpp-stat">
@@ -116,6 +113,9 @@ export function CommunitySummary() {
           <p className="hint-text">No replies yet. Join a conversation in the community.</p>
         )}
       </div>
+      <Button variant="outline" size="sm" asChild>
+        <Link href="/community">Go to community</Link>
+      </Button>
       <Dialog
         open={network !== null}
         onOpenChange={(open) => {
