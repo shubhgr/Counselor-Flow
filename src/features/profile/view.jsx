@@ -1,7 +1,10 @@
 'use client';
 import { memo } from 'react';
+import { Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Icon } from '@/components/icon';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,291 +12,194 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { PageActions } from '@/components/page-actions';
 import { PublicProfileDetails } from '@/components/public-profile-details';
+import { CountrySelector } from './country-selector';
+import { ProfileStrength } from './profile-strength';
+import { StudentProfilePreview } from './student-profile-preview';
 import { CommunitySummary } from './community-summary';
 
+function ProfileSectionTitle({ title, description, privateSection = false }) {
+  return (
+    <div className="profile-identity-heading">
+      <h2>{title}</h2>
+      {privateSection && <span className="hint-text">Private</span>}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="profile-identity-info"
+              aria-label={`About ${title.toLowerCase()}`}
+            >
+              <Info aria-hidden="true" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={6} className="max-w-64">
+            {description}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  );
+}
+
 export const View = memo(function View() {
+  const overview = (useSearchParams().get('tab') || 'edit') === 'edit';
   return (
     <>
       <PageActions>
-        <div className={'actions'}></div>
+        {overview && (
+          <div className="profile-overview-tools">
+            <span id="profile-save-status" className="hint-text" role="status" hidden>
+              Saved just now
+            </span>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/profile?tab=preview">View as student</Link>
+            </Button>
+          </div>
+        )}
       </PageActions>
       <div className={'content gr-scroll'}>
         <div id={'panel-edit'}>
-          <div className={'profile-hero'}>
-            <div className={'profile-hero-left'}>
-              <div className={'profile-hero-photo'}>
-                <Input
-                  type={'file'}
-                  id={'photo-input'}
-                  accept={'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp'}
-                  hidden
-                />
-                <Button
-                  type={'button'}
-                  className={'photo-circle'}
-                  id={'photo-zone'}
-                  aria-label={'Upload profile photo'}
-                  variant={'unstyled'}
-                  size={'unstyled'}
-                >
-                  <span className={'photo-circle-empty'} id={'photo-empty'}>
-                    <Icon name="person" className={'app-icon'} aria-hidden={'true'} />
-                  </span>
-                  <img
-                    id={'photo-preview-img'}
-                    className={'photo-circle-img'}
-                    alt={'Profile photo preview'}
-                    hidden
-                  />
-                </Button>
-                <div className={'photo-circle-actions'} id={'photo-preview'} hidden>
-                  <Button
-                    type={'button'}
-                    className={''}
-                    id={'photo-change'}
-                    variant={'ghost'}
-                    size={'sm'}
-                  >
-                    {'Change'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={''}
-                    id={'photo-remove'}
-                    variant={'ghost'}
-                    size={'sm'}
-                  >
-                    {'Remove'}
-                  </Button>
-                </div>
-                <span id={'photo-preview-name'} hidden>
-                  {'photo.jpg'}
-                </span>
-              </div>
-              <div className={'profile-hero-copy'}>
-                <h2 id={'hero-name'}>{'Priya Sharma'}</h2>
-                <p>{'Higher-education counselor · Mumbai'}</p>
-                <div className={'missing-list'} id={'missing-list'}>
-                  <span className={'pill warn'} data-miss={'photo'}>
-                    {'Photo needed'}
-                  </span>
-
-                  <span className={'pill ok'} data-miss={'docs'}>
-                    {'2 documents'}
-                  </span>
-                  <span className={'pill ok'} data-miss={'video'} hidden>
-                    {'Intro video'}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className={'profile-hero-right'}>
-              <div className={'progress-meta'}>
-                <span className={'progress-label'}>{'Profile completeness'}</span>
-                <div className={'progress-ring'} id={'progress-ring'} title={'Profile completion'}>
-                  <span id={'progress-pct'}>{'65%'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <CommunitySummary />
-          <PublicProfileDetails editable />
-          <form id={'profile-form'} autoComplete={'off'}>
-            <div className={'profile-edit-grid'}>
-              <div className={'profile-edit-col'}>
-                <Card className={'panel'}>
+          <div className="profile-overview-body">
+            <div className="profile-overview-sections">
+              <form id="profile-form" autoComplete="off" className="profile-overview-form">
+                <section className="panel overview-section" id="profile-identity">
                   <div className={'panel-head'}>
-                    <h2>{'Public identity'}</h2>
-                  </div>
-                  <p className={'panel-lead'}>
-                    {'The name and location shown to students on your counselor profile.'}
-                  </p>
-                  <div className={'field-row'}>
-                    <div className={'field'}>
-                      <Label htmlFor={'field-name'}>{'Display name'}</Label>
-                      <Input
-                        id={'field-name'}
-                        name={'name'}
-                        type={'text'}
-                        defaultValue={'Priya Sharma'}
-                      />
-                    </div>
-                  </div>
-                  <p className="hint-text">
-                    Email, mobile and sign-in details are private.{' '}
-                    <Link href="/account">Manage my account</Link>
-                  </p>
-                  <div className={'field'}>
-                    <Label htmlFor={'field-address'}>{'Public location'}</Label>
-                    <Textarea
-                      id={'field-address'}
-                      name={'address'}
-                      defaultValue={'Bandra West, Mumbai, Maharashtra'}
+                    <ProfileSectionTitle
+                      title="Identity"
+                      description="The name and location shown to students on your counselor profile."
                     />
+                    <span id="profile-identity-status" className="pill warn">
+                      Needs photo
+                    </span>
                   </div>
-                </Card>
-                <Card className={'panel'}>
-                  <div className={'panel-head'}>
-                    <h2>{'Intro video'}</h2>
-                  </div>
-                  <p className={'panel-lead'}>
-                    {'A short clip students see on your profile. Record here or upload a file.'}
-                  </p>
-                  <Input
-                    type={'file'}
-                    id={'video-input'}
-                    accept={'video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v'}
-                    hidden
-                  />
-                  <div className={'intro-video-chooser'} id={'video-zone'}>
-                    <Button
-                      type={'button'}
-                      className={'intro-video-choice'}
-                      id={'video-record-btn'}
-                      variant={'unstyled'}
-                      size={'unstyled'}
-                    >
-                      <span className={'media-ico'} aria-hidden={'true'}>
-                        <Icon name="videocam" className={'app-icon'} />
-                      </span>
-                      <span className={'intro-video-copy'}>
-                        <strong>{'Record'}</strong>
-                        <span>{'Camera and mic · up to 2 min'}</span>
-                      </span>
-                    </Button>
-                    <Button
-                      type={'button'}
-                      className={'intro-video-choice'}
-                      id={'video-upload-btn'}
-                      variant={'unstyled'}
-                      size={'unstyled'}
-                    >
-                      <span className={'media-ico'} aria-hidden={'true'}>
-                        <Icon name="upload" className={'app-icon'} />
-                      </span>
-                      <span className={'intro-video-copy'}>
-                        <strong>{'Upload'}</strong>
-                        <span>{'MP4, MOV, or WEBM · 50 MB'}</span>
-                      </span>
-                    </Button>
-                  </div>
-                  <div className={'video-preview'} id={'video-preview'} hidden>
-                    <video id={'video-preview-el'} controls playsInline preload={'metadata'} />
-                    <div className={'video-preview-meta'}>
-                      <strong id={'video-preview-name'}>{'intro.mp4'}</strong>
-                      <span id={'video-preview-meta'}>
-                        {'Ready · shown on your student profile'}
-                      </span>
-                      <div className={'video-preview-actions'}>
-                        <Button
-                          type={'button'}
-                          className={''}
-                          id={'video-record-again'}
-                          variant={'ghost'}
-                          size={'sm'}
-                        >
-                          {'Record'}
-                        </Button>
-                        <Button
-                          type={'button'}
-                          className={''}
-                          id={'video-change'}
-                          variant={'ghost'}
-                          size={'sm'}
-                        >
-                          {'Upload'}
-                        </Button>
-                        <Button
-                          type={'button'}
-                          className={''}
-                          id={'video-remove'}
-                          variant={'ghost'}
-                          size={'sm'}
-                        >
-                          {'Remove'}
-                        </Button>
+                  <div className="profile-identity-grid">
+                    <div className="profile-hero profile-identity-summary">
+                      <div className={'profile-hero-left'}>
+                        <div className={'profile-hero-photo'}>
+                          <Input
+                            type={'file'}
+                            id={'photo-input'}
+                            accept={'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp'}
+                            hidden
+                          />
+                          <Button
+                            type={'button'}
+                            className={'photo-circle'}
+                            id={'photo-zone'}
+                            aria-label={'Upload profile photo'}
+                            variant={'unstyled'}
+                            size={'unstyled'}
+                          >
+                            <span className={'photo-circle-empty'} id={'photo-empty'}>
+                              <span>
+                                Add
+                                <br />
+                                photo
+                              </span>
+                            </span>
+                            <img
+                              id={'photo-preview-img'}
+                              className={'photo-circle-img'}
+                              alt={'Profile photo preview'}
+                              hidden
+                            />
+                          </Button>
+                          <div className={'photo-circle-actions'} id={'photo-preview'} hidden>
+                            <Button
+                              type={'button'}
+                              className={''}
+                              id={'photo-change'}
+                              variant={'ghost'}
+                              size={'sm'}
+                            >
+                              {'Change'}
+                            </Button>
+                            <Button
+                              type={'button'}
+                              className={''}
+                              id={'photo-remove'}
+                              variant={'ghost'}
+                              size={'sm'}
+                            >
+                              {'Remove'}
+                            </Button>
+                          </div>
+                          <span id={'photo-preview-name'} hidden>
+                            {'photo.jpg'}
+                          </span>
+                        </div>
+                        <div className={'profile-hero-copy'} hidden>
+                          <span id="hero-name" hidden>
+                            Priya Sharma
+                          </span>
+                          <h3>Profile photo</h3>
+                          <p>Shown on your public profile.</p>
+                          <div className={'missing-list'} id={'missing-list'}>
+                            <span className={'pill warn'} data-miss={'photo'}>
+                              {'Photo needed'}
+                            </span>
+
+                            <span className={'pill ok'} data-miss={'docs'}>
+                              {'2 documents'}
+                            </span>
+                            <span className={'pill ok'} data-miss={'video'} hidden>
+                              {'Intro video'}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Card>
-              </div>
-              <div className={'profile-edit-col'}>
-                <Card className={'panel'}>
-                  <div className={'panel-head'}>
-                    <h2>{'Background'}</h2>
-                  </div>
-                  <p className={'panel-lead'}>
-                    {'The experience and expertise students see on your profile.'}
-                  </p>
-                  <div className={'field'}>
-                    <Label>{'Countries'}</Label>
-                    <div className={'chip-select'} id={'countries'}>
-                      <Button
-                        type={'button'}
-                        className={'chip selected'}
-                        variant={'unstyled'}
-                        size={'unstyled'}
-                      >
-                        {'USA'}
-                      </Button>
-                      <Button
-                        type={'button'}
-                        className={'chip selected'}
-                        variant={'unstyled'}
-                        size={'unstyled'}
-                      >
-                        {'UK'}
-                      </Button>
-                      <Button
-                        type={'button'}
-                        className={'chip selected'}
-                        variant={'unstyled'}
-                        size={'unstyled'}
-                      >
-                        {'Canada'}
-                      </Button>
-                      <Button
-                        type={'button'}
-                        className={'chip'}
-                        variant={'unstyled'}
-                        size={'unstyled'}
-                      >
-                        {'Germany'}
-                      </Button>
-                      <Button
-                        type={'button'}
-                        className={'chip'}
-                        variant={'unstyled'}
-                        size={'unstyled'}
-                      >
-                        {'Australia'}
-                      </Button>
-                      <Button
-                        type={'button'}
-                        className={'chip'}
-                        variant={'unstyled'}
-                        size={'unstyled'}
-                      >
-                        {'Ireland'}
-                      </Button>
-                      <Button
-                        type={'button'}
-                        className={'chip'}
-                        variant={'unstyled'}
-                        size={'unstyled'}
-                      >
-                        {'Netherlands'}
-                      </Button>
-                      <Button
-                        type={'button'}
-                        className={'chip'}
-                        variant={'unstyled'}
-                        size={'unstyled'}
-                      >
-                        {'Singapore'}
-                      </Button>
+
+                    <div className="profile-identity-fields">
+                      <div className={'field-row'}>
+                        <div className={'field'}>
+                          <Label htmlFor={'field-name'}>{'Display name'}</Label>
+                          <Input
+                            id={'field-name'}
+                            name={'name'}
+                            type={'text'}
+                            defaultValue={'Priya Sharma'}
+                          />
+                        </div>
+                        <div className={'field'}>
+                          <Label htmlFor={'field-address'}>{'Public location'}</Label>
+                          <Input
+                            id={'field-address'}
+                            name={'address'}
+                            defaultValue={'Bandra West, Mumbai, Maharashtra'}
+                          />
+                        </div>
+                      </div>
+                      <PublicProfileDetails editable embedded />
                     </div>
                   </div>
+                </section>
+                <section className="panel overview-section" id="profile-contact">
+                  <div className="panel-head">
+                    <ProfileSectionTitle
+                      title="Public contact"
+                      description="Choose what students can use to reach you. Verify a contact before showing it on your profile."
+                    />
+                    <span id="public-contact-status" className="pill warn">
+                      2 not added
+                    </span>
+                  </div>
+
+                  <div id="profile-contact-fields" />
+                </section>
+                <section className="panel overview-section" id="profile-background">
+                  <div className={'panel-head'}>
+                    <ProfileSectionTitle
+                      title="Professional background"
+                      description="The experience and expertise students see on your profile."
+                    />
+                    <span className="pill" id="profile-background-status">
+                      Complete
+                    </span>
+                  </div>
+
+                  <CountrySelector />
                   <div className={'field-row'}>
                     <div className={'field'}>
                       <Label htmlFor={'field-students'}>{'Students served'}</Label>
@@ -318,18 +224,133 @@ export const View = memo(function View() {
                     <Label htmlFor={'field-bio'}>{'Bio'}</Label>
                     <Textarea
                       id={'field-bio'}
+                      maxLength={300}
                       name={'bio'}
                       defaultValue={'Helping students map pathways into top universities.'}
                     />
+                    <p className="hint-text" id="overview-bio-count">
+                      52 / 300
+                    </p>
                   </div>
-                </Card>
-                <Card className={'panel'}>
+                </section>
+                <section className="panel overview-section" id="profile-introduction">
                   <div className={'panel-head'}>
-                    <h2>{'Documents'}</h2>
+                    <ProfileSectionTitle
+                      title="Intro video"
+                      description="A short clip students see on your profile. Record here or upload a file."
+                    />
+                    <span className="pill" id="profile-video-status">
+                      Not added
+                    </span>
                   </div>
-                  <p className={'panel-lead'}>
-                    {'Upload an ID, certificate, or agency letter for account review.'}
-                  </p>
+
+                  <Input
+                    type={'file'}
+                    id={'video-input'}
+                    accept={'video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v'}
+                    hidden
+                  />
+                  <div className="profile-video-presentation">
+                    <div className="profile-video-slot">
+                      <div
+                        className="profile-video-placeholder"
+                        id="video-placeholder"
+                        aria-hidden="true"
+                      >
+                        <Icon name="play_arrow" />
+                      </div>
+                      <div className="video-preview" id="video-preview" hidden>
+                        <video id="video-preview-el" controls playsInline preload="metadata" />
+                      </div>
+                    </div>
+                    <div className="profile-video-guidance">
+                      <p>
+                        A 30 to 60 second hello builds trust. Look at the camera and say what you
+                        help with.
+                      </p>
+                      <div className={'intro-video-chooser'} id={'video-zone'}>
+                        <Button
+                          type={'button'}
+                          className={'intro-video-choice'}
+                          id={'video-record-btn'}
+                          variant={'unstyled'}
+                          size={'unstyled'}
+                        >
+                          <span className={'media-ico'} aria-hidden={'true'}>
+                            <Icon name="videocam" className={'app-icon'} />
+                          </span>
+                          <span className={'intro-video-copy'}>
+                            <strong>{'Record'}</strong>
+                            <span>{'Camera and mic · up to 2 min'}</span>
+                          </span>
+                        </Button>
+                        <Button
+                          type={'button'}
+                          className={'intro-video-choice'}
+                          id={'video-upload-btn'}
+                          variant={'unstyled'}
+                          size={'unstyled'}
+                        >
+                          <span className={'media-ico'} aria-hidden={'true'}>
+                            <Icon name="upload" className={'app-icon'} />
+                          </span>
+                          <span className={'intro-video-copy'}>
+                            <strong>{'Upload'}</strong>
+                            <span>{'MP4, MOV, or WEBM · 50 MB'}</span>
+                          </span>
+                        </Button>
+                      </div>
+                      <div className="video-preview-meta" id="video-details" hidden>
+                        <strong id={'video-preview-name'}>{'intro.mp4'}</strong>
+                        <span id={'video-preview-meta'}>
+                          {'Ready · shown on your student profile'}
+                        </span>
+                        <div className={'video-preview-actions'}>
+                          <Button
+                            type={'button'}
+                            className={''}
+                            id={'video-record-again'}
+                            variant={'ghost'}
+                            size={'sm'}
+                          >
+                            {'Record'}
+                          </Button>
+                          <Button
+                            type={'button'}
+                            className={''}
+                            id={'video-change'}
+                            variant={'ghost'}
+                            size={'sm'}
+                          >
+                            {'Upload'}
+                          </Button>
+                          <Button
+                            type={'button'}
+                            className={''}
+                            id={'video-remove'}
+                            variant={'ghost'}
+                            size={'sm'}
+                          >
+                            {'Remove'}
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="hint-text">Record up to 2 min · MP4, MOV or WEBM, 50 MB</p>
+                    </div>
+                  </div>
+                </section>
+                <section className="panel overview-section" id="profile-verification">
+                  <div className={'panel-head'}>
+                    <ProfileSectionTitle
+                      title="Verification documents"
+                      description="Private. Only used for account review. Upload an ID, certificate, or agency letter."
+                      privateSection
+                    />
+                    <span className="pill" id="profile-documents-status">
+                      2 on file
+                    </span>
+                  </div>
+
                   <Input
                     type={'file'}
                     id={'doc-input'}
@@ -337,6 +358,7 @@ export const View = memo(function View() {
                     multiple
                     hidden
                   />
+                  <div id={'doc-list'} />
                   <div
                     className={'media-drop'}
                     id={'doc-zone'}
@@ -348,15 +370,19 @@ export const View = memo(function View() {
                       <Icon name="upload_file" className={'app-icon'} />
                     </span>
                     <span className={'intro-video-copy'}>
-                      <strong>{'Add verification docs'}</strong>
+                      <strong>{'Add another document'}</strong>
                       <span>{'PDF, JPG, or PNG · click or drop'}</span>
                     </span>
                   </div>
-                  <div id={'doc-list'} />
-                </Card>
-              </div>
+                </section>
+              </form>
             </div>
-          </form>
+            <aside className="profile-overview-aside" aria-label="Profile preview and community">
+              <ProfileStrength />
+              <StudentProfilePreview />
+              <CommunitySummary />
+            </aside>
+          </div>
         </div>
         <div id={'panel-services'} hidden>
           <div className={'services-fee'}>

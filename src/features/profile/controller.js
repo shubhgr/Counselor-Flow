@@ -804,11 +804,12 @@ export function initialize(scope) {
     }
 
     function selectedCountries() {
-      return [...countriesEl.querySelectorAll('.chip.selected')].map((c) => c.textContent.trim());
+      return window.GradRightCountriesDraft?.get() || [];
     }
 
     function snapshot() {
       return JSON.stringify({
+        publicDetails: window.GradRightPublicProfileDraft?.get() || {},
         name: document.getElementById('field-name').value,
         email: window.GradRightSession?.get()?.email || '',
         address: document.getElementById('field-address').value,
@@ -825,6 +826,10 @@ export function initialize(scope) {
 
     function setDirty(next) {
       dirty = next;
+      if (next) {
+        const status = document.getElementById('profile-save-status');
+        if (status) status.hidden = true;
+      }
       const panel = document.getElementById('panel-edit');
       if (panel && panel.hidden) return dirty;
       unsavedBar.hidden = !dirty;
@@ -833,12 +838,35 @@ export function initialize(scope) {
     }
 
     function checkDirty() {
+      updateSectionStatuses();
       if (!baseline) return false;
       return setDirty(snapshot() !== baseline);
     }
     window.GradRightProfileDirty.edit = checkDirty;
 
+    function updateSectionStatuses() {
+      const videoStatus = document.getElementById('profile-video-status');
+      const documentsStatus = document.getElementById('profile-documents-status');
+      const backgroundStatus = document.getElementById('profile-background-status');
+      const complete = Boolean(
+        selectedCountries().length && document.getElementById('field-bio').value.trim(),
+      );
+      if (videoStatus) {
+        videoStatus.textContent = videoUrl ? 'Added' : 'Not added';
+        videoStatus.className = 'pill ' + (videoUrl ? 'ok' : 'warn');
+      }
+      if (documentsStatus) {
+        documentsStatus.textContent = docs.length ? docs.length + ' on file' : 'Not added';
+        documentsStatus.className = 'pill ' + (docs.length ? 'ok' : 'warn');
+      }
+      if (backgroundStatus) {
+        backgroundStatus.textContent = complete ? 'Complete' : 'Needs details';
+        backgroundStatus.className = 'pill ' + (complete ? 'ok' : 'warn');
+      }
+    }
+
     function updateMissing() {
+      updateSectionStatuses();
       const list = document.getElementById('missing-list');
       const photoPill = list.querySelector('[data-miss="photo"]');
       const emailPill = list.querySelector('[data-miss="email"]');
@@ -875,13 +903,6 @@ export function initialize(scope) {
           videoPill.hidden = true;
         }
       }
-
-      let pct = 40;
-      if (photoUrl) pct += 30;
-      if (docs.length) pct += 30;
-      document.getElementById('progress-pct').textContent = pct + '%';
-      document.getElementById('progress-ring').style.background =
-        'conic-gradient(var(--brand) 0 ' + pct + '%, var(--line) 0)';
     }
 
     function setAvatarPhoto(el, url, initials) {
@@ -963,6 +984,8 @@ export function initialize(scope) {
     }
 
     function renderVideo() {
+      document.getElementById('video-placeholder').hidden = Boolean(videoUrl);
+      document.getElementById('video-details').hidden = !videoUrl;
       if (videoUrl) {
         videoZone.hidden = true;
         videoPreview.hidden = false;
@@ -1121,6 +1144,7 @@ export function initialize(scope) {
 
     function captureState() {
       return {
+        publicDetails: window.GradRightPublicProfileDraft?.get() || {},
         name: document.getElementById('field-name').value,
         email: window.GradRightSession?.get()?.email || '',
         address: document.getElementById('field-address').value,
@@ -1142,6 +1166,7 @@ export function initialize(scope) {
     }
 
     function restoreState(state) {
+      window.GradRightPublicProfileDraft?.restore(state.publicDetails);
       document.getElementById('field-name').value = state.name;
 
       document.getElementById('field-address').value = state.address;
@@ -1149,9 +1174,7 @@ export function initialize(scope) {
       document.getElementById('field-admits').value = state.admits;
       document.getElementById('field-bio').value = state.bio;
 
-      countriesEl.querySelectorAll('.chip').forEach((chip) => {
-        chip.classList.toggle('selected', state.countries.includes(chip.textContent.trim()));
-      });
+      window.GradRightCountriesDraft?.restore(state.countries);
 
       emailVerified = state.emailVerified;
       if (emailBtn) emailBtn.textContent = state.emailBtnText;
@@ -1182,14 +1205,6 @@ export function initialize(scope) {
       renderVideo();
       renderDocs();
     }
-
-    // Country chips
-    countriesEl.querySelectorAll('.chip').forEach((chip) => {
-      scope.listen(chip, 'click', () => {
-        chip.classList.toggle('selected');
-        checkDirty();
-      });
-    });
 
     // Form field changes
     scope.listen(form, 'input', () => {
@@ -1391,8 +1406,21 @@ export function initialize(scope) {
       const editOpen =
         document.getElementById('panel-edit') && !document.getElementById('panel-edit').hidden;
       if (!editOpen) return;
+      if (window.GradRightPublicProfileDraft?.validate() === false) return;
+      if (!document.getElementById('field-name').value.trim()) {
+        document.getElementById('field-name').focus();
+        return;
+      }
       try {
-        savePublicIdentity({ name: document.getElementById('field-name').value.trim() });
+        savePublicIdentity({
+          ...window.GradRightPublicProfileDraft?.get(),
+          name: document.getElementById('field-name').value.trim(),
+          address: document.getElementById('field-address').value,
+          students: document.getElementById('field-students').value,
+          admits: document.getElementById('field-admits').value,
+          bio: document.getElementById('field-bio').value,
+          countries: selectedCountries(),
+        });
       } catch {
         alert('Unable to save your public profile. Try again.');
         return;
@@ -1400,6 +1428,8 @@ export function initialize(scope) {
       savedState = captureState();
       baseline = snapshot();
       setDirty(false);
+      const saveStatus = document.getElementById('profile-save-status');
+      if (saveStatus) saveStatus.hidden = false;
       syncPreviewCopy(
         document.getElementById('field-name').value.trim(),
         document.getElementById('field-bio').value,
@@ -1421,6 +1451,15 @@ export function initialize(scope) {
       document.getElementById('field-name').value = identity.name;
       syncPreviewCopy(identity.name, document.getElementById('field-bio').value);
     }
+    for (const field of ['address', 'students', 'admits', 'bio']) {
+      if (identity[field] !== undefined)
+        document.getElementById('field-' + field).value = identity[field];
+    }
+    if (identity.countries) window.GradRightCountriesDraft?.restore(identity.countries);
+    syncPreviewCopy(
+      document.getElementById('field-name').value,
+      document.getElementById('field-bio').value,
+    );
     renderDocs();
     renderPhoto();
     renderVideo();
