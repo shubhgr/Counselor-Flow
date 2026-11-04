@@ -71,7 +71,7 @@ const TITLES = {
   calls: 'Meets',
   call: 'Meet',
   community: 'Community',
-  profile: 'Counselor profile',
+  profile: 'Profile',
   account: 'My account',
   calendar: 'Profile',
   reviews: 'Reviews',
@@ -84,7 +84,7 @@ function activeProfilePage(page) {
   return ['profile', 'calendar'].includes(page);
 }
 const SECTIONS = [
-  ['edit', 'Edit profile'],
+  ['edit', 'Overview'],
   ['services', 'Services & fee'],
   ['testimonials', 'Testimonials'],
   ['calendar', 'Calendar'],
@@ -133,27 +133,11 @@ function WorkspaceChrome({ children }) {
   }
   const { account, verified } = useRuntime();
   const { isMobile, setOpenMobile, state, setOpen } = useSidebar();
-  const [profileExpanded, setProfileExpanded] = useState(true);
-  const [settingsExpanded, setSettingsExpanded] = useState(false);
-  const [settingsSection, setSettingsSection] = useState('notifications');
+  const [profileExpanded, setProfileExpanded] = useState(activeProfilePage(page));
   useEffect(() => {
-    const sync = () => {
-      const hash = window.location.hash.slice(1);
-      setSettingsSection(
-        ['block', 'report'].includes(hash)
-          ? 'safety'
-          : ['safety', 'help'].includes(hash)
-            ? hash
-            : 'notifications',
-      );
-    };
-    sync();
-    if (page === 'settings') setSettingsExpanded(true);
-    window.addEventListener('hashchange', sync);
-    return () => window.removeEventListener('hashchange', sync);
+    if (activeProfilePage(page)) setProfileExpanded(true);
   }, [pathname]);
-  const communityProfile = page === 'community' && params.get('profile') === 'me';
-  const profileActive = activeProfilePage(page) || communityProfile;
+  const profileSection = page === 'calendar' ? 'calendar' : params.get('tab') || 'edit';
   const context = params.get('from');
   const returnPage = [
     'dashboard',
@@ -209,7 +193,7 @@ function WorkspaceChrome({ children }) {
                             <Collapsible.Trigger asChild>
                               <SidebarMenuButton
                                 tooltip="Profile"
-                                isActive={profileActive}
+                                isActive={activeProfilePage(page)}
                                 onClick={(event) => {
                                   if (state === 'collapsed') {
                                     event.preventDefault();
@@ -218,7 +202,7 @@ function WorkspaceChrome({ children }) {
                                   }
                                 }}
                               >
-                                <Icon name="person" />
+                                <Icon name="person" className="ico" />
                                 <span className="workspace-nav-text">Profile</span>
                                 <ChevronRight
                                   className={`profile-nav-chevron ml-auto ${profileExpanded ? 'rotate-90' : ''}`}
@@ -227,23 +211,29 @@ function WorkspaceChrome({ children }) {
                             </Collapsible.Trigger>
                             <Collapsible.Content>
                               <SidebarMenuSub>
-                                <SidebarMenuSubItem>
-                                  <SidebarMenuSubButton asChild isActive={activeProfilePage(page)}>
-                                    <Link href="/profile">Counselor profile</Link>
-                                  </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                                <SidebarMenuSubItem>
-                                  <SidebarMenuSubButton asChild isActive={communityProfile}>
-                                    <Link href="/community?profile=me">Community profile</Link>
-                                  </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                                <SidebarMenuSubItem>
-                                  <SidebarMenuSubButton asChild>
-                                    <button type="button" onClick={() => setAccountOpen(true)}>
-                                      My account
-                                    </button>
-                                  </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
+                                {SECTIONS.map(([section, title]) => {
+                                  const selected =
+                                    activeProfilePage(page) && profileSection === section;
+                                  return (
+                                    <SidebarMenuSubItem key={section}>
+                                      <SidebarMenuSubButton asChild isActive={selected}>
+                                        <Link
+                                          href={
+                                            section === 'calendar'
+                                              ? '/calendar'
+                                              : `/profile?tab=${section}`
+                                          }
+                                          aria-current={selected ? 'page' : undefined}
+                                          onClick={() => {
+                                            if (isMobile) setOpenMobile(false);
+                                          }}
+                                        >
+                                          {title}
+                                        </Link>
+                                      </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                  );
+                                })}
                               </SidebarMenuSub>
                             </Collapsible.Content>
                           </SidebarMenuItem>
@@ -252,7 +242,7 @@ function WorkspaceChrome({ children }) {
                         <SidebarMenuItem key={id}>
                           <SidebarMenuButton
                             asChild
-                            isActive={active === id}
+                            isActive={id === 'profile' ? activeProfilePage(page) : active === id}
 
                             tooltip={label}
                           >
@@ -282,62 +272,6 @@ function WorkspaceChrome({ children }) {
           </nav>
         </SidebarContent>
         <SidebarFooter className="workspace-sidebar-footer">
-          <SidebarMenu>
-            {' '}
-            <Collapsible.Root open={settingsExpanded} onOpenChange={setSettingsExpanded} asChild>
-              <SidebarMenuItem>
-                <Collapsible.Trigger asChild>
-                  <SidebarMenuButton
-                    tooltip="Settings"
-                    isActive={page === 'settings'}
-                    onClick={(event) => {
-                      if (state === 'collapsed') {
-                        event.preventDefault();
-                        setOpen(true);
-                        setSettingsExpanded(true);
-                      }
-                    }}
-                  >
-                    <Settings />
-                    <span className="workspace-nav-text">Settings</span>
-                    <ChevronRight
-                      className={`profile-nav-chevron ml-auto ${settingsExpanded ? 'rotate-90' : ''}`}
-                    />
-                  </SidebarMenuButton>
-                </Collapsible.Trigger>
-                <Collapsible.Content>
-                  <SidebarMenuSub>
-                    {[
-                      ['notifications', 'Notifications'],
-                      ['safety', 'Privacy & safety'],
-                      ['help', 'Help & support'],
-                    ].map(([section, title]) => (
-                      <SidebarMenuSubItem key={section}>
-                        <SidebarMenuSubButton
-                          asChild
-                          isActive={page === 'settings' && settingsSection === section}
-                        >
-                          <Link
-                            href={`/settings#${section}`}
-                            onClick={(event) => {
-                              if (page === 'settings') {
-                                event.preventDefault();
-                                history.replaceState(null, '', `#${section}`);
-                                window.dispatchEvent(new HashChangeEvent('hashchange'));
-                              }
-                              setSettingsSection(section);
-                            }}
-                          >
-                            {title}
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))}
-                  </SidebarMenuSub>
-                </Collapsible.Content>
-              </SidebarMenuItem>
-            </Collapsible.Root>
-          </SidebarMenu>
           <SidebarMenu>
             <SidebarMenuItem>
               <DropdownMenu>
@@ -444,38 +378,6 @@ function WorkspaceChrome({ children }) {
             </h1>
           </div>
           <div className="actions">
-            {['profile', 'calendar'].includes(page) && (
-              <nav
-                className="profile-view-tabs"
-                aria-label="Profile sections"
-                key={`profile-sections:${pathname}${params.toString()}`}
-              >
-                {SECTIONS.map(([id, label]) =>
-                  page === 'profile' && id !== 'calendar' ? (
-                    <Button
-                      key={id}
-                      variant="unstyled"
-                      size="unstyled"
-                      className={`profile-tab${(params.get('tab') || 'edit') === id ? ' active' : ''}`}
-                      id={`tab-${id}`}
-                      data-profile-tab={id}
-                    >
-                      {label}
-                    </Button>
-                  ) : (
-                    <Link
-                      key={id}
-                      className={`profile-tab${page === 'calendar' && id === 'calendar' ? ' active' : ''}`}
-                      id={`tab-${id}`}
-                      href={id === 'calendar' ? '/calendar' : `/profile?tab=${id}`}
-                      aria-current={page === 'calendar' && id === 'calendar' ? 'page' : undefined}
-                    >
-                      {label}
-                    </Link>
-                  ),
-                )}
-              </nav>
-            )}
             <div id="page-header-actions" key={`page-actions:${pathname}`} />
             <Notifications />
           </div>

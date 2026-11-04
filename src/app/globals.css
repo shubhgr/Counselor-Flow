@@ -2872,3 +2872,233 @@ body[data-page='reviews'] .rev-badge-scroll {
 body[data-page='reviews'] .rev-badge-grid {
   align-content: start;
 }
+
+/* Shared overview entrance motion across analytics pages. */
+@keyframes overview-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-3));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes overview-chart-build {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 -2% -10% -2%);
+  }
+}
+body:is(
+    [data-page='dashboard'],
+    [data-page='students'],
+    [data-page='calls'],
+    [data-page='transactions'],
+    [data-page='reviews']
+  )
+  .content
+  .panel {
+  animation: overview-card-enter 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+body[data-page='dashboard'] .source-panel {
+  animation-delay: 80ms;
+}
+body[data-page='dashboard'] .dash-calls-panel {
+  animation-delay: 140ms;
+}
+body[data-page='dashboard'] .dash-connects-panel {
+  animation-delay: 200ms;
+}
+body:is(
+    [data-page='dashboard'],
+    [data-page='students'],
+    [data-page='calls'],
+    [data-page='transactions'],
+    [data-page='reviews']
+  )
+  .analytics-chart[data-ready='1'] {
+  animation: overview-chart-build 800ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
+}
+body:is(
+    [data-page='students'],
+    [data-page='calls'],
+    [data-page='transactions'],
+    [data-page='reviews']
+  )
+  :is(.people-panel, .txn-panel, .rev-list-panel) {
+  animation-delay: 140ms;
+}
+body:is([data-page='calls'], [data-page='transactions'], [data-page='reviews'])
+  :is(.calls-live-column .panel, .bank-panel, .rev-side-panel) {
+  animation-delay: 80ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  body:is(
+      [data-page='dashboard'],
+      [data-page='students'],
+      [data-page='calls'],
+      [data-page='transactions'],
+      [data-page='reviews']
+    )
+    .content
+    .panel,
+  body:is(
+      [data-page='dashboard'],
+      [data-page='students'],
+      [data-page='calls'],
+      [data-page='transactions'],
+      [data-page='reviews']
+    )
+    .analytics-chart[data-ready='1'] {
+    animation: none;
+  }
+}
+
+/* Keep the scroll toolbar surface inside the transaction card's corners. */
+body[data-page='transactions'] .txn-panel > .scroll-panel {
+  border-radius: inherit;
+}
+body[data-page='transactions'] .txn-panel .scroll-panel-head {
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+
+body[data-page='reviews'] .rev-list-panel > .scroll-panel {
+  border-radius: inherit;
+}
+body[data-page='reviews'] .rev-list-panel .scroll-panel-head {
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+
+/* Community uses the workspace card, type, and spacing scale. */
+body[data-page='community'] .community-workspace {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  gap: var(--space-5);
+}
+body[data-page='community'] .community-primary .content {
+  padding-right: 0;
+}
+body[data-page='community'] .community-feed {
+  gap: var(--space-5);
+}
+body[data-page='community'] .c-post,
+body[data-page='community'] .community-rail-panel {
+  padding: var(--space-6);
+  border-radius: var(--radius-5);
+  box-shadow: none;
+}
+body[data-page='community'] .c-post-meta {
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  align-items: center;
+}
+body[data-page='community'] .c-avatar-btn.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-9);
+  height: var(--space-9);
+  flex-shrink: 0;
+  border-radius: var(--radius-7);
+  background: var(--gray-700);
+  color: var(--brand-white);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+body[data-page='community'] .c-avatar-btn.avatar.amber {
+  background: var(--blue-500);
+}
+body[data-page='community'] .c-name-btn,
+body[data-page='community'] .community-foryou-copy strong,
+body[data-page='community'] .community-trend-item strong {
+  font-size: 0.875rem;
+  line-height: 1.4;
+  font-weight: 600;
+}
+body[data-page='community'] .c-post-who > span {
+  margin-top: var(--space-1);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+body[data-page='community'] .role-badge {
+  border: 0;
+  border-radius: var(--radius-2);
+  background: var(--gray-100);
+  padding-inline: var(--space-2);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+body[data-page='community'] .role-badge.counselor {
+  background: var(--purple-50);
+}
+body[data-page='community'] .c-post-body {
+  margin: 0 0 var(--space-4);
+  font-size: 0.875rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+body[data-page='community'] .c-post-actions {
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+}
+body[data-page='community'] .react-btn {
+  gap: var(--space-2);
+  padding: var(--space-2);
+  font-size: 0.75rem;
+}
+body[data-page='community'] .c-reply-teaser {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-3);
+  font-size: 0.8125rem;
+}
+body[data-page='community'] .community-rail {
+  gap: var(--space-5);
+}
+body[data-page='community'] .community-rail-panel .panel-head {
+  margin-bottom: var(--space-4);
+}
+body[data-page='community'] .community-foryou,
+body[data-page='community'] .community-trending {
+  gap: var(--space-3);
+}
+body[data-page='community'] .community-foryou-copy {
+  gap: var(--space-1);
+}
+body[data-page='community'] .community-foryou-item,
+body[data-page='community'] .community-trend-item {
+  padding: var(--space-4);
+  border-radius: var(--radius-4);
+  background: var(--gray-50);
+}
+body[data-page='community'] .community-foryou-body {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+body[data-page='community'] .community-rail-note {
+  font-size: 0.75rem;
+  font-style: normal;
+  line-height: 1.5;
+  margin-top: var(--space-4);
+}
+@media (max-width: 1100px) {
+  body[data-page='community'] .community-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  body[data-page='community'] .community-rail {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  body[data-page='community'] .c-post {
+    padding: var(--space-4);
+  }
+  body[data-page='community'] .c-post-meta {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+}

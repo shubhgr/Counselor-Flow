@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { PageActions } from '@/components/page-actions';
+import { PublicProfileDetails } from '@/components/public-profile-details';
+import { CommunitySummary } from './community-summary';
 
 export const View = memo(function View() {
   return (
@@ -94,6 +96,8 @@ export const View = memo(function View() {
               </div>
             </div>
           </div>
+          <CommunitySummary />
+          <PublicProfileDetails editable />
           <form id={'profile-form'} autoComplete={'off'}>
             <div className={'profile-edit-grid'}>
               <div className={'profile-edit-col'}>
@@ -445,6 +449,7 @@ export const View = memo(function View() {
           </Card>
         </div>
         <div id={'panel-preview'} hidden>
+          <PublicProfileDetails />
           <div className={'pending-banner'} data-unverified-only={''}>
             <div className={'icon'}>
               <Icon name="visibility" />

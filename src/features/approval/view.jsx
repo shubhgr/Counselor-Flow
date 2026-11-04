@@ -34,7 +34,7 @@ export const View = memo(function View() {
             }
           </p>
           <p className={'hint-text'} style={{ marginBottom: '1.25rem' }}>
-            {'Demo · log in to see the live dashboard, or sign up to stay pending'}
+            {'Log in to view your dashboard, or sign up to begin approval'}
           </p>
           <div
             style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}
