@@ -1,12 +1,13 @@
 'use client';
 import { memo } from 'react';
 import { Glass } from 'glisse';
-import { Info } from 'lucide-react';
+import { Check, History, Info, Pencil, Plus } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Icon } from '@/components/icon';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { ProgressiveBlur } from '@/components/ui/progressive-blur';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -47,6 +48,7 @@ export const View = memo(function View() {
   const activeTab = useSearchParams().get('tab') || 'edit';
   const overview = activeTab === 'edit';
   const testimonials = activeTab === 'testimonials';
+  const servicesTab = activeTab === 'services';
   return (
     <>
       <PageActions>
@@ -63,6 +65,12 @@ export const View = memo(function View() {
         {testimonials && (
           <Button type="button" id="toggle-new-testimonial" variant="secondary" size="sm">
             + Add testimonial
+          </Button>
+        )}
+        {servicesTab && (
+          <Button type="button" id="toggle-new-service" variant="secondary" size="sm">
+            <Plus size={16} aria-hidden="true" />
+            New service
           </Button>
         )}
       </PageActions>
@@ -396,34 +404,85 @@ export const View = memo(function View() {
           </div>
         </div>
         <div id={'panel-services'} hidden>
-          <Card className="panel services-fee">
-            <div className="services-fee-summary">
-              <p className="hint-text">Total amount students pay</p>
-              <div className="amount" id="fee-display">
-                ₹1,999
+          <div className="services-fee-wrap">
+            <Card className="panel services-fee">
+              <div className="services-fee-summary">
+                <p className="hint-text">Total amount students pay</p>
+                <div className="amount services-fee-amount">
+                  <span aria-hidden="true">₹</span>
+                  <span
+                    id="fee-display"
+                    role="spinbutton"
+                    aria-label="Connect fee in rupees"
+                    aria-valuemin="1"
+                    aria-valuemax="9900000"
+                    tabIndex={-1}
+                  >
+                    1,999
+                  </span>
+                  <input id="fee" type="hidden" defaultValue="1999" />
+                </div>
+                <p className="hint-text services-fee-description" id="connection-fee-help">
+                  One fee covers access to your services.
+                </p>
               </div>
-              <p className="hint-text services-fee-description" id="connection-fee-help">
-                One fee covers access to your services — chat and meets unlock after payment.
-              </p>
+              <div className="services-fee-input">
+                <div className="services-fee-controls">
+                  <Button
+                    type="button"
+                    id="fee-edit-trigger"
+                    variant="outline"
+                    size="sm"
+                    aria-label="Edit fee"
+                  >
+                    <span id="fee-edit-label">Edit</span>
+                    <span id="fee-save-label" hidden>
+                      Save
+                    </span>
+                  </Button>
+                  <Button
+                    type="button"
+                    id="fee-history-trigger"
+                    variant="outline"
+                    size="sm"
+                    aria-label="View price history"
+                    aria-controls="fee-history-panel"
+                    aria-expanded="false"
+                  >
+                    Price history
+                  </Button>
+                </div>
+              </div>
+            </Card>
+            <div className="services-fee-history-backdrop" id="fee-history-panel" hidden>
+              <ProgressiveBlur position="right" className="fee-history-progressive-blur" />
+              <div className="fee-history-backdrop-tint" aria-hidden="true" />
+              <section
+                className="services-fee-history"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="fee-history-title"
+              >
+                <header className="services-fee-history-head">
+                  <h2 id="fee-history-title">Price history</h2>
+                  <Button
+                    type="button"
+                    id="fee-history-close"
+                    className="notification-close-button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Close price history"
+                  >
+                    <Icon name="close" />
+                  </Button>
+                </header>
+                <ul id="fee-history-list" aria-live="polite" />
+              </section>
             </div>
-            <div className="field services-fee-input">
-              <Label htmlFor="fee">Edit fee (₹)</Label>
-              <Input
-                id="fee"
-                type="number"
-                min="0"
-                step="1"
-                defaultValue="1999"
-                aria-describedby="connection-fee-help"
-              />
-            </div>
-          </Card>
-          <Card className="panel services-offered">
+          </div>
+          <section className="services-offered" aria-labelledby="services-offered-title">
             <div className="panel-head">
-              <h2>Services you offer</h2>
-              <Button type="button" id="toggle-new-service" variant="secondary" size="sm">
-                + New service
-              </Button>
+              <h2 id="services-offered-title">Services you offer</h2>
             </div>
             <dialog
               id="service-dialog"
@@ -436,7 +495,13 @@ export const View = memo(function View() {
               <div className="modal-form" id="new-service">
                 <div className={'field'}>
                   <Label htmlFor={'service-name'}>{'Service name'}</Label>
-                  <Input id={'service-name'} type={'text'} placeholder={'e.g. Essay workshop'} />
+                  <Input
+                    id={'service-name'}
+                    type={'text'}
+                    placeholder={'e.g. Essay workshop'}
+                    required
+                    aria-required="true"
+                  />
                 </div>
                 <div className={'field'}>
                   <Label htmlFor={'service-desc'}>{'Description'}</Label>
@@ -444,6 +509,9 @@ export const View = memo(function View() {
                     id={'service-desc'}
                     placeholder={'What students get from this service'}
                     defaultValue={''}
+                    rows={2}
+                    required
+                    aria-required="true"
                   />
                 </div>
               </div>
@@ -457,7 +525,7 @@ export const View = memo(function View() {
               </div>
             </dialog>
             <div className={'service-list'} id={'service-list'} />
-          </Card>
+          </section>
         </div>
         <div id={'panel-testimonials'} hidden>
           <div className={'testi-list'} id={'testi-list'} />
