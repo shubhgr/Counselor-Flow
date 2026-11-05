@@ -1,3 +1,4 @@
+import { loadTestimonialVideo } from './testimonial-media';
 export function initialize(scope) {
   const {
     document,
@@ -70,6 +71,102 @@ export function initialize(scope) {
         video: '',
         youtube: '',
       },
+      {
+        id: 't-ananya',
+        name: 'Ananya Rao',
+        role: 'Student · University of Toronto',
+        photo: '',
+        initials: 'AR',
+        amber: true,
+        kind: 'video',
+        text: 'The application plan made every deadline feel manageable. I always knew what to focus on next.',
+        video: '',
+        youtube: 'ysz5S6PUM-U',
+      },
+      {
+        id: 't-kabir',
+        name: 'Kabir Malhotra',
+        role: 'Parent · The Doon School',
+        photo: '',
+        initials: 'KM',
+        amber: false,
+        kind: 'video',
+        text: 'We got clear, practical guidance on universities, costs, and timelines. It made the process easier for our whole family.',
+        video: '',
+        youtube: 'jNQXAC9IVRw',
+      },
+      {
+        id: 't-sana',
+        name: 'Sana Iyer',
+        role: 'Student · University of Edinburgh',
+        photo: '',
+        initials: 'SI',
+        amber: true,
+        kind: 'video',
+        text: 'My essays sound like me, and the feedback helped me explain my goals with confidence.',
+        video: '',
+        youtube: 'M7lc1UVf-VE',
+      },
+      {
+        id: 't-priya',
+        name: 'Priya Nair',
+        role: 'Student · NYU',
+        photo: '',
+        initials: 'PN',
+        amber: true,
+        kind: 'text',
+        text: 'The shortlist finally felt clear. I knew which applications deserved my time.',
+        video: '',
+        youtube: '',
+      },
+      {
+        id: 't-dev',
+        name: 'Dev Shah',
+        role: 'Parent · Modern School',
+        photo: '',
+        initials: 'DS',
+        amber: false,
+        kind: 'text',
+        text: 'We left each meeting with a plan and a realistic view of the costs.',
+        video: '',
+        youtube: '',
+      },
+      {
+        id: 't-zoya',
+        name: 'Zoya Fernandes',
+        role: 'Student · King’s College London',
+        photo: '',
+        initials: 'ZF',
+        amber: true,
+        kind: 'video',
+        text: '',
+        video: '',
+        youtube: 'M7lc1UVf-VE',
+      },
+      {
+        id: 't-vihaan',
+        name: 'Vihaan Kapoor',
+        role: 'Student · University of Michigan',
+        photo: '',
+        initials: 'VK',
+        amber: true,
+        kind: 'video',
+        text: 'The essay feedback helped me keep my own voice while making my story clearer.',
+        video: '',
+        youtube: 'NWv1VdDeoRY',
+      },
+      {
+        id: 't-nisha',
+        name: 'Nisha Verma',
+        role: 'Parent · Greenwood High',
+        photo: '',
+        initials: 'NV',
+        amber: false,
+        kind: 'video',
+        text: 'The timeline and regular check-ins made a complicated process feel manageable.',
+        video: '',
+        youtube: 'Unzc731iCUY',
+      },
     ];
 
     function clone(value) {
@@ -96,11 +193,21 @@ export function initialize(scope) {
       return m ? m[1] : '';
     }
 
+    function safeLink(value) {
+      try {
+        var url = new URL(String(value || '').trim());
+        return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+      } catch {
+        return '';
+      }
+    }
+
     function normalize(item, i) {
       var name = (item && item.name) || 'Student';
       var kind = item && item.kind === 'video' ? 'video' : 'text';
       var youtube = parseYoutubeId((item && (item.youtube || item.video)) || '');
-      var video = item && item.video && String(item.video).indexOf('data:') === 0 ? item.video : '';
+      var video =
+        item && item.video && /^(data:video\/|media:)/.test(String(item.video)) ? item.video : '';
       return {
         id: (item && item.id) || 't-' + (i + 1) + '-' + Date.now(),
         name: name,
@@ -112,6 +219,7 @@ export function initialize(scope) {
         text: (item && item.text) || '',
         video: video,
         youtube: youtube,
+        link: safeLink(item && item.link),
       };
     }
 
@@ -120,7 +228,15 @@ export function initialize(scope) {
         var raw = localStorage.getItem(KEY);
         if (raw) {
           var saved = JSON.parse(raw);
-          if (Array.isArray(saved) && saved.length) return saved.map(normalize);
+          if (Array.isArray(saved) && saved.length) {
+            var existing = saved.map(normalize);
+            var ids = new Set(existing.map(function (item) {
+              return item.id;
+            }));
+            return existing.concat(
+              DEFAULT.filter(function (item) { return !ids.has(item.id); }).map(normalize),
+            );
+          }
           if (Array.isArray(saved)) return [];
         }
       } catch (e) {}
@@ -189,8 +305,32 @@ export function initialize(scope) {
         vid.className = 'testi-video';
         vid.controls = true;
         vid.setAttribute('playsinline', '');
-        vid.src = item.video;
+        if (item.video.startsWith('media:')) {
+          loadTestimonialVideo(item.video)
+            .then(function (file) {
+              if (file && vid.isConnected) vid.src = URL.createObjectURL(file);
+            })
+            .catch(function () {
+              vid.title = 'Video unavailable. Please upload it again.';
+            });
+        } else vid.src = item.video;
         return vid;
+      }
+      if (item.link) {
+        if (/\.(mp4|webm|mov)(?:[?#]|$)/i.test(item.link)) {
+          var externalVideo = document.createElement('video');
+          externalVideo.className = 'testi-video';
+          externalVideo.controls = true;
+          externalVideo.src = item.link;
+          return externalVideo;
+        }
+        var link = document.createElement('a');
+        link.className = 'btn btn-secondary';
+        link.href = item.link;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'Watch video ↗';
+        return link;
       }
       if (item.text) {
         var quote = document.createElement('p');
@@ -217,21 +357,40 @@ export function initialize(scope) {
 
       if (opts.actions) {
         var actions = document.createElement('div');
-        actions.className = 'service-actions';
+        actions.className = 'testi-actions-menu c-menu-wrap';
         actions.innerHTML =
-          '<button class="btn btn-secondary btn-sm" type="button" data-testi-edit>Edit</button>' +
-          '<button class="btn btn-danger btn-sm" type="button" data-testi-delete>Delete</button>';
+          '<details><summary aria-label="Testimonial actions" title="Testimonial actions">⋮</summary>' +
+          '<div class="c-menu"><button type="button" data-testi-edit>Edit</button>' +
+          '<button class="danger" type="button" data-testi-delete>Delete</button></div></details>';
         head.appendChild(actions);
       } else {
         var kind = document.createElement('span');
         kind.className = 'pill';
-        kind.textContent = item.kind === 'video' ? 'Video' : 'Quote';
+        kind.textContent =
+          item.kind === 'video' ? (item.text ? 'Quote + Video' : 'Video') : 'Quote';
         head.appendChild(kind);
       }
 
       article.appendChild(head);
       var media = mediaEl(item);
-      if (media) article.appendChild(media);
+      var hasMedia = !!(item.video || item.youtube || item.link);
+      if (media && item.text && hasMedia) {
+        var content = document.createElement('div');
+        content.className = 'testi-card-content';
+        var caption = document.createElement('p');
+        caption.className = 'testi-quote';
+        caption.textContent = item.text;
+        content.appendChild(caption);
+        content.appendChild(media);
+        article.appendChild(content);
+      } else if (media) {
+        article.appendChild(media);
+      } else if (item.text) {
+        var quote = document.createElement('p');
+        quote.className = 'testi-quote';
+        quote.textContent = item.text;
+        article.appendChild(quote);
+      }
       return article;
     }
 
@@ -260,6 +419,7 @@ export function initialize(scope) {
       set: set,
       initialsFrom: initialsFrom,
       parseYoutubeId: parseYoutubeId,
+      safeLink: safeLink,
       renderList: renderList,
     };
   })();

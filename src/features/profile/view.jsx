@@ -1,5 +1,6 @@
 'use client';
 import { memo } from 'react';
+import { Glass } from 'glisse';
 import { Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Icon } from '@/components/icon';
@@ -43,7 +44,9 @@ function ProfileSectionTitle({ title, description, privateSection = false }) {
 }
 
 export const View = memo(function View() {
-  const overview = (useSearchParams().get('tab') || 'edit') === 'edit';
+  const activeTab = useSearchParams().get('tab') || 'edit';
+  const overview = activeTab === 'edit';
+  const testimonials = activeTab === 'testimonials';
   return (
     <>
       <PageActions>
@@ -56,6 +59,11 @@ export const View = memo(function View() {
               <Link href="/profile?tab=preview">View as student</Link>
             </Button>
           </div>
+        )}
+        {testimonials && (
+          <Button type="button" id="toggle-new-testimonial" variant="secondary" size="sm">
+            + Add testimonial
+          </Button>
         )}
       </PageActions>
       <div className={'content gr-scroll'}>
@@ -388,94 +396,71 @@ export const View = memo(function View() {
           </div>
         </div>
         <div id={'panel-services'} hidden>
-          <div className={'services-fee'}>
-            <div>
-              <div
-                className={'label'}
-                style={{
-                  fontSize: '0.75rem',
-                  color: 'var(--muted)',
-                  fontWeight: '500',
-                  marginBottom: '0.25rem',
-                }}
-              >
-                {'Total amount students pay'}
+          <Card className="panel services-fee">
+            <div className="services-fee-summary">
+              <p className="hint-text">Total amount students pay</p>
+              <div className="amount" id="fee-display">
+                ₹1,999
               </div>
-              <div className={'amount'} id={'fee-display'}>
-                {'₹1,999'}
-              </div>
-              <p
-                style={{
-                  fontSize: '0.8rem',
-                  color: 'var(--muted)',
-                  marginTop: '0.35rem',
-                  maxWidth: '28rem',
-                }}
-              >
-                {'One fee covers access to your services — chat and meets unlock after payment.'}
+              <p className="hint-text services-fee-description" id="connection-fee-help">
+                One fee covers access to your services — chat and meets unlock after payment.
               </p>
             </div>
-            <div className={'field'} style={{ margin: '0', minWidth: '160px' }}>
-              <Label htmlFor={'fee'}>{'Edit fee (₹)'}</Label>
-              <Input id={'fee'} type={'number'} defaultValue={'1999'} />
+            <div className="field services-fee-input">
+              <Label htmlFor="fee">Edit fee (₹)</Label>
+              <Input
+                id="fee"
+                type="number"
+                min="0"
+                step="1"
+                defaultValue="1999"
+                aria-describedby="connection-fee-help"
+              />
             </div>
-          </div>
-          <Card className={'panel'} style={{ marginBottom: '1rem' }}>
-            <div className={'panel-head'}>
-              <h2>{'Services you offer'}</h2>
-              <Button
-                className={''}
-                type={'button'}
-                id={'toggle-new-service'}
-                variant={'secondary'}
-                size={'sm'}
-              >
-                {'+ Add service'}
+          </Card>
+          <Card className="panel services-offered">
+            <div className="panel-head">
+              <h2>Services you offer</h2>
+              <Button type="button" id="toggle-new-service" variant="secondary" size="sm">
+                + New service
               </Button>
             </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--muted)', marginBottom: '1rem' }}>
-              {
-                'Students see these on your profile. Each one is an event type. They pick only one when they book a call.'
-              }
-            </p>
-            <div className={'modal-form'} id={'new-service'}>
-              <div className={'field'}>
-                <Label htmlFor={'service-name'}>{'Service name'}</Label>
-                <Input id={'service-name'} type={'text'} placeholder={'e.g. Essay workshop'} />
+            <dialog
+              id="service-dialog"
+              className="service-dialog profile-decorated-popup"
+              aria-labelledby="service-dialog-title"
+            >
+              <h2 id="service-dialog-title" className="sr-only">
+                New service
+              </h2>
+              <div className="modal-form" id="new-service">
+                <div className={'field'}>
+                  <Label htmlFor={'service-name'}>{'Service name'}</Label>
+                  <Input id={'service-name'} type={'text'} placeholder={'e.g. Essay workshop'} />
+                </div>
+                <div className={'field'}>
+                  <Label htmlFor={'service-desc'}>{'Description'}</Label>
+                  <Textarea
+                    id={'service-desc'}
+                    placeholder={'What students get from this service'}
+                    defaultValue={''}
+                  />
+                </div>
               </div>
-              <div className={'field'}>
-                <Label htmlFor={'service-desc'}>{'Description'}</Label>
-                <Textarea
-                  id={'service-desc'}
-                  placeholder={'What students get from this service'}
-                  defaultValue={''}
-                />
+              <div className="service-dialog-actions">
+                <Button type="button" id="service-dialog-cancel" variant="outline">
+                  Cancel
+                </Button>
+                <Button type="button" id="service-dialog-apply">
+                  Create service
+                </Button>
               </div>
-            </div>
+            </dialog>
             <div className={'service-list'} id={'service-list'} />
           </Card>
         </div>
         <div id={'panel-testimonials'} hidden>
-          <Card className={'panel'}>
-            <div className={'panel-head'}>
-              <h2>{'Testimonials'}</h2>
-              <Button
-                className={''}
-                type={'button'}
-                id={'toggle-new-testimonial'}
-                variant={'secondary'}
-                size={'sm'}
-              >
-                {'+ Add testimonial'}
-              </Button>
-            </div>
-            <p className={'panel-lead'}>
-              {
-                'Add a quote or video on behalf of a student, parent, or university contact. Their name, photo, and college or designation show on your public profile.'
-              }
-            </p>
-            <div className={'testi-list'} id={'testi-list'} />
-          </Card>
+          <div className={'testi-list'} id={'testi-list'} />
         </div>
         <div id={'panel-preview'} hidden>
           <PublicProfileDetails />
@@ -1215,23 +1200,15 @@ export const View = memo(function View() {
       <div className={'cal-modal testi-modal'} id={'testi-modal'} hidden>
         <div className={'cal-modal-backdrop'} data-close-testi={''} />
         <div
-          className={'cal-modal-card testi-modal-card'}
+          className={'cal-modal-card testi-modal-card profile-decorated-popup'}
           role={'dialog'}
           aria-labelledby={'testi-modal-title'}
           aria-modal={'true'}
         >
           <div className={'cal-modal-head'}>
-            <h2 id={'testi-modal-title'}>{'Add testimonial'}</h2>
-            <Button
-              type={'button'}
-              className={'icon-btn'}
-              data-close-testi={''}
-              aria-label={'Close'}
-              variant={'unstyled'}
-              size={'unstyled'}
-            >
-              <Icon name="close" className={'app-icon'} aria-hidden={'true'} />
-            </Button>
+            <h2 className="sr-only" id={'testi-modal-title'}>
+              {'Add testimonial'}
+            </h2>
           </div>
           <form className={'testi-form'} id={'new-testimonial'} autoComplete={'off'}>
             <div className={'testi-form-top'}>
@@ -1261,6 +1238,10 @@ export const View = memo(function View() {
                     hidden
                   />
                 </Button>
+                <Button type="button" id="testi-photo-remove" variant="ghost" size="sm" hidden>
+                  Remove
+                </Button>
+                <p id="testi-photo-hint" className="hint-text" role="status" hidden />
               </div>
               <div className={'testi-form-fields'}>
                 <div className={'field'}>
@@ -1277,46 +1258,18 @@ export const View = memo(function View() {
                 </div>
               </div>
             </div>
-            <div
-              className={'auth-tabs testi-kind-tabs'}
-              role={'tablist'}
-              aria-label={'Testimonial type'}
-            >
-              <Button
-                type={'button'}
-                className={'auth-tab active'}
-                data-testi-kind={'text'}
-                variant={'unstyled'}
-                size={'unstyled'}
-              >
-                {'Quote'}
-              </Button>
-              <Button
-                type={'button'}
-                className={'auth-tab'}
-                data-testi-kind={'video'}
-                variant={'unstyled'}
-                size={'unstyled'}
-              >
-                {'Video'}
-              </Button>
-            </div>
             <div className={'field'} id={'testi-text-wrap'}>
-              <Label htmlFor={'testi-text'}>{'What they said'}</Label>
+              <Label htmlFor={'testi-text'}>{'Quote'}</Label>
               <Textarea
                 id={'testi-text'}
                 placeholder={'Write the testimonial in their words'}
                 defaultValue={''}
               />
             </div>
-            <div id={'testi-video-wrap'} hidden>
+            <div id={'testi-video-wrap'}>
               <div className={'field'}>
-                <Label htmlFor={'testi-youtube'}>{'YouTube link'}</Label>
-                <Input
-                  id={'testi-youtube'}
-                  type={'url'}
-                  placeholder={'https://www.youtube.com/watch?v=...'}
-                />
+                <Label htmlFor={'testi-youtube'}>{'Video link'}</Label>
+                <Input id={'testi-youtube'} type={'url'} placeholder={'https://…'} />
               </div>
               <div className={'testi-yt'} id={'testi-yt-preview'} hidden>
                 <iframe
@@ -1344,7 +1297,7 @@ export const View = memo(function View() {
                   size={'unstyled'}
                 >
                   <strong id={'testi-video-label'}>{'Upload video'}</strong>
-                  <span>{'MP4 or WebM · under 8 MB'}</span>
+                  <span>{'MP4, WebM or MOV · under 50 MB'}</span>
                 </Button>
                 <p className={'hint-text'} id={'testi-video-hint'} hidden />
                 <video
@@ -1403,7 +1356,7 @@ export const View = memo(function View() {
         </div>
       </div>
       <div className={'unsaved-bar'} id={'unsaved-bar'} hidden>
-        <div className={'unsaved-bar-inner'}>
+        <Glass className="unsaved-bar-inner counselor-save-glass" data-theme="dark">
           <div className={'unsaved-bar-text'}>
             <strong>{'You have unsaved changes'}</strong>
             <span>
@@ -1418,7 +1371,7 @@ export const View = memo(function View() {
               {'Save'}
             </Button>
           </div>
-        </div>
+        </Glass>
       </div>
     </>
   );

@@ -444,6 +444,11 @@ export function initialize(scope) {
       '<p class="c-post-body">' +
       p.body +
       '</p>' +
+      (p.image
+        ? '<img class="community-post-image" src="' +
+          p.image +
+          '" alt="University campus building surrounded by trees" loading="lazy">'
+        : '') +
       '<div class="c-post-actions">' +
       '<button type="button" class="react-btn' +
       (p.liked ? ' on' : '') +
