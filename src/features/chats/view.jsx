@@ -77,6 +77,24 @@ export const View = memo(function View() {
                 </div>
               </div>
             </div>
+            <div className="chat-quick-filters" role="group" aria-label="Conversation filters">
+              {[
+                ['all', 'All'],
+                ['unread', 'Unread'],
+                ['student', 'Initiated by student'],
+                ['me', 'Initiated by you'],
+              ].map(([key, label]) => (
+                <button
+                  type="button"
+                  key={key}
+                  data-chat-quick-filter={key}
+                  aria-pressed={key === 'all'}
+                >
+                  {label}
+                  <span data-chat-filter-count={key}>0</span>
+                </button>
+              ))}
+            </div>
             <div className={'chat-threads gr-scroll'} id={'chat-threads'} />
           </aside>
           <section className={'chat-pane'}>

@@ -68,12 +68,12 @@ const TITLES = {
   dashboard: 'Dashboard',
   students: 'People',
   chats: 'Chats',
-  calls: 'Meets',
+  calls: 'Meet',
   call: 'Meet',
   community: 'Community',
   profile: 'Profile',
   account: 'My account',
-  calendar: 'Profile',
+  calendar: 'Calendar',
   reviews: 'Reviews',
   transactions: 'Transactions',
   settings: 'Settings',
@@ -114,6 +114,13 @@ function WorkspaceChrome({ children }) {
   const pathname = usePathname(),
     params = useSearchParams();
   const page = pathname.split('/').pop();
+  const pageTitle =
+    page === 'profile'
+      ? SECTIONS.find(([key]) => key === (params.get('tab') || 'edit'))?.[1] || 'Overview'
+      : TITLES[page] || 'Counselor';
+  useEffect(() => {
+    document.title = `${pageTitle} — GradRight Counselor`;
+  }, [pageTitle]);
   const [accountOpen, setAccountOpen] = useState(false);
   useEffect(() => {
     if (params.get('account') === '1') setAccountOpen(true);
@@ -387,11 +394,7 @@ function WorkspaceChrome({ children }) {
                 </Link>
               </Button>
             )}
-            <h1 id={page === 'person' ? 'person-top-title' : undefined}>
-              {page === 'dashboard'
-                ? `Good morning, ${(account?.name || 'Priya Sharma').split(' ')[0]}`
-                : TITLES[page] || 'Counselor'}
-            </h1>
+            <h1 id={page === 'person' ? 'person-top-title' : undefined}>{pageTitle}</h1>
           </div>
           <div className="actions">
             <div id="page-header-actions" key={`page-actions:${pathname}`} />

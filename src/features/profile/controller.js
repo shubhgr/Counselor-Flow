@@ -1,3 +1,4 @@
+import { saveTestimonialVideo, loadTestimonialVideo } from '@/lib/domain/testimonial-media';
 import { readPublicIdentity, savePublicIdentity } from '@/lib/domain/public-identity';
 // Route-scoped workflow: subscriptions, timers and generated overlays are
 // owned by createRouteScope and disposed when Next navigation leaves this screen.
@@ -76,7 +77,7 @@ export function initialize(scope) {
   (function bindServices() {
     const fee = document.getElementById('fee');
     const feeDisplay = document.getElementById('fee-display');
-    if (fee && feeDisplay) {
+    if (fee) {
       function persistFee(value) {
         if (window.GradRightFee) return GradRightFee.set(value);
         if (value === '' || value == null) return 1999;
@@ -101,7 +102,7 @@ export function initialize(scope) {
         const label = window.GradRightFee
           ? GradRightFee.format(n)
           : '₹' + Number(n || 0).toLocaleString('en-IN');
-        feeDisplay.textContent = label;
+        if (feeDisplay) feeDisplay.textContent = label;
         document.querySelectorAll('.fee').forEach(function (el) {
           el.textContent = label + ' connect';
         });
@@ -132,6 +133,7 @@ export function initialize(scope) {
     }
     const toggle = document.getElementById('toggle-new-service');
     const form = document.getElementById('new-service');
+    const serviceDialog = document.getElementById('service-dialog');
     const nameInput = document.getElementById('service-name');
     const descInput = document.getElementById('service-desc');
     const list = document.getElementById('service-list');
@@ -215,6 +217,7 @@ export function initialize(scope) {
     function closeServiceForm() {
       editing = null;
       if (form) form.classList.remove('open');
+      serviceDialog?.close();
       if (nameInput) nameInput.value = '';
       if (descInput) descInput.value = '';
       markServicesDirty();
@@ -229,6 +232,11 @@ export function initialize(scope) {
           ? (card.querySelector('.service-teaser') || {}).textContent || ''
           : '';
       if (form) form.classList.add('open');
+      const title = document.getElementById('service-dialog-title');
+      if (title) title.textContent = card ? 'Edit service' : 'New service';
+      const applyButton = document.getElementById('service-dialog-apply');
+      if (applyButton) applyButton.textContent = card ? 'Save changes' : 'Create service';
+      serviceDialog?.showModal();
       if (nameInput) nameInput.focus();
       markServicesDirty();
     }
@@ -272,6 +280,40 @@ export function initialize(scope) {
       return true;
     }
 
+    scope.listen(document.getElementById('service-dialog-cancel'), 'click', closeServiceForm);
+    let startedOutsideServiceDialog = false;
+    function outsideServiceDialog(event) {
+      const bounds = serviceDialog.getBoundingClientRect();
+      return (
+        event.clientX < bounds.left ||
+        event.clientX > bounds.right ||
+        event.clientY < bounds.top ||
+        event.clientY > bounds.bottom
+      );
+    }
+    scope.listen(serviceDialog, 'pointerdown', function (event) {
+      startedOutsideServiceDialog = event.target === serviceDialog && outsideServiceDialog(event);
+    });
+    scope.listen(serviceDialog, 'click', function (event) {
+      if (
+        startedOutsideServiceDialog &&
+        event.target === serviceDialog &&
+        outsideServiceDialog(event) &&
+        !serviceFormDirty()
+      )
+        closeServiceForm();
+      startedOutsideServiceDialog = false;
+    });
+    scope.listen(serviceDialog, 'cancel', function (event) {
+      event.preventDefault();
+      closeServiceForm();
+    });
+    scope.listen(document.getElementById('service-dialog-apply'), 'click', function () {
+      if (commitServiceForm()) {
+        serviceDialog?.close();
+        markServicesDirty();
+      }
+    });
     if (toggle && form) {
       scope.listen(toggle, 'click', function () {
         if (form.classList.contains('open') && !editing) closeServiceForm();
@@ -374,7 +416,7 @@ export function initialize(scope) {
     let items = store.get();
     let savedItems = JSON.stringify(items);
     let editingId = null;
-    const draft = { photo: '', video: '', youtube: '', kind: 'text' };
+    const draft = { photo: '', video: '', youtube: '', link: '', kind: 'text' };
 
     function testiFormDirty() {
       if (!modal || modal.hidden) return false;
@@ -382,7 +424,15 @@ export function initialize(scope) {
       const role = (roleInput && roleInput.value.trim()) || '';
       const text = (textInput && textInput.value.trim()) || '';
       if (!editingId)
-        return !!(name || role || text || draft.photo || draft.video || draft.youtube);
+        return !!(
+          name ||
+          role ||
+          text ||
+          draft.photo ||
+          draft.video ||
+          draft.youtube ||
+          draft.link
+        );
       const orig =
         items.find(function (t) {
           return t.id === editingId;
@@ -394,16 +444,26 @@ export function initialize(scope) {
         (draft.photo || '') !== (orig.photo || '') ||
         (draft.video || '') !== (orig.video || '') ||
         (draft.youtube || '') !== (orig.youtube || '') ||
+        (draft.link || '') !== (orig.link || '') ||
         draft.kind !== (orig.kind || 'text')
       );
     }
 
     function markTestimonialsDirty() {
+      const hasName = Boolean(nameInput?.value.trim());
+      const hasContent = Boolean(
+        textInput?.value.trim() || draft.video || draft.youtube || draft.link,
+      );
+      const validLink = !youtubeInput?.value.trim() || Boolean(draft.youtube || draft.link);
+      if (saveBtn)
+        saveBtn.disabled =
+          !hasName || !hasContent || !validLink || Boolean(editingId && !testiFormDirty());
       const panel = document.getElementById('panel-testimonials');
       if (panel && panel.hidden) return false;
-      const dirty = JSON.stringify(items) !== savedItems || testiFormDirty();
-      if (unsavedBar) unsavedBar.hidden = !dirty;
-      document.body.classList.toggle('has-unsaved', dirty);
+      const dirty = JSON.stringify(items) !== savedItems;
+      const showBar = dirty && (!modal || modal.hidden);
+      if (unsavedBar) unsavedBar.hidden = !showBar;
+      document.body.classList.toggle('has-unsaved', showBar);
       return dirty;
     }
     window.GradRightProfileDirty.testimonials = markTestimonialsDirty;
@@ -413,13 +473,15 @@ export function initialize(scope) {
       document.querySelectorAll('[data-testi-kind]').forEach(function (btn) {
         btn.classList.toggle('active', btn.getAttribute('data-testi-kind') === draft.kind);
       });
-      if (textWrap) textWrap.hidden = draft.kind !== 'text';
-      if (videoWrap) videoWrap.hidden = draft.kind !== 'video';
+      if (textWrap) textWrap.hidden = false;
+      if (videoWrap) videoWrap.hidden = false;
       markTestimonialsDirty();
     }
 
     function paintPhoto(src) {
       draft.photo = src || '';
+      const removePhoto = document.getElementById('testi-photo-remove');
+      if (removePhoto) removePhoto.hidden = !draft.photo;
       if (!photoImg) return;
       if (draft.photo) {
         photoImg.src = draft.photo;
@@ -437,6 +499,10 @@ export function initialize(scope) {
 
     function paintYoutube(value) {
       draft.youtube = store.parseYoutubeId(value);
+      draft.link = draft.youtube ? '' : store.safeLink(value);
+      youtubeInput?.setCustomValidity(
+        value.trim() && !draft.youtube && !draft.link ? 'Enter a valid http or https link.' : '',
+      );
       if (ytPreview && ytFrame) {
         if (draft.youtube) {
           ytFrame.src = 'https://www.youtube.com/embed/' + draft.youtube;
@@ -455,7 +521,17 @@ export function initialize(scope) {
         videoLabel.textContent = draft.video ? fileName || 'Video selected' : 'Upload video';
       if (!videoPreview) return;
       if (draft.video) {
-        videoPreview.src = draft.video;
+        if (draft.video.startsWith('media:')) {
+          const expected = draft.video;
+          loadTestimonialVideo(expected)
+            .then((file) => {
+              if (file && draft.video === expected) videoPreview.src = URL.createObjectURL(file);
+            })
+            .catch(() => {
+              videoHint.hidden = false;
+              videoHint.textContent = 'Could not load this video. Please upload it again.';
+            });
+        } else videoPreview.src = draft.video;
         videoPreview.hidden = false;
       } else {
         videoPreview.removeAttribute('src');
@@ -481,7 +557,7 @@ export function initialize(scope) {
       paintVideo('');
       paintYoutube('');
       setKind('text');
-      if (saveBtn) saveBtn.textContent = 'Save testimonial';
+      if (saveBtn) saveBtn.textContent = 'Create testimonial';
       if (titleEl) titleEl.textContent = 'Add testimonial';
       closeModal();
       markTestimonialsDirty();
@@ -496,12 +572,12 @@ export function initialize(scope) {
         if (youtubeInput)
           youtubeInput.value = item.youtube
             ? 'https://www.youtube.com/watch?v=' + item.youtube
-            : '';
+            : item.link || '';
         paintPhoto(item.photo || '');
         paintVideo(item.video || '');
-        paintYoutube(item.youtube || '');
+        paintYoutube(item.youtube || item.link || '');
         setKind(item.kind || 'text');
-        if (saveBtn) saveBtn.textContent = 'Update testimonial';
+        if (saveBtn) saveBtn.textContent = 'Save changes';
         if (titleEl) titleEl.textContent = 'Edit testimonial';
       } else {
         editingId = null;
@@ -515,7 +591,7 @@ export function initialize(scope) {
         paintVideo('');
         paintYoutube('');
         setKind('text');
-        if (saveBtn) saveBtn.textContent = 'Save testimonial';
+        if (saveBtn) saveBtn.textContent = 'Create testimonial';
         if (titleEl) titleEl.textContent = 'Add testimonial';
       }
       if (modal) modal.hidden = false;
@@ -542,24 +618,6 @@ export function initialize(scope) {
       markTestimonialsDirty();
     }
 
-    function readFile(file, maxBytes, done) {
-      if (!file) return;
-      if (file.size > maxBytes) {
-        const mb = Math.round(maxBytes / 1024 / 1024);
-        if (videoHint && file.type.indexOf('video') === 0) {
-          videoHint.hidden = false;
-          videoHint.textContent = 'That file is over ' + mb + ' MB. Pick a shorter clip.';
-        }
-        return;
-      }
-      if (videoHint) videoHint.hidden = true;
-      const reader = new FileReader();
-      reader.onload = function () {
-        done(String(reader.result || ''), file.name);
-      };
-      reader.readAsDataURL(file);
-    }
-
     paint();
 
     document.querySelectorAll('[data-testi-kind]').forEach(function (btn) {
@@ -573,15 +631,64 @@ export function initialize(scope) {
         openForm(null);
       });
     document.querySelectorAll('[data-close-testi]').forEach(function (el) {
-      scope.listen(el, 'click', resetForm);
+      scope.listen(el, 'click', function () {
+        if (el.classList.contains('cal-modal-backdrop') && testiFormDirty()) return;
+        resetForm();
+      });
     });
 
+    scope.listen(document.getElementById('testi-photo-remove'), 'click', function () {
+      paintPhoto('');
+      if (photoInput) photoInput.value = '';
+      const hint = document.getElementById('testi-photo-hint');
+      if (hint) hint.hidden = true;
+    });
     if (photoZone && photoInput) {
       scope.listen(photoZone, 'click', function () {
         photoInput.click();
       });
-      scope.listen(photoInput, 'change', function () {
-        readFile(photoInput.files && photoInput.files[0], 2 * 1024 * 1024, paintPhoto);
+      let photoVersion = 0;
+      scope.listen(photoInput, 'change', async function () {
+        const file = photoInput.files?.[0];
+        if (!file) return;
+        const hint = document.getElementById('testi-photo-hint');
+        const version = ++photoVersion;
+        function photoError(message) {
+          hint.hidden = false;
+          hint.textContent = message;
+        }
+        if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+          photoError('Choose a JPG, PNG or WebP image.');
+          photoInput.value = '';
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          photoError('Choose an image under 10 MB.');
+          photoInput.value = '';
+          return;
+        }
+        hint.hidden = false;
+        hint.textContent = 'Uploading photo…';
+        let bitmap;
+        try {
+          bitmap = await createImageBitmap(file);
+          const scale = Math.min(1, 512 / Math.max(bitmap.width, bitmap.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+          canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+          const context = canvas.getContext('2d');
+          context.fillStyle = '#ffffff';
+          context.fillRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+          if (version !== photoVersion || modal.hidden) return;
+          paintPhoto(canvas.toDataURL('image/jpeg', 0.85));
+          hint.hidden = true;
+        } catch {
+          photoError('Could not read this image. Try another JPG, PNG or WebP.');
+        } finally {
+          bitmap?.close();
+          photoInput.value = '';
+        }
       });
     }
 
@@ -597,8 +704,37 @@ export function initialize(scope) {
       });
     }
     if (videoInput) {
-      scope.listen(videoInput, 'change', function () {
-        readFile(videoInput.files && videoInput.files[0], 8 * 1024 * 1024, paintVideo);
+      let uploadVersion = 0;
+      scope.listen(videoInput, 'change', async function () {
+        const file = videoInput.files?.[0];
+        if (!file) return;
+        const version = ++uploadVersion;
+        if (!/\.(mp4|webm|mov|m4v)$/i.test(file.name) && !file.type.startsWith('video/')) {
+          videoHint.hidden = false;
+          videoHint.textContent = 'Choose an MP4, WebM or MOV video.';
+          return;
+        }
+        if (file.size > 50 * 1024 * 1024) {
+          videoHint.hidden = false;
+          videoHint.textContent = 'Choose a video under 50 MB.';
+          return;
+        }
+        videoLabel.textContent = 'Uploading…';
+        saveBtn.disabled = true;
+        try {
+          const id = await saveTestimonialVideo(file);
+          if (version !== uploadVersion || modal.hidden) return;
+          videoHint.hidden = true;
+          paintVideo(id, file.name);
+        } catch {
+          videoHint.hidden = false;
+          videoHint.textContent =
+            'Could not upload the video. Check browser storage and try again.';
+          videoLabel.textContent = 'Upload video';
+          markTestimonialsDirty();
+        } finally {
+          videoInput.value = '';
+        }
       });
     }
 
@@ -606,7 +742,9 @@ export function initialize(scope) {
       scope.listen(list, 'click', function (e) {
         const edit = e.target.closest('[data-testi-edit]');
         if (edit) {
-          const id = edit.closest('.testi-card').getAttribute('data-testi-id');
+          const card = edit.closest('.testi-card');
+          const id = card.getAttribute('data-testi-id');
+          card.querySelector('.testi-actions-menu details')?.removeAttribute('open');
           const item = items.find(function (t) {
             return t.id === id;
           });
@@ -615,7 +753,9 @@ export function initialize(scope) {
         }
         const del = e.target.closest('[data-testi-delete]');
         if (del) {
-          const id = del.closest('.testi-card').getAttribute('data-testi-id');
+          const card = del.closest('.testi-card');
+          const id = card.getAttribute('data-testi-id');
+          card.querySelector('.testi-actions-menu details')?.removeAttribute('open');
           items = items.filter(function (t) {
             return t.id !== id;
           });
@@ -635,12 +775,8 @@ export function initialize(scope) {
           if (nameInput) nameInput.focus();
           return;
         }
-        if (draft.kind === 'text' && !text) {
+        if (!text && !draft.youtube && !draft.video && !draft.link) {
           if (textInput) textInput.focus();
-          return;
-        }
-        if (draft.kind === 'video' && !draft.youtube && !draft.video) {
-          if (youtubeInput) youtubeInput.focus();
           return;
         }
         const next = {
@@ -650,10 +786,11 @@ export function initialize(scope) {
           photo: draft.photo,
           initials: store.initialsFrom(name),
           amber: false,
-          kind: draft.kind,
+          kind: draft.video || draft.youtube || draft.link ? 'video' : 'text',
           text: draft.kind === 'text' ? text : text,
-          video: draft.kind === 'video' ? draft.video : '',
-          youtube: draft.kind === 'video' ? draft.youtube : '',
+          video: draft.video,
+          youtube: draft.youtube,
+          link: draft.link,
         };
         if (editingId) {
           items = items.map(function (t) {
@@ -686,8 +823,7 @@ export function initialize(scope) {
         if (!saved.ok) {
           if (videoHint) {
             videoHint.hidden = false;
-            videoHint.textContent =
-              'Could not save. The video is too large for local storage. Try a YouTube link instead.';
+            videoHint.textContent = 'Could not save the testimonial. Browser storage may be full.';
           }
           return;
         }

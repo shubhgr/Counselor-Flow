@@ -1,6 +1,12 @@
 /* GradRight Counselor — design tokens (Brand Purple + surfaces) */
 
 :root {
+  /* Decorative dialog header, fading into the standard surface. */
+  --dialog-header-wash:
+    linear-gradient(to bottom, transparent, var(--surface) 95%),
+    radial-gradient(ellipse at 8% 0%, var(--orange-200), transparent 55%),
+    radial-gradient(ellipse at 55% -15%, color-mix(in srgb, var(--red-200), var(--purple-200)), transparent 65%),
+    radial-gradient(ellipse at 95% 15%, var(--blue-200), transparent 60%);
   /* Figma primitives — shared source of truth for Counselor. */
   /* Purple */
   --purple-50: #f4f2ff;

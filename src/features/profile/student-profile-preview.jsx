@@ -82,11 +82,13 @@ export function StudentProfilePreview() {
           {profile.photo ? <img src={profile.photo} alt="Profile" /> : initials || 'PS'}
         </div>
         <div>
-          <h3>{profile.name || 'Your name'}</h3>
+          <div className="profile-person-name">
+            <h3>{profile.name || 'Your name'}</h3>
+            <span className="pill profile-community-role">Counselor</span>
+          </div>
           <p>{profile.address || 'Your public location'}</p>
         </div>
       </div>
-      {profile.username && <p className="c-profile-username">@{profile.username}</p>}
       <div className="student-profile-summary-countries">
         {profile.countries.map((country) => (
           <span className="pill" key={country}>

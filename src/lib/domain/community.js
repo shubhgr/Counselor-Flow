@@ -84,6 +84,50 @@ export const AUTHORS = {
 
 export const posts = [
   {
+    id: 'priya-planning',
+    author: 'Priya Sharma',
+    time: '1d ago',
+    tag: 'Application planning',
+    following: false,
+    saved: false,
+    liked: false,
+    disliked: false,
+    likes: 12,
+    dislikes: 0,
+    body: 'Before you shortlist universities, write down your goals, budget and preferred course structure. A balanced list starts with what matters to you.',
+    comments: [],
+    image: '/assets/university-campus.png',
+    imageAlt: 'University campus building surrounded by trees',
+  },
+  {
+    id: 'priya-sop',
+    author: 'Priya Sharma',
+    time: '2d ago',
+    tag: 'SOP tips',
+    following: false,
+    saved: false,
+    liked: false,
+    disliked: false,
+    likes: 19,
+    dislikes: 0,
+    body: 'Your SOP should connect what you have done with what you want to learn next. Choose two specific experiences and explain what changed your thinking.',
+    comments: [],
+  },
+  {
+    id: 'priya-deadlines',
+    author: 'Priya Sharma',
+    time: '3d ago',
+    tag: 'Application planning',
+    following: false,
+    saved: false,
+    liked: false,
+    disliked: false,
+    likes: 26,
+    dislikes: 0,
+    body: 'Working toward the next intake? Keep transcripts, references and test results in one checklist. Give your referees enough time and check each university\u2019s requirements.',
+    comments: [],
+  },
+  {
     id: 'p4',
     author: 'Aarav Reddy',
     time: '3d ago',
@@ -318,6 +362,24 @@ export const posts = [
     ],
   },
 ];
+
+// Seed counselor replies across the existing community conversations.
+posts
+  .filter((post) => post.author !== 'Priya Sharma')
+  .slice(0, 3)
+  .forEach((post, index) => {
+    post.comments.push({
+      id: `priya-guidance-${index}`,
+      author: 'Priya Sharma',
+      time: '1d ago',
+      text: [
+        'Start with course fit, then compare costs and entry requirements. Keep a balanced mix of options so you have choices when decisions arrive.',
+        'Make a checklist for each university. Requirements and timelines vary, so confirm them on the university’s admissions page before you submit.',
+        'Use a concrete example from your experience, explain what you learned, and connect it to the course you want to study.',
+      ][index],
+      replies: [],
+    });
+  });
 
 export const socialGraph = {};
 

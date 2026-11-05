@@ -13,10 +13,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { useLiveProfile } from './student-profile-preview';
 import { AUTHORS, posts, socialGraph, buildSocialGraph } from '@/lib/domain/community';
 
 export function CommunitySummary() {
   const { account, ready } = useRuntime();
+  const profile = useLiveProfile();
   const [activity, setActivity] = useState('posts');
   const [network, setNetwork] = useState(null);
   const [graph, setGraph] = useState({ followers: [], following: [] });
@@ -35,6 +37,7 @@ export function CommunitySummary() {
     buildSocialGraph(name);
     setGraph(socialGraph[name]);
   }, [ready, name]);
+
   const ownPosts = posts.filter((post) => post.author === name);
   const replies = posts.flatMap((post) =>
     post.comments
@@ -42,24 +45,31 @@ export function CommunitySummary() {
       .filter((reply) => reply.author === name)
       .map((reply) => ({ ...reply, post })),
   );
+  const initials = name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 
   return (
     <Card className="panel profile-community-summary">
       <div className="panel-head">
-        <div>
-          <h2>Community</h2>
+        <h2>Community</h2>
+      </div>
+      <div className="profile-community-person">
+        <div className="avatar">
+          {profile.photo ? <img src={profile.photo} alt={`${name}'s profile`} /> : initials}
+        </div>
+        <div className="profile-community-identity">
+          <div className="profile-person-name">
+            <strong>{name}</strong>
+            <span className="pill profile-community-role">Counselor</span>
+          </div>
           <p className="c-profile-username">@{username}</p>
         </div>
       </div>
-      <div className="c-profile-stats cpp-stats">
-        <div className="cpp-stat">
-          <strong>{ownPosts.length}</strong>
-          <span>Posts</span>
-        </div>
-        <div className="cpp-stat">
-          <strong>{replies.length}</strong>
-          <span>Replies</span>
-        </div>
+      <div className="profile-community-stats">
         {['followers', 'following'].map((kind) => (
           <button key={kind} type="button" className="cpp-stat" onClick={() => setNetwork(kind)}>
             <strong>{graph[kind].length}</strong>
@@ -77,7 +87,7 @@ export function CommunitySummary() {
             aria-pressed={activity === kind}
             onClick={() => setActivity(kind)}
           >
-            {kind === 'posts' ? 'Posts' : 'Replies'}
+            {kind === 'posts' ? `Posts (${ownPosts.length})` : `Replies (${replies.length})`}
           </Button>
         ))}
       </div>
@@ -92,7 +102,17 @@ export function CommunitySummary() {
               >
                 <div className="c-activity-label">Post · {post.tag}</div>
                 <p>{post.body}</p>
-                <div className="c-activity-meta">{post.likes} likes</div>
+                {post.image && (
+                  <img
+                    className="community-post-image"
+                    src={post.image}
+                    alt={post.imageAlt || ''}
+                    loading="lazy"
+                  />
+                )}
+                <div className="c-activity-meta">
+                  {post.likes} likes · {post.comments.length} replies
+                </div>
               </Link>
             ))
           ) : (

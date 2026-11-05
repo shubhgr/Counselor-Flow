@@ -508,6 +508,37 @@ export function initialize(scope) {
   const threadsEl = document.getElementById('chat-threads');
   const messagesEl = document.getElementById('pane-messages');
   let roleFilter = 'all';
+  let quickFilter = 'all';
+  function matchesQuickFilter(student, filter) {
+    if (filter === 'unread') return Boolean(student.unread);
+    const first = student.messages?.find(
+      (message) => message.who === 'me' || message.who === 'them',
+    );
+    if (filter === 'me') return first?.who === 'me';
+    if (filter === 'student') return first?.who === 'them';
+    return true;
+  }
+  function syncQuickFilters() {
+    document.querySelectorAll('[data-chat-quick-filter]').forEach((button) => {
+      const filter = button.dataset.chatQuickFilter;
+      button.setAttribute('aria-pressed', String(filter === quickFilter));
+      button.querySelector('[data-chat-filter-count]').textContent = isPending()
+        ? '0'
+        : order.filter(
+            (id) =>
+              !isThreadBlocked(id) &&
+              (roleFilter === 'all' ||
+                (STUDENTS[id].role === 'parent' ? 'parent' : 'student') === roleFilter) &&
+              matchesQuickFilter(STUDENTS[id], filter),
+          ).length;
+    });
+  }
+  document.querySelectorAll('[data-chat-quick-filter]').forEach((button) => {
+    scope.listen(button, 'click', () => {
+      quickFilter = button.dataset.chatQuickFilter;
+      renderThreads();
+    });
+  });
 
   function isPending() {
     if (window.GradRightSession && GradRightSession.get) {
@@ -593,6 +624,7 @@ export function initialize(scope) {
   }
 
   function renderThreads(filter) {
+    syncQuickFilters();
     if (isPending()) {
       renderEmptyChat();
       return;
@@ -611,6 +643,7 @@ export function initialize(scope) {
       if (window.GradRightSafety && GradRightSafety.isBlocked({ id: id, name: s.name })) return;
       const role = s.role === 'parent' ? 'parent' : 'student';
       if (roleFilter !== 'all' && role !== roleFilter) return;
+      if (!matchesQuickFilter(s, quickFilter)) return;
       if (
         q &&
         !s.name.toLowerCase().includes(q) &&
@@ -977,6 +1010,8 @@ export function initialize(scope) {
     renderMessages(s);
     renderBookingBar(id);
     markThreadActive(id);
+    if (quickFilter === 'unread') renderThreads();
+    else syncQuickFilters();
     if (profileOpen) {
       openPerson(id);
     } else {
