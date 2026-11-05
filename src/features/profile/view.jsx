@@ -217,6 +217,15 @@ export const View = memo(function View() {
                       />
                     </div>
                   </div>
+                </section>
+                <section className="panel overview-section" id="profile-introduction">
+                  <div className={'panel-head'}>
+                    <ProfileSectionTitle
+                      title="About you"
+                      description="Introduce yourself to students with a short bio and an intro video."
+                    />
+                  </div>
+
                   <div className={'field'}>
                     <Label htmlFor={'field-bio'}>{'Bio'}</Label>
                     <Textarea
@@ -229,18 +238,12 @@ export const View = memo(function View() {
                       52 / 300
                     </p>
                   </div>
-                </section>
-                <section className="panel overview-section" id="profile-introduction">
-                  <div className={'panel-head'}>
-                    <ProfileSectionTitle
-                      title="Intro video"
-                      description="A short clip students see on your profile. Record here or upload a file."
-                    />
+                  <div className="profile-field-heading">
+                    <Label htmlFor="video-input">Intro video</Label>
                     <span className="pill" id="profile-video-status">
                       Not added
                     </span>
                   </div>
-
                   <Input
                     type={'file'}
                     id={'video-input'}

@@ -849,7 +849,9 @@ export function initialize(scope) {
       const documentsStatus = document.getElementById('profile-documents-status');
       const backgroundStatus = document.getElementById('profile-background-status');
       const complete = Boolean(
-        selectedCountries().length && document.getElementById('field-bio').value.trim(),
+        selectedCountries().length &&
+        document.getElementById('field-students').value.trim() &&
+        document.getElementById('field-admits').value.trim(),
       );
       if (videoStatus) {
         videoStatus.textContent = videoUrl ? 'Added' : 'Not added';
