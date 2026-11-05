@@ -152,6 +152,7 @@ function WorkspaceChrome({ children }) {
     'calls',
     'community',
     'transactions',
+    'reviews',
   ].includes(context)
     ? context
     : context === 'call'

@@ -170,6 +170,7 @@ export function initialize(scope) {
       if (from === 'dashboard') return '/dashboard';
       if (from === 'community') return '/community';
       if (from === 'transactions') return '/transactions';
+      if (from === 'reviews') return '/reviews';
       return '/students';
     }
 

@@ -455,23 +455,34 @@ export function initialize(scope) {
       visible.forEach(function (row) {
         const el = document.createElement('article');
         el.className = 'rev-card';
+        const profileHref = '/person?id=' + encodeURIComponent(row.id) + '&from=reviews';
         el.innerHTML =
-          '<div class="people-who">' +
-          '<span class="avatar sm' +
+          '<div class="rev-reviewer-header">' +
+          '<a class="rev-reviewer-avatar avatar sm' +
           (row.amber ? ' amber' : '') +
-          '">' +
-          escapeHtml(row.initials) +
-          '</span>' +
-          '<div><strong>' +
+          '" href="' +
+          escapeHtml(profileHref) +
+          '" aria-label="View ' +
           escapeHtml(row.name) +
-          '</strong><span>' +
+          ' profile">' +
+          escapeHtml(row.initials) +
+          '</a>' +
+          '<div class="rev-reviewer-content"><div class="rev-reviewer-line">' +
+          '<a class="rev-reviewer-name" href="' +
+          escapeHtml(profileHref) +
+          '">' +
+          escapeHtml(row.name) +
+          '</a>' +
+          '<time datetime="' +
+          escapeHtml(String(row.at).replace(' ', 'T')) +
+          '">' +
+          escapeHtml(formatWhen(row.at)) +
+          '</time>' +
+          '</div><span class="rev-reviewer-detail">' +
           escapeHtml(row.role === 'parent' ? 'Parent' : 'Student') +
           ' · ' +
           escapeHtml(row.service) +
           '</span></div></div>' +
-          '<time>' +
-          escapeHtml(formatWhen(row.at)) +
-          '</time>' +
           starsHtml(row.rating) +
           '<p>' +
           escapeHtml(row.text) +

@@ -13,7 +13,12 @@ export function ProfileStrength() {
       weight: 25,
       target: 'profile-identity',
     },
-    { label: 'Bio', done: Boolean(profile.bio?.trim()), weight: 20, target: 'profile-background' },
+    {
+      label: 'Bio',
+      done: Boolean(profile.bio?.trim()),
+      weight: 20,
+      target: 'profile-introduction',
+    },
     {
       label: 'Verification documents',
       done: profile.documents > 0,
@@ -47,7 +52,6 @@ export function ProfileStrength() {
   ];
   const score = steps.reduce((sum, step) => sum + (step.done ? step.weight : 0), 0);
   const remaining = steps.filter((step) => !step.done).length;
-  const ordered = [...steps.filter((step) => !step.done), ...steps.filter((step) => step.done)];
   useEffect(() => {
     const identity = document.getElementById('profile-identity-status');
     if (identity) {
@@ -59,36 +63,48 @@ export function ProfileStrength() {
   }, [score, profile.photo, profile.name, profile.address]);
   return (
     <Card className="panel profile-strength">
-      <div className="profile-strength-header">
+      <div className="panel-head profile-strength-heading">
+        <h2>Profile strength</h2>
+        <span className="pill profile-strength-score">{score}%</span>
+      </div>
+      <div className="profile-strength-summary">
         <div
-          className="profile-strength-ring"
+          className="profile-strength-progress"
           role="meter"
           aria-label="Profile strength"
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={score}
-          style={{ '--profile-strength': `${score}%` }}
         >
-          <span>{score}%</span>
+          <span style={{ width: `${score}%` }} />
         </div>
-        <div>
-          <h2>Profile strength</h2>
-          <p>
-            {remaining ? `Finish ${remaining} steps to reach 100%` : 'Your profile is complete'}
-          </p>
-        </div>
+        <p>
+          {remaining ? `${remaining} steps remaining to reach 100%` : 'Your profile is complete'}
+        </p>
       </div>
-      <ul>
-        {ordered.map((step) => (
-          <li key={step.label}>
-            <a href={`#${step.target}`} className={step.done ? 'is-complete' : ''}>
-              {step.done ? <Check aria-hidden="true" /> : <Circle aria-hidden="true" />}
-              <span>{step.label}</span>
-              {!step.done && <strong>+{step.weight}%</strong>}
-            </a>
-          </li>
-        ))}
-      </ul>
+      {[false, true].map((done) => {
+        const group = steps.filter((step) => step.done === done);
+        return group.length ? (
+          <section
+            className="profile-strength-group"
+            key={String(done)}
+            aria-label={done ? 'Completed steps' : 'Remaining steps'}
+          >
+            <h3>{done ? 'Completed' : 'To complete'}</h3>
+            <ul>
+              {group.map((step) => (
+                <li key={step.label}>
+                  <a href={`#${step.target}`} className={step.done ? 'is-complete' : ''}>
+                    {step.done ? <Check aria-hidden="true" /> : <Circle aria-hidden="true" />}
+                    <span>{step.label}</span>
+                    {!step.done && <strong>+{step.weight}%</strong>}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null;
+      })}
     </Card>
   );
 }
