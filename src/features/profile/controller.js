@@ -144,7 +144,9 @@ export function initialize(scope) {
           : '₹' + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
         fee.value = n;
         if (feeDisplay) {
-          feeDisplay.textContent = Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+          feeDisplay.textContent = Number(n || 0).toLocaleString('en-IN', {
+            maximumFractionDigits: 2,
+          });
           feeDisplay.setAttribute('aria-valuenow', String(n));
         }
         paintFeeReferences(label);
@@ -179,15 +181,27 @@ export function initialize(scope) {
           const row = document.createElement('li');
           const amount = document.createElement('strong');
           const detail = document.createElement('span');
+          const timestamp = document.createElement('time');
           amount.textContent = window.GradRightFee.format(entry.amount);
           const date = new Date(entry.changedAt);
-          detail.textContent =
-            'Updated' +
-            (entry.previousAmount
-              ? ' from ' + window.GradRightFee.format(entry.previousAmount)
-              : '') +
-            (Number.isNaN(date.getTime()) ? '' : ' · ' + date.toLocaleString());
+          detail.className = 'fee-history-detail';
+          detail.textContent = entry.previousAmount
+            ? 'Updated from ' + window.GradRightFee.format(entry.previousAmount)
+            : 'Initial price';
+          if (!Number.isNaN(date.getTime())) {
+            timestamp.className = 'fee-history-timestamp';
+            timestamp.dateTime = date.toISOString();
+            timestamp.textContent = date.toLocaleString(undefined, {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+            });
+          }
           row.append(amount, detail);
+          if (!Number.isNaN(date.getTime())) row.appendChild(timestamp);
           feeHistoryList.appendChild(row);
         });
         requestAnimationFrame(updateFeeHistoryEdges);
@@ -234,7 +248,8 @@ export function initialize(scope) {
           !feeHistoryPanel?.hidden &&
           !feeHistoryPanel.contains(event.target) &&
           !feeHistoryTrigger?.contains(event.target)
-        ) closeFeeHistory();
+        )
+          closeFeeHistory();
       });
       scope.listen(feeHistoryList, 'scroll', updateFeeHistoryEdges);
       scope.listen(window, 'resize', updateFeeHistoryEdges);
@@ -284,8 +299,10 @@ export function initialize(scope) {
         const range = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
         const current = feeDisplay.textContent;
         const rawCurrent = current.replace(/,/g, '');
-        const startOffset = range && range.startContainer.nodeType === 3 ? range.startOffset : current.length;
-        const endOffset = range && range.endContainer.nodeType === 3 ? range.endOffset : startOffset;
+        const startOffset =
+          range && range.startContainer.nodeType === 3 ? range.startOffset : current.length;
+        const endOffset =
+          range && range.endContainer.nodeType === 3 ? range.endOffset : startOffset;
         const start = current.slice(0, startOffset).replace(/,/g, '').length;
         const end = current.slice(0, endOffset).replace(/,/g, '').length;
         const proposed = rawCurrent.slice(0, start) + inserted + rawCurrent.slice(end);
@@ -299,7 +316,8 @@ export function initialize(scope) {
         if (!range) return;
         const current = feeDisplay.textContent;
         const rawCurrent = current.replace(/,/g, '');
-        const startOffset = range.startContainer.nodeType === 3 ? range.startOffset : current.length;
+        const startOffset =
+          range.startContainer.nodeType === 3 ? range.startOffset : current.length;
         const endOffset = range.endContainer.nodeType === 3 ? range.endOffset : startOffset;
         const start = current.slice(0, startOffset).replace(/,/g, '').length;
         const end = current.slice(0, endOffset).replace(/,/g, '').length;
@@ -486,6 +504,8 @@ export function initialize(scope) {
           id = slug + '-' + Date.now().toString(36);
         services.push({ id: id, title: name, description: desc });
       }
+      if (window.GradRightServices) services = GradRightServices.set(services);
+      savedServices = JSON.stringify(services);
       paintServices();
       editing = null;
       form.classList.remove('open');

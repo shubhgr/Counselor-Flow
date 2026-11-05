@@ -3838,10 +3838,10 @@ body[data-page='community'] .community-rail-note {
   box-shadow: none;
   overflow: hidden;
 }
-.services-fee-history[data-state='open'] {
+.services-fee-history-backdrop[data-state='open'] .services-fee-history {
   animation: notification-panel-in 200ms ease-out both;
 }
-.services-fee-history[data-state='closed'] {
+.services-fee-history-backdrop[data-state='closed'] .services-fee-history {
   animation: notification-panel-out 200ms ease-in both;
 }
 .services-fee-history-head {
@@ -3902,7 +3902,10 @@ body[data-page='community'] .community-rail-note {
 }
 .services-fee-history li {
   display: grid;
-  gap: var(--space-1);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
   padding: var(--space-4);
   border: var(--stroke-1) solid color-mix(in srgb, var(--line) 72%, transparent);
   border-radius: var(--radius-4);
@@ -3911,8 +3914,25 @@ body[data-page='community'] .community-rail-note {
   color: var(--muted);
 }
 .services-fee-history li strong {
+  grid-column: 1 / -1;
   color: var(--ink);
   font-size: 0.9rem;
+}
+.services-fee-history .fee-history-detail {
+  min-width: 0;
+}
+.services-fee-history .fee-history-timestamp {
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+}
+@media (max-width: 380px) {
+  .services-fee-history li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .services-fee-history .fee-history-timestamp {
+    text-align: left;
+  }
 }
 .services-fee-input {
   width: auto;
@@ -3947,7 +3967,7 @@ body[data-page='community'] .community-rail-note {
 
 @media (prefers-reduced-motion: reduce) {
   .services-fee-history-backdrop[data-state]::after,
-  .services-fee-history[data-state] {
+  .services-fee-history-backdrop[data-state] .services-fee-history {
     animation-duration: 1ms;
   }
   .fee-history-progressive-blur > div {
@@ -4191,7 +4211,7 @@ body[data-page='community'] .community-rail-note {
 }
 
 #panel-testimonials {
-  padding: var(--space-6);
+  padding: 0;
 }
 #panel-testimonials .testi-list {
   display: block;

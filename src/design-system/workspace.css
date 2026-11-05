@@ -1790,17 +1790,17 @@ body[data-page='dashboard'] .pending-banner {
   .people-panel
 ),
 [data-slot='card'].panel:is(
-  .dash-calls-panel,
-  .dash-connects-panel,
-  .rev-side-panel,
-  .rev-list-panel,
-  .bank-panel,
-  .txn-panel,
-  .calls-col-panel,
-  .calls-ongoing-panel,
-  .source-panel,
-  .people-panel
-) {
+    .dash-calls-panel,
+    .dash-connects-panel,
+    .rev-side-panel,
+    .rev-list-panel,
+    .bank-panel,
+    .txn-panel,
+    .calls-col-panel,
+    .calls-ongoing-panel,
+    .source-panel,
+    .people-panel
+  ) {
   gap: 0 !important;
   padding: 0 !important;
   overflow: hidden;
@@ -4308,7 +4308,9 @@ body[data-page='profile'] #panel-edit .panel {
 }
 
 body[data-page='profile'] #panel-edit [data-slot='input']:not(:focus):not([aria-invalid='true']),
-body[data-page='profile'] #panel-edit [data-slot='textarea']:not(:focus):not([aria-invalid='true']) {
+body[data-page='profile']
+  #panel-edit
+  [data-slot='textarea']:not(:focus):not([aria-invalid='true']) {
   box-shadow: none;
 }
 
@@ -4510,8 +4512,11 @@ body[data-page='profile'] #panel-edit .profile-identity-grid .photo-circle:focus
 }
 
 body[data-page='profile'] #panel-edit .student-profile-summary {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--brand-soft) 35%, var(--surface)), var(--surface) 42%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--brand-soft) 35%, var(--surface)),
+    var(--surface) 42%
+  );
   border: var(--card-stroke);
 }
 
@@ -4529,7 +4534,11 @@ body[data-page='profile'] #panel-edit .student-profile-summary {
   justify-items: center;
   gap: var(--space-3);
   background:
-    radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--brand-soft) 80%, transparent), transparent 62%),
+    radial-gradient(
+      circle at 50% 35%,
+      color-mix(in srgb, var(--brand-soft) 80%, transparent),
+      transparent 62%
+    ),
     var(--bg);
   color: var(--muted);
   border: var(--stroke-1) dashed var(--line-strong);
@@ -4856,7 +4865,6 @@ body[data-page='profile'] #panel-edit .profile-public-form > .panel-head {
   margin-top: var(--space-3);
 }
 
-
 .profile-overview-aside .c-profile-username,
 .profile-overview-aside .profile-community-activity,
 .profile-overview-aside .cpp-stats {
@@ -5116,7 +5124,6 @@ body[data-page='profile'] .profile-identity-summary {
   font-weight: 600;
   overflow-wrap: anywhere;
 }
-
 
 body[data-page='profile'] #panel-edit .intro-video-chooser {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -11634,6 +11641,42 @@ body[data-page='reviews'] .people-search {
   width: 100%;
   height: 100%;
   border: 0;
+}
+.testi-yt > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.testi-yt-play {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  z-index: 1;
+  width: 3.5rem;
+  height: 2.5rem;
+  transform: translate(-50%, -50%);
+  border: 0;
+  border-radius: var(--radius-3);
+  background: rgb(255 255 255 / 78%);
+  box-shadow: 0 2px 12px rgb(18 16 34 / 18%);
+  cursor: pointer;
+}
+.testi-yt-play span {
+  display: block;
+  width: 0;
+  height: 0;
+  margin: auto;
+  border-top: 0.45rem solid transparent;
+  border-bottom: 0.45rem solid transparent;
+  border-left: 0.7rem solid var(--gray-900);
+}
+.testi-yt-play:hover {
+  background: white;
+}
+.testi-yt-play:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 3px;
 }
 
 .testi-list {
