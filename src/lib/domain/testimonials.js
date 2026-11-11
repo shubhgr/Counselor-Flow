@@ -230,11 +230,15 @@ export function initialize(scope) {
           var saved = JSON.parse(raw);
           if (Array.isArray(saved) && saved.length) {
             var existing = saved.map(normalize);
-            var ids = new Set(existing.map(function (item) {
-              return item.id;
-            }));
+            var ids = new Set(
+              existing.map(function (item) {
+                return item.id;
+              }),
+            );
             return existing.concat(
-              DEFAULT.filter(function (item) { return !ids.has(item.id); }).map(normalize),
+              DEFAULT.filter(function (item) {
+                return !ids.has(item.id);
+              }).map(normalize),
             );
           }
           if (Array.isArray(saved)) return [];
@@ -288,16 +292,28 @@ export function initialize(scope) {
       if (item.kind === 'video' && item.youtube) {
         var wrap = document.createElement('div');
         wrap.className = 'testi-yt';
-        var iframe = document.createElement('iframe');
-        iframe.src = 'https://www.youtube.com/embed/' + item.youtube;
-        iframe.title = (item.name || 'Testimonial') + ' video';
-        iframe.setAttribute(
-          'allow',
-          'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
-        );
-        iframe.setAttribute('allowfullscreen', '');
-        iframe.setAttribute('loading', 'lazy');
-        wrap.appendChild(iframe);
+        var thumbnail = document.createElement('img');
+        thumbnail.src = 'https://i.ytimg.com/vi/' + item.youtube + '/hqdefault.jpg';
+        thumbnail.alt = '';
+        thumbnail.loading = 'lazy';
+        var play = document.createElement('button');
+        play.type = 'button';
+        play.className = 'testi-yt-play';
+        play.setAttribute('aria-label', 'Play ' + (item.name || 'testimonial') + ' video');
+        play.innerHTML = '<span aria-hidden="true"></span>';
+        play.addEventListener('click', function () {
+          var iframe = document.createElement('iframe');
+          iframe.src = 'https://www.youtube-nocookie.com/embed/' + item.youtube + '?autoplay=1';
+          iframe.title = (item.name || 'Testimonial') + ' video';
+          iframe.setAttribute(
+            'allow',
+            'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
+          );
+          iframe.setAttribute('allowfullscreen', '');
+          wrap.replaceChildren(iframe);
+          iframe.focus();
+        });
+        wrap.append(thumbnail, play);
         return wrap;
       }
       if (item.kind === 'video' && item.video) {

@@ -75,13 +75,53 @@ export function initialize(scope) {
   })();
 
   (function bindServices() {
+    const MAX_FEE = 9900000;
     const fee = document.getElementById('fee');
     const feeDisplay = document.getElementById('fee-display');
+    const feeHistoryList = document.getElementById('fee-history-list');
+    const feeHistoryTrigger = document.getElementById('fee-history-trigger');
+    const feeHistoryPanel = document.getElementById('fee-history-panel');
+    const feeHistoryClose = document.getElementById('fee-history-close');
+    const feeEditTrigger = document.getElementById('fee-edit-trigger');
+    const feeEditLabel = document.getElementById('fee-edit-label');
+    const feeSaveLabel = document.getElementById('fee-save-label');
     if (fee) {
+      function setFeeEditing(isEditing) {
+        if (feeEditLabel) feeEditLabel.hidden = isEditing;
+        if (feeSaveLabel) feeSaveLabel.hidden = !isEditing;
+        feeEditTrigger?.setAttribute('aria-label', isEditing ? 'Save fee' : 'Edit fee');
+      }
+      setFeeEditing(false);
+      scope.listen(feeEditTrigger, 'click', function () {
+        if (!feeDisplay) return;
+        if (feeDisplay.isContentEditable) {
+          const value = Number(fee.value);
+          if (!fee.value || !Number.isFinite(value) || value <= 0 || value > MAX_FEE) {
+            feeDisplay.setAttribute('aria-invalid', 'true');
+            feeDisplay.focus();
+            return;
+          }
+          feeDisplay.removeAttribute('aria-invalid');
+          fee._commitFee();
+          setFeeEditing(false);
+          markServicesDirty();
+          return;
+        }
+        feeDisplay.setAttribute('contenteditable', 'true');
+        feeDisplay.setAttribute('aria-valuenow', fee.value);
+        setFeeEditing(true);
+        feeDisplay.focus();
+        const range = document.createRange();
+        range.selectNodeContents(feeDisplay);
+        range.collapse(false);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      });
       function persistFee(value) {
         if (window.GradRightFee) return GradRightFee.set(value);
         if (value === '' || value == null) return 1999;
-        const n = Math.round(Number(value));
+        const n = Math.min(MAX_FEE, Math.round(Number(value) * 100) / 100);
         if (!Number.isFinite(n) || n < 0) return 1999;
         try {
           localStorage.setItem('gradright_connect_fee', String(n));
@@ -101,8 +141,17 @@ export function initialize(scope) {
       function paintFee(n) {
         const label = window.GradRightFee
           ? GradRightFee.format(n)
-          : '₹' + Number(n || 0).toLocaleString('en-IN');
-        if (feeDisplay) feeDisplay.textContent = label;
+          : '₹' + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+        fee.value = n;
+        if (feeDisplay) {
+          feeDisplay.textContent = Number(n || 0).toLocaleString('en-IN', {
+            maximumFractionDigits: 2,
+          });
+          feeDisplay.setAttribute('aria-valuenow', String(n));
+        }
+        paintFeeReferences(label);
+      }
+      function paintFeeReferences(label) {
         document.querySelectorAll('.fee').forEach(function (el) {
           el.textContent = label + ' connect';
         });
@@ -110,24 +159,195 @@ export function initialize(scope) {
           el.textContent = label;
         });
       }
+      function formatFeeForEdit(value) {
+        const parts = String(value).split('.');
+        const integer = parts.shift();
+        const grouped = integer
+          ? Number(integer).toLocaleString('en-IN', { maximumFractionDigits: 0 })
+          : '';
+        return parts.length ? grouped + '.' + parts.join('') : grouped;
+      }
+      function paintFeeHistory() {
+        if (!feeHistoryList) return;
+        const history = window.GradRightFee?.getHistory?.() || [];
+        feeHistoryList.textContent = '';
+        if (!history.length) {
+          const empty = document.createElement('li');
+          empty.textContent = 'No price changes yet.';
+          feeHistoryList.appendChild(empty);
+          return;
+        }
+        history.forEach(function (entry) {
+          const row = document.createElement('li');
+          const amount = document.createElement('strong');
+          const detail = document.createElement('span');
+          const timestamp = document.createElement('time');
+          amount.textContent = window.GradRightFee.format(entry.amount);
+          const date = new Date(entry.changedAt);
+          detail.className = 'fee-history-detail';
+          detail.textContent = entry.previousAmount
+            ? 'Updated from ' + window.GradRightFee.format(entry.previousAmount)
+            : 'Initial price';
+          if (!Number.isNaN(date.getTime())) {
+            timestamp.className = 'fee-history-timestamp';
+            timestamp.dateTime = date.toISOString();
+            timestamp.textContent = date.toLocaleString(undefined, {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+            });
+          }
+          row.append(amount, detail);
+          if (!Number.isNaN(date.getTime())) row.appendChild(timestamp);
+          feeHistoryList.appendChild(row);
+        });
+        requestAnimationFrame(updateFeeHistoryEdges);
+      }
       paintFee(current);
+      paintFeeHistory();
+      let feeHistoryCloseTimer = null;
+      function updateFeeHistoryEdges() {
+        if (!feeHistoryList) return;
+        feeHistoryList.dataset.scrollTop = String(feeHistoryList.scrollTop > 2);
+        feeHistoryList.dataset.scrollBottom = String(
+          feeHistoryList.scrollHeight - feeHistoryList.clientHeight - feeHistoryList.scrollTop > 2,
+        );
+      }
+      function closeFeeHistory() {
+        if (!feeHistoryPanel) return;
+        if (feeHistoryPanel.hidden || feeHistoryPanel.dataset.state === 'closed') return;
+        feeHistoryPanel.dataset.state = 'closed';
+        document.body.classList.remove('fee-history-open');
+        feeHistoryTrigger?.setAttribute('aria-expanded', 'false');
+        if (feeHistoryCloseTimer) clearTimeout(feeHistoryCloseTimer);
+        feeHistoryCloseTimer = setTimeout(function () {
+          feeHistoryPanel.hidden = true;
+          feeHistoryCloseTimer = null;
+        }, 200);
+      }
+      scope.listen(feeHistoryTrigger, 'click', function () {
+        if (!feeHistoryPanel) return;
+        const opening = feeHistoryPanel.hidden || feeHistoryPanel.dataset.state === 'closed';
+        if (!opening) {
+          closeFeeHistory();
+          return;
+        }
+        if (feeHistoryCloseTimer) clearTimeout(feeHistoryCloseTimer);
+        feeHistoryCloseTimer = null;
+        feeHistoryPanel.hidden = false;
+        feeHistoryPanel.dataset.state = 'open';
+        document.body.classList.add('fee-history-open');
+        feeHistoryTrigger.setAttribute('aria-expanded', 'true');
+        requestAnimationFrame(updateFeeHistoryEdges);
+      });
+      scope.listen(document, 'click', function (event) {
+        if (
+          !feeHistoryPanel?.hidden &&
+          !feeHistoryPanel.contains(event.target) &&
+          !feeHistoryTrigger?.contains(event.target)
+        )
+          closeFeeHistory();
+      });
+      scope.listen(feeHistoryList, 'scroll', updateFeeHistoryEdges);
+      scope.listen(window, 'resize', updateFeeHistoryEdges);
+      scope.listen(feeHistoryPanel, 'click', function (event) {
+        if (event.target === feeHistoryPanel) closeFeeHistory();
+      });
+      scope.listen(feeHistoryClose, 'click', closeFeeHistory);
+      scope.listen(document, 'keydown', function (event) {
+        if (event.key === 'Escape') closeFeeHistory();
+      });
       let savedFee = current;
-      scope.listen(fee, 'input', function () {
-        const n = Math.round(Number(fee.value));
-        paintFee(Number.isFinite(n) && n >= 0 ? n : savedFee);
-        markServicesDirty();
+      scope.listen(feeDisplay, 'input', function () {
+        if (!feeDisplay) return;
+        const value = feeDisplay.textContent.replace(/,/g, '').trim();
+        if (!/^\d*(?:\.\d{0,2})?$/.test(value)) return;
+        fee.value = value;
+        const formatted = formatFeeForEdit(value);
+        if (feeDisplay.textContent !== formatted) {
+          feeDisplay.textContent = formatted;
+          const range = document.createRange();
+          range.selectNodeContents(feeDisplay);
+          range.collapse(false);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+        const n = Number(value);
+        if (Number.isFinite(n) && n > 0) {
+          feeDisplay.setAttribute('aria-valuenow', String(n));
+          const label = window.GradRightFee
+            ? GradRightFee.format(n)
+            : '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+          paintFeeReferences(label);
+        }
+        // The fee card has its own Edit/Save interaction. Keep fee typing out
+        // of the page-level Save/Discard state; it is committed by the card.
+      });
+      scope.listen(feeDisplay, 'beforeinput', function (event) {
+        if (!event.inputType || !event.inputType.startsWith('insert')) return;
+        let inserted = event.data;
+        if (event.inputType === 'insertFromPaste') {
+          inserted = event.dataTransfer?.getData('text/plain') || '';
+          inserted = inserted.replace(/[^\d.]/g, '');
+        }
+        if (inserted == null) return;
+        const selection = window.getSelection();
+        const range = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
+        const current = feeDisplay.textContent;
+        const rawCurrent = current.replace(/,/g, '');
+        const startOffset =
+          range && range.startContainer.nodeType === 3 ? range.startOffset : current.length;
+        const endOffset =
+          range && range.endContainer.nodeType === 3 ? range.endOffset : startOffset;
+        const start = current.slice(0, startOffset).replace(/,/g, '').length;
+        const end = current.slice(0, endOffset).replace(/,/g, '').length;
+        const proposed = rawCurrent.slice(0, start) + inserted + rawCurrent.slice(end);
+        if (!/^\d*(?:\.\d{0,2})?$/.test(proposed) || Number(proposed) > MAX_FEE)
+          event.preventDefault();
+      });
+      scope.listen(feeDisplay, 'paste', function (event) {
+        const inserted = (event.clipboardData?.getData('text/plain') || '').replace(/[^\d.]/g, '');
+        const selection = window.getSelection();
+        const range = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
+        if (!range) return;
+        const current = feeDisplay.textContent;
+        const rawCurrent = current.replace(/,/g, '');
+        const startOffset =
+          range.startContainer.nodeType === 3 ? range.startOffset : current.length;
+        const endOffset = range.endContainer.nodeType === 3 ? range.endOffset : startOffset;
+        const start = current.slice(0, startOffset).replace(/,/g, '').length;
+        const end = current.slice(0, endOffset).replace(/,/g, '').length;
+        const proposed = rawCurrent.slice(0, start) + inserted + rawCurrent.slice(end);
+        event.preventDefault();
+        if (!/^\d*(?:\.\d{0,2})?$/.test(proposed) || Number(proposed) > MAX_FEE) return;
+        range.deleteContents();
+        range.insertNode(document.createTextNode(inserted));
+        feeDisplay.textContent = formatFeeForEdit(proposed);
+        const endRange = document.createRange();
+        endRange.selectNodeContents(feeDisplay);
+        endRange.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(endRange);
+        feeDisplay.dispatchEvent(new Event('input', { bubbles: true }));
       });
       fee._savedFee = function () {
         return savedFee;
       };
       fee._commitFee = function () {
         savedFee = persistFee(fee.value);
-        fee.value = savedFee;
+        feeDisplay?.removeAttribute('contenteditable');
+        setFeeEditing(false);
         paintFee(savedFee);
+        paintFeeHistory();
         return savedFee;
       };
       fee._restoreFee = function () {
-        fee.value = savedFee;
+        feeDisplay?.removeAttribute('contenteditable');
+        setFeeEditing(false);
         paintFee(savedFee);
       };
     }
@@ -149,9 +369,9 @@ export function initialize(scope) {
         '<article class="service" data-service-id="' +
         s.id +
         '"><div class="service-row"><div><h3></h3><p class="service-teaser"></p></div>' +
-        '<div class="service-actions">' +
-        '<button class="btn btn-secondary btn-sm" type="button" data-service-edit>Edit</button>' +
-        '<button class="btn btn-danger btn-sm" type="button" data-service-delete>Delete</button>' +
+        '<div class="service-actions c-menu-wrap"><details><summary aria-label="Service actions" title="Service actions"><svg class="app-icon service-actions-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M12 5h.01M12 12h.01M12 19h.01"/></svg></summary>' +
+        '<div class="c-menu"><button type="button" data-service-edit>Edit</button>' +
+        '<button class="danger" type="button" data-service-delete>Delete</button></div></details>' +
         '</div></div></article>'
       );
     }
@@ -178,6 +398,12 @@ export function initialize(scope) {
 
     function paintServices() {
       if (!list) return;
+      if (!services.length) {
+        list.innerHTML =
+          '<div class="services-empty" role="status"><strong>No services yet</strong><p>Show students how you can help with their applications.</p><button type="button" class="btn btn-secondary btn-sm" data-empty-add-service><span aria-hidden="true">+</span> Add a service</button></div>';
+        paintPreviewServices();
+        return;
+      }
       list.innerHTML = services.map(serviceCard).join('');
       Array.prototype.forEach.call(list.querySelectorAll('.service'), function (card, i) {
         const s = services[i];
@@ -203,11 +429,8 @@ export function initialize(scope) {
     function markServicesDirty() {
       const panel = document.getElementById('panel-services');
       if (panel && panel.hidden) return false;
-      const feeEl = document.getElementById('fee');
-      const feeChanged =
-        feeEl && feeEl._savedFee ? Number(feeEl.value) !== Number(feeEl._savedFee()) : false;
       const listChanged = JSON.stringify(services) !== savedServices;
-      const dirty = feeChanged || listChanged || serviceFormDirty();
+      const dirty = listChanged || serviceFormDirty();
       if (unsavedBar) unsavedBar.hidden = !dirty;
       document.body.classList.toggle('has-unsaved', dirty);
       return dirty;
@@ -218,13 +441,21 @@ export function initialize(scope) {
       editing = null;
       if (form) form.classList.remove('open');
       serviceDialog?.close();
-      if (nameInput) nameInput.value = '';
-      if (descInput) descInput.value = '';
+      if (nameInput) {
+        nameInput.value = '';
+        nameInput.setCustomValidity('');
+      }
+      if (descInput) {
+        descInput.value = '';
+        descInput.setCustomValidity('');
+      }
       markServicesDirty();
     }
 
     function openServiceForm(card) {
       editing = card || null;
+      nameInput?.setCustomValidity('');
+      descInput?.setCustomValidity('');
       if (nameInput)
         nameInput.value = card ? (card.querySelector('h3') || {}).textContent || '' : '';
       if (descInput)
@@ -245,12 +476,13 @@ export function initialize(scope) {
       if (!form || !form.classList.contains('open') || !list) return true;
       const name = (nameInput && nameInput.value.trim()) || '';
       const desc = (descInput && descInput.value.trim()) || '';
-      if (!name && !desc) {
-        closeServiceForm();
-        return true;
-      }
-      if (!name) {
-        if (nameInput) nameInput.focus();
+      const missingName = !name;
+      const missingDescription = !desc;
+      nameInput?.setCustomValidity(missingName ? 'Enter a service name.' : '');
+      descInput?.setCustomValidity(missingDescription ? 'Enter a description.' : '');
+      if (missingName || missingDescription) {
+        const firstMissing = missingName ? nameInput : descInput;
+        firstMissing?.reportValidity();
         return false;
       }
       if (editing) {
@@ -272,6 +504,8 @@ export function initialize(scope) {
           id = slug + '-' + Date.now().toString(36);
         services.push({ id: id, title: name, description: desc });
       }
+      if (window.GradRightServices) services = GradRightServices.set(services);
+      savedServices = JSON.stringify(services);
       paintServices();
       editing = null;
       form.classList.remove('open');
@@ -320,14 +554,41 @@ export function initialize(scope) {
         else openServiceForm(null);
       });
     }
-    if (nameInput) scope.listen(nameInput, 'input', markServicesDirty);
-    if (descInput) scope.listen(descInput, 'input', markServicesDirty);
+    if (nameInput)
+      scope.listen(nameInput, 'input', function () {
+        if (nameInput.value.trim()) nameInput.setCustomValidity('');
+        markServicesDirty();
+      });
+    if (descInput)
+      scope.listen(descInput, 'input', function () {
+        if (descInput.value.trim()) descInput.setCustomValidity('');
+        markServicesDirty();
+      });
     if (list) {
+      scope.listen(list, 'click', function (event) {
+        if (!event.target.closest('[data-empty-add-service]')) return;
+        openServiceForm(null);
+      });
+      scope.listen(document, 'click', function (event) {
+        list.querySelectorAll('.service-actions details[open]').forEach(function (menu) {
+          if (!menu.contains(event.target)) menu.removeAttribute('open');
+        });
+      });
+      scope.listen(document, 'keydown', function (event) {
+        if (event.key !== 'Escape') return;
+        const openMenus = list.querySelectorAll('.service-actions details[open]');
+        if (!openMenus.length) return;
+        openMenus.forEach(function (menu) {
+          menu.removeAttribute('open');
+        });
+      });
       scope.listen(list, 'click', function (e) {
         const edit = e.target.closest('[data-service-edit]');
         if (edit) {
           e.preventDefault();
-          openServiceForm(edit.closest('.service'));
+          const card = edit.closest('.service');
+          card?.querySelector('.service-actions details')?.removeAttribute('open');
+          openServiceForm(card);
           return;
         }
         const del = e.target.closest('[data-service-delete]');
@@ -335,6 +596,7 @@ export function initialize(scope) {
           e.preventDefault();
           const card = del.closest('.service');
           if (card) {
+            card.querySelector('.service-actions details')?.removeAttribute('open');
             const id = card.getAttribute('data-service-id');
             services = services.filter(function (s) {
               return s.id !== id;

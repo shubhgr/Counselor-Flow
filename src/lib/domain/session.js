@@ -123,14 +123,16 @@ export function initialize(scope) {
   /** Connect fee from Profile → Services & fee. Dashboard earnings = fee × connects. */
   (function () {
     const KEY = 'gradright_connect_fee';
+    const HISTORY_KEY = KEY + '_history';
     const DEFAULT = 1999;
+    const MAX = 9900000;
 
     function get() {
       try {
         const raw = localStorage.getItem(KEY);
         if (raw == null || raw === '') return DEFAULT;
         const n = Number(raw);
-        if (Number.isFinite(n) && n > 0) return Math.round(n);
+        if (Number.isFinite(n) && n > 0) return Math.min(MAX, Math.round(n * 100) / 100);
       } catch (e) {}
       return DEFAULT;
     }
@@ -138,18 +140,33 @@ export function initialize(scope) {
     function set(value) {
       if (value === '' || value == null) return get();
       const n = Number(value);
-      const fee = Number.isFinite(n) && n > 0 ? Math.round(n) : DEFAULT;
+      const fee = Number.isFinite(n) && n > 0 ? Math.min(MAX, Math.round(n * 100) / 100) : DEFAULT;
+      const previous = get();
       try {
         localStorage.setItem(KEY, String(fee));
+        if (fee !== previous) {
+          const history = getHistory();
+          history.unshift({ amount: fee, previousAmount: previous, changedAt: new Date().toISOString() });
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 50)));
+        }
       } catch (e) {}
       return fee;
     }
 
-    function format(value) {
-      return '₹' + Number(value || 0).toLocaleString('en-IN');
+    function getHistory() {
+      try {
+        const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        return Array.isArray(history) ? history : [];
+      } catch (e) {
+        return [];
+      }
     }
 
-    window.GradRightFee = { KEY, DEFAULT, get, set, format };
+    function format(value) {
+      return '₹' + Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+    }
+
+    window.GradRightFee = { KEY, HISTORY_KEY, DEFAULT, MAX, get, set, getHistory, format };
   })();
 
   /** Counselor services on the profile. Each service is one Calendar event type. Students pick one when they book. */
@@ -170,6 +187,31 @@ export function initialize(scope) {
         id: 'visa-readiness',
         title: 'Visa readiness',
         description: 'Document checklist and interview practice',
+      },
+      {
+        id: 'application-strategy',
+        title: 'Application strategy',
+        description: 'Build a balanced school list and application timeline',
+      },
+      {
+        id: 'interview-coaching',
+        title: 'Interview coaching',
+        description: 'Practice interview questions, structure, and delivery',
+      },
+      {
+        id: 'scholarship-planning',
+        title: 'Scholarship planning',
+        description: 'Identify funding options and organize key deadlines',
+      },
+      {
+        id: 'parent-consultation',
+        title: 'Parent consultation',
+        description: 'Align family priorities, budget, and next steps',
+      },
+      {
+        id: 'decision-support',
+        title: 'Decision and enrollment support',
+        description: 'Compare offers and plan the enrollment process',
       },
     ];
 
@@ -192,7 +234,14 @@ export function initialize(scope) {
         var raw = localStorage.getItem(KEY);
         if (raw) {
           var saved = JSON.parse(raw);
-          if (Array.isArray(saved) && saved.length) return saved;
+          if (Array.isArray(saved) && saved.length) {
+            var ids = new Set(saved.map(function (service) {
+              return service && service.id;
+            }));
+            return saved.concat(DEFAULT.filter(function (service) {
+              return !ids.has(service.id);
+            }));
+          }
         }
       } catch (e) {}
       return clone(DEFAULT);

@@ -106,7 +106,12 @@ export function Notifications() {
               {unread ? 'Mark all as read' : 'All read'}
             </Button>
             <SheetClose asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Close notifications">
+              <Button
+                className="notification-close-button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Close notifications"
+              >
                 <Icon name="close" />
               </Button>
             </SheetClose>
