@@ -2036,7 +2036,7 @@ body[data-page='dashboard'] .pending-banner {
 }
 
 .onboard-addresses {
-  gap: var(--space-5);
+  gap: var(--space-3);
 }
 
 .onboard-address-card {
@@ -2044,18 +2044,19 @@ body[data-page='dashboard'] .pending-banner {
   gap: var(--space-2);
 }
 
-.onboard-address-head {
+.onboard-address-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  align-items: flex-start;
+  gap: var(--space-2);
 }
 
-.onboard-address-head label {
-  margin: 0;
+.onboard-address-row > .onboard-remove {
+  margin-top: 0.5rem;
 }
 
 .onboard-address-search {
+  flex: 1;
+  min-width: 0;
   position: relative;
   display: flex;
   align-items: flex-start;
@@ -2178,11 +2179,6 @@ body[data-page='dashboard'] .pending-banner {
   margin: 0;
   font-size: 0.75rem;
   color: var(--muted);
-}
-
-.onboard-add-address {
-  width: auto;
-  justify-self: start;
 }
 
 .chip-select {

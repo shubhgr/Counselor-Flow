@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '@/components/icon';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
 const TILE = 256;
@@ -201,53 +200,63 @@ function AddressCard({ address, index, canRemove, onChange, onRemove }) {
 
   return (
     <div className="onboard-address-card">
-      <div className="onboard-address-head">
-        <Label>{`Address ${index + 1}`}</Label>
+      <div className="onboard-address-row">
+        <div className="onboard-address-search">
+          <Icon name="search" className="app-icon" aria-hidden="true" />
+          <Textarea
+            className="onboard-address-input"
+            rows={1}
+            value={address.query}
+            autoComplete="off"
+            placeholder="Type an address or search a place"
+            aria-label={`Address ${index + 1}`}
+            onChange={(event) => {
+              setUserTyped(true);
+              onChange({ query: event.target.value });
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === 'Escape') {
+                event.preventDefault();
+                setOpen(false);
+              }
+            }}
+            onFocus={() => suggestions.length && setOpen(true)}
+            onBlur={() => window.setTimeout(() => setOpen(false), 160)}
+          />
+          <Button
+            type="button"
+            variant="unstyled"
+            size="unstyled"
+            className={`onboard-map-toggle${mapOpen ? ' is-active' : ''}`}
+            aria-expanded={mapOpen}
+            onClick={() => setMapOpen((value) => !value)}
+          >
+            <Icon name="location_on" className="app-icon" aria-hidden="true" />
+            {mapOpen ? 'Hide map' : 'Pick on map'}
+          </Button>
+        </div>
         {canRemove ? (
-          <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
-            Remove
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="onboard-remove"
+            aria-label={`Remove address ${index + 1}`}
+            onClick={onRemove}
+          >
+            <Icon name="close" className="app-icon" aria-hidden="true" />
           </Button>
         ) : null}
-      </div>
-      <div className="onboard-address-search">
-        <Icon name="search" className="app-icon" aria-hidden="true" />
-        <Textarea
-          className="onboard-address-input"
-          rows={1}
-          value={address.query}
-          autoComplete="off"
-          placeholder="Type an address or search a place"
-          aria-label={`Address ${index + 1}`}
-          onChange={(event) => {
-            setUserTyped(true);
-            onChange({ query: event.target.value });
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === 'Escape') {
-              event.preventDefault();
-              setOpen(false);
-            }
-          }}
-          onFocus={() => suggestions.length && setOpen(true)}
-          onBlur={() => window.setTimeout(() => setOpen(false), 160)}
-        />
-        <Button
-          type="button"
-          variant="unstyled"
-          size="unstyled"
-          className={`onboard-map-toggle${mapOpen ? ' is-active' : ''}`}
-          aria-expanded={mapOpen}
-          onClick={() => setMapOpen((value) => !value)}
-        >
-          <Icon name="location_on" className="app-icon" aria-hidden="true" />
-          {mapOpen ? 'Hide map' : 'Pick on map'}
-        </Button>
       </div>
       {open && suggestions.length ? (
         <ul className="onboard-address-suggest" role="listbox">
           {suggestions.map((row) => (
             <li key={`${row.place_id}`}>
-              <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => choose(row)}>
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => choose(row)}
+              >
                 {row.display_name}
               </button>
             </li>
@@ -315,7 +324,7 @@ export function AddressPicker() {
           onRemove={() => remove(address.id)}
         />
       ))}
-      <Button type="button" variant="secondary" className="onboard-add-address" onClick={add}>
+      <Button type="button" variant="ghost" size="sm" className="onboard-inline-add" onClick={add}>
         <Icon name="add" className="app-icon" aria-hidden="true" />
         Add another address
       </Button>

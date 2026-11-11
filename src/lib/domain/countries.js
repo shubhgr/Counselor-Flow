@@ -15,14 +15,21 @@ export const COUNTRIES = REGIONS.map((code) => ({
 })).sort((a, b) => a.name.localeCompare(b.name));
 export const countryKey = (value) =>
   value.trim().normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+function matchRank(country, term) {
+  const keys = [country.name, ...country.aliases].map(countryKey);
+  if (keys.some((key) => key === term)) return 0;
+  if (keys.some((key) => key.startsWith(term))) return 1;
+  if (keys.some((key) => key.split(/[\s-]+/).some((word) => word.startsWith(term)))) return 2;
+  if (keys.some((key) => key.includes(term))) return 3;
+  return -1;
+}
 export function countryMatches(query, selected) {
   const term = countryKey(query);
   const chosen = new Set(selected.map(countryKey));
-  return COUNTRIES.filter(
-    (country) =>
-      !chosen.has(countryKey(country.name)) &&
-      [country.name, ...country.aliases].some((value) => countryKey(value).includes(term)),
-  );
+  return COUNTRIES.map((country) => ({ country, rank: matchRank(country, term) }))
+    .filter(({ country, rank }) => rank >= 0 && !chosen.has(countryKey(country.name)))
+    .sort((a, b) => a.rank - b.rank || a.country.name.localeCompare(b.country.name))
+    .map(({ country }) => country);
 }
 export function customCountry(query, selected) {
   const value = query.trim().replace(/\s+/g, ' ');
