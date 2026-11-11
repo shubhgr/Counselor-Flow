@@ -3661,7 +3661,8 @@ body[data-page='community'] .community-rail-note {
   gap: var(--space-5);
 }
 
-#panel-services .panel-head {
+#panel-services .panel-head,
+#panel-testimonials .panel-head {
   padding: 0;
   margin: 0;
   height: auto;
@@ -3951,7 +3952,8 @@ body[data-page='community'] .community-rail-note {
   margin: 0;
   font-size: 0.8rem;
 }
-#panel-services .panel-head h2 {
+#panel-services .panel-head h2,
+#panel-testimonials .panel-head h2 {
   font-size: var(--scroll-head-title-size);
   font-weight: var(--scroll-head-title-weight);
 }

@@ -7,14 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { NativeSelect } from '@/components/ui/native-select';
-import { PageActions } from '@/components/page-actions';
-
 export const View = memo(function View() {
   return (
     <>
-      <PageActions>
-        <div className={'actions'}></div>
-      </PageActions>
       <div className={'content gr-scroll'} id={'calendar-root'}>
         <section className={'cal-connect'} id={'cal-connect'}>
           <div className={'cal-connect-card'}>

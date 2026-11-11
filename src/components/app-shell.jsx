@@ -1,14 +1,13 @@
 'use client';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import Link from 'next/link';
-import { Collapsible } from 'radix-ui';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useRuntime } from './runtime-provider';
 import { AccountSettings } from './account-settings';
 import { Notifications } from './notifications';
 import { Icon } from './icon';
 import { Button } from './ui/button';
-import { ChevronRight, ChevronsUpDown, BadgeCheck, Settings, LogOut } from 'lucide-react';
+import { ChevronsUpDown, BadgeCheck, Settings, LogOut } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -29,9 +28,6 @@ import {
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
   SidebarMenuButton,
   SidebarFooter,
   SidebarInset,
@@ -114,10 +110,7 @@ function WorkspaceChrome({ children }) {
   const pathname = usePathname(),
     params = useSearchParams();
   const page = pathname.split('/').pop();
-  const pageTitle =
-    page === 'profile'
-      ? SECTIONS.find(([key]) => key === (params.get('tab') || 'edit'))?.[1] || 'Overview'
-      : TITLES[page] || 'Counselor';
+  const pageTitle = activeProfilePage(page) ? 'Profile' : TITLES[page] || 'Counselor';
   useEffect(() => {
     document.title = `${pageTitle} — GradRight Counselor`;
   }, [pageTitle]);
@@ -139,17 +132,7 @@ function WorkspaceChrome({ children }) {
     }
   }
   const { account, verified } = useRuntime();
-  const { isMobile, setOpenMobile, state, setOpen } = useSidebar();
-  const [profileCompleteness, setProfileCompleteness] = useState(null);
-  useEffect(() => {
-    const sync = (event) => setProfileCompleteness(event.detail);
-    window.addEventListener('gradright:profile-completeness', sync);
-    return () => window.removeEventListener('gradright:profile-completeness', sync);
-  }, []);
-  const [profileExpanded, setProfileExpanded] = useState(activeProfilePage(page));
-  useEffect(() => {
-    if (activeProfilePage(page)) setProfileExpanded(true);
-  }, [pathname]);
+  const { isMobile, setOpenMobile, state } = useSidebar();
   const profileSection = page === 'calendar' ? 'calendar' : params.get('tab') || 'edit';
   const context = params.get('from');
   const returnPage = [
@@ -195,85 +178,22 @@ function WorkspaceChrome({ children }) {
                 <SidebarGroupLabel>{title}</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {links.map(([id, label, icon]) =>
-                      id === 'profile' ? (
-                        <Collapsible.Root
-                          key={id}
-                          open={profileExpanded}
-                          onOpenChange={setProfileExpanded}
-                          asChild
-                        >
-                          <SidebarMenuItem>
-                            <Collapsible.Trigger asChild>
-                              <SidebarMenuButton
-                                tooltip="Profile"
-                                isActive={activeProfilePage(page)}
-                                onClick={(event) => {
-                                  if (state === 'collapsed') {
-                                    event.preventDefault();
-                                    setOpen(true);
-                                    setProfileExpanded(true);
-                                  }
-                                }}
-                              >
-                                <Icon name="person" className="ico" />
-                                <span className="workspace-nav-text">Profile</span>
-                                {profileCompleteness !== null && (
-                                  <span
-                                    className="profile-completeness-chip"
-                                    aria-label={`Profile completeness: ${profileCompleteness}%`}
-                                    title={`Profile completeness: ${profileCompleteness}%`}
-                                  >
-                                    {profileCompleteness}%
-                                  </span>
-                                )}
-                                <ChevronRight
-                                  className={`profile-nav-chevron ml-auto ${profileExpanded ? 'rotate-90' : ''}`}
-                                />
-                              </SidebarMenuButton>
-                            </Collapsible.Trigger>
-                            <Collapsible.Content>
-                              <SidebarMenuSub>
-                                {SECTIONS.map(([section, title]) => {
-                                  const selected =
-                                    activeProfilePage(page) && profileSection === section;
-                                  return (
-                                    <SidebarMenuSubItem key={section}>
-                                      <SidebarMenuSubButton asChild isActive={selected}>
-                                        <Link
-                                          href={
-                                            section === 'calendar'
-                                              ? '/calendar'
-                                              : `/profile?tab=${section}`
-                                          }
-                                          aria-current={selected ? 'page' : undefined}
-                                          onClick={() => {
-                                            if (isMobile) setOpenMobile(false);
-                                          }}
-                                        >
-                                          {title}
-                                        </Link>
-                                      </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                  );
-                                })}
-                              </SidebarMenuSub>
-                            </Collapsible.Content>
-                          </SidebarMenuItem>
-                        </Collapsible.Root>
-                      ) : (
+                    {links.map(([id, label, icon]) => (
                         <SidebarMenuItem key={id}>
                           <SidebarMenuButton
                             asChild
                             isActive={id === 'profile' ? activeProfilePage(page) : active === id}
-
                             tooltip={label}
                           >
                             <Link
                               prefetch={false}
-                              href={`/${id}`}
+                              href={id === 'profile' ? '/profile?tab=edit' : `/${id}`}
                               aria-label={label}
-                              aria-current={active === id ? 'page' : undefined}
+                              aria-current={
+                                (id === 'profile' ? activeProfilePage(page) : active === id)
+                                  ? 'page'
+                                  : undefined
+                              }
                               onClick={() => {
                                 if (isMobile) setOpenMobile(false);
                               }}
@@ -286,8 +206,7 @@ function WorkspaceChrome({ children }) {
                             </Link>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
-                      ),
-                    )}
+                    ))}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
@@ -397,6 +316,25 @@ function WorkspaceChrome({ children }) {
             <h1 id={page === 'person' ? 'person-top-title' : undefined}>{pageTitle}</h1>
           </div>
           <div className="actions">
+            {activeProfilePage(page) && (
+              <nav className="profile-header-nav" aria-label="Profile sections">
+                {SECTIONS.map(([section, title]) => {
+                  const selected = profileSection === section;
+                  return (
+                    <Link
+                      key={section}
+                      prefetch={false}
+                      href={section === 'calendar' ? '/calendar' : `/profile?tab=${section}`}
+                      className={`profile-header-tab${selected ? ' is-active' : ''}`}
+                      data-label={title}
+                      aria-current={selected ? 'page' : undefined}
+                    >
+                      {title}
+                    </Link>
+                  );
+                })}
+              </nav>
+            )}
             <div id="page-header-actions" key={`page-actions:${pathname}`} />
             <Notifications />
           </div>
