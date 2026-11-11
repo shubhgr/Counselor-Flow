@@ -57,6 +57,7 @@ const GROUPS = [
       ['profile', 'Profile', 'person'],
       ['transactions', 'Transactions', 'payments'],
       ['reviews', 'Reviews', 'star'],
+      ['badges', 'Badges', 'workspace_premium'],
     ],
   ],
 ];
@@ -71,6 +72,7 @@ const TITLES = {
   account: 'My account',
   calendar: 'Calendar',
   reviews: 'Reviews',
+  badges: 'Badges',
   transactions: 'Transactions',
   settings: 'Settings',
   person: 'Profile',
@@ -143,6 +145,7 @@ function WorkspaceChrome({ children }) {
     'community',
     'transactions',
     'reviews',
+    'badges',
   ].includes(context)
     ? context
     : context === 'call'

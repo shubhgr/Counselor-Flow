@@ -11422,7 +11422,8 @@ body[data-page='transactions'] .people-search {
   }
 }
 
-body[data-page='reviews'] .main {
+body[data-page='reviews'] .main,
+body[data-page='badges'] .main {
   height: 100vh;
   min-height: 0;
   overflow: hidden;

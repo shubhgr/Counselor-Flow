@@ -132,6 +132,7 @@
   body[data-page='chats'] .main,
   body[data-page='transactions'] .main,
   body[data-page='reviews'] .main,
+  body[data-page='badges'] .main,
   body[data-page='students'] .main {
     height: auto;
     min-height: 100dvh;

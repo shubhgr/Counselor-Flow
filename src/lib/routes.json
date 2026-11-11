@@ -83,6 +83,12 @@
     "workspace": true,
     "dataPage": "reviews"
   },
+  "badges": {
+    "route": "/badges",
+    "title": "Badges",
+    "workspace": true,
+    "dataPage": "badges"
+  },
   "transactions": {
     "route": "/transactions",
     "title": "Transactions",

@@ -177,7 +177,7 @@ export const View = memo(function View() {
             <h3>{'Pending admin approval'}</h3>
             <p>
               {
-                'Reviews and badges stay empty until GradRight verifies you. Student feedback lands here after that.'
+                'Reviews stay empty until GradRight verifies you. Student feedback lands here after that.'
               }
             </p>
           </div>
@@ -191,7 +191,7 @@ export const View = memo(function View() {
         </div>
         <div className="reviews-top">
           <Card className={'panel analytics-panel'}>
-            <div className={'analytics-stats is-4'}>
+            <div className={'analytics-stats is-3'}>
               <div className={'analytics-stat'}>
                 <span className={'label'}>{'Average rating'}</span>
                 <strong className={'analytics-rating'}>
@@ -216,11 +216,6 @@ export const View = memo(function View() {
                   {'Rated 4 stars or higher'}
                 </span>
               </div>
-              <div className={'analytics-stat'}>
-                <span className={'label'}>{'Badges'}</span>
-                <strong id={'stat-badges'}>{'4'}</strong>
-                <span className={'hint'}>{'Shown on your public card'}</span>
-              </div>
             </div>
             <div className={'analytics-chart-wrap'}>
               <svg
@@ -242,19 +237,6 @@ export const View = memo(function View() {
               <div id="dashboard-chart-axis" className="dashboard-chart-axis" aria-hidden="true" />
               <div className={'analytics-tip'} id={'analytics-tip'} hidden />
             </div>
-          </Card>
-          <Card className={'panel rev-side-panel p-0'}>
-            <ScrollPanel
-              className={'rev-badge-scroll'}
-              head={<h2>{'Your badges'}</h2>}
-              footer={
-                <p className={'rev-side-note'}>
-                  {'Badges appear on your public counselor card in the GradRight student app.'}
-                </p>
-              }
-            >
-              <div className={'rev-badge-grid'} id={'rev-badges'} />
-            </ScrollPanel>
           </Card>
         </div>
         <Card className={'panel rev-list-panel p-0'}>
