@@ -4804,3 +4804,154 @@ body:has(#service-dialog[open]) .unsaved-bar {
     border-radius: 22px;
   }
 }
+
+/* Prototype review comments: PIN-gated pins layered above every route. */
+.proto-notice {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-6);
+  z-index: 9000;
+  max-width: calc(100vw - 2rem);
+  margin: 0;
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-7);
+  background: var(--gray-900);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 550;
+  line-height: 1.4;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  box-shadow: 0 8px 24px rgb(18 16 34 / 0.18);
+  pointer-events: none;
+}
+html.proto-commenting,
+html.proto-commenting * {
+  cursor: crosshair !important;
+}
+html.proto-commenting [data-proto-comments],
+html.proto-commenting [data-proto-comments] * {
+  cursor: pointer !important;
+}
+.proto-hover {
+  position: fixed;
+  z-index: 8998;
+  border: 2px solid var(--brand);
+  border-radius: 4px;
+  background: rgb(120 43 255 / 0.06);
+  pointer-events: none;
+}
+.proto-pin {
+  position: fixed;
+  z-index: 8999;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 999px 999px 999px 0;
+  background: var(--brand);
+  color: #fff;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1;
+  transform: translate(0, -100%);
+  box-shadow: 0 4px 12px rgb(18 16 34 / 0.25);
+  cursor: pointer;
+}
+.proto-pin:hover,
+.proto-pin.is-open {
+  background: var(--brand-hover);
+}
+.proto-pin.is-draft {
+  opacity: 0.85;
+  pointer-events: none;
+}
+.proto-popover {
+  position: fixed;
+  z-index: 9001;
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--stroke-1) solid var(--line-strong);
+  border-radius: var(--radius-3);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 12px 32px rgb(18 16 34 / 0.16);
+}
+.proto-popover textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+.proto-popover-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.proto-thread-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.proto-thread-number {
+  display: grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+.proto-thread-time {
+  flex: 1;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.proto-thread-body {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.proto-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gray-400);
+  cursor: pointer;
+}
+.proto-icon-btn:hover {
+  background: var(--gray-100);
+  color: var(--ink);
+}
+.proto-icon-btn svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+.proto-confirm {
+  flex: 1;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.proto-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.8rem;
+}
+.proto-pin-dialog {
+  max-width: 22rem;
+}
+.proto-pin-form {
+  display: grid;
+  gap: var(--space-4);
+}
