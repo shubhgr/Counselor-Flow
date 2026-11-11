@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import '@fontsource-variable/inter';
 import './globals.css';
 import { RuntimeProvider } from '@/components/runtime-provider';
+import { PrototypeComments } from '@/components/prototype-comments';
 import { TooltipProvider } from '@/components/ui/tooltip';
 export const metadata = {
   title: 'GradRight Counselor',
@@ -20,6 +21,7 @@ export default function RootLayout({ children }) {
         >
           <TooltipProvider>
             <RuntimeProvider>{children}</RuntimeProvider>
+            <PrototypeComments />
           </TooltipProvider>
         </Suspense>
       </body>
