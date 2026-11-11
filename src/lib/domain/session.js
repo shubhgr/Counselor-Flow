@@ -58,6 +58,8 @@ export function initialize(scope) {
         verified: extra.verified != null ? !!extra.verified : false,
         name: extra.name || DEFAULT_PROFILE.name,
         email: extra.email || DEFAULT_PROFILE.email,
+        emailVerified: extra.emailVerified != null ? !!extra.emailVerified : false,
+        addresses: Array.isArray(extra.addresses) ? extra.addresses : [],
         photo: extra.photo || '',
         username: extra.username || '',
         secondaryEmail: extra.secondaryEmail || '',

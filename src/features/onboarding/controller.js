@@ -21,18 +21,12 @@ export function initialize(scope) {
   (function () {
     const s = GradRightSession.get();
     if (s) {
-      const phoneEl = document.getElementById('phone');
-      if (phoneEl) phoneEl.value = s.phoneDisplay;
-      const nameEl = document.getElementById('name');
-      if (nameEl && s.name) nameEl.value = s.name;
-      const emailEl = document.getElementById('email');
-      if (emailEl && s.email) emailEl.value = s.email;
       document.getElementById('review-name').textContent = s.name;
       document.getElementById('review-avatar').textContent = s.initials;
       document.getElementById('review-meta').textContent =
         s.phoneDisplay +
         (s.verified ? ' (admin verified)' : ' (pending admin)') +
-        ' · email pending verify';
+        (s.emailVerified ? ' · email verified' : ' · email pending verify');
       document.getElementById('submit-dashboard').href = '/dashboard';
     }
   })();
@@ -76,25 +70,13 @@ export function initialize(scope) {
       bar.classList.toggle('done', Number(bar.dataset.step) <= n);
     });
     if (skipBtn) {
-      skipBtn.hidden = !(n === 2 || n === 3);
+      skipBtn.hidden = !(n >= 2 && n <= 4);
       skipBtn.onclick = function () {
-        goStep(n === 2 ? 3 : 4);
+        goStep(n + 1);
       };
     }
-    if (n === 4) updateReview();
+    if (n === 5) updateReview();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function verifyEmail() {
-    const btn = document.getElementById('verify-email-btn');
-    const hint = document.getElementById('email-hint');
-    btn.textContent = 'Sent';
-    btn.disabled = true;
-    hint.innerHTML = '<span class="verified-tag">Email added</span>';
-    setTimeout(() => {
-      hint.innerHTML = '<span class="verified-tag">Email verified</span>';
-      btn.textContent = 'Verified';
-    }, 1200);
   }
 
   function addCountry() {
@@ -328,5 +310,4 @@ export function initialize(scope) {
 
   window.goStep = goStep;
   window.addCountry = addCountry;
-  window.verifyEmail = verifyEmail;
 }
