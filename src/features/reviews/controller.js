@@ -186,21 +186,6 @@ export function initialize(scope) {
 
     const ALL = isApproved() ? buildReviews() : [];
 
-    const BADGES = [
-      { icon: 'workspace_premium', label: 'Top mentor', locked: false },
-      { icon: 'public', label: 'USA expert', locked: false },
-      { icon: 'bolt', label: 'Fast reply', locked: false },
-      { icon: 'military_tech', label: '100+ sessions', locked: false },
-      { icon: 'school', label: 'Admit guide', locked: false },
-      { icon: 'chat', label: 'Chat pro', locked: false },
-      { icon: 'flag', label: 'UK specialist', locked: true },
-      { icon: 'star', label: '5.0 streak', locked: true },
-      { icon: 'flight', label: 'Visa coach', locked: true },
-      { icon: 'edit_note', label: 'SOP editor', locked: true },
-      { icon: 'groups', label: 'Parent favourite', locked: true },
-      { icon: 'verified', label: 'Verified counselor', locked: true },
-    ];
-
     const MONTHS = [
       'January',
       'February',
@@ -491,23 +476,6 @@ export function initialize(scope) {
       });
     }
 
-    function renderBadges() {
-      const wrap = document.getElementById('rev-badges');
-      wrap.innerHTML = BADGES.map(function (b) {
-        return (
-          '<div class="rev-badge' +
-          (b.locked ? ' is-locked' : '') +
-          '"><span class="app-icon" aria-hidden="true">' +
-          b.icon +
-          '</span><strong>' +
-          escapeHtml(b.label) +
-          '</strong>' +
-          (b.locked ? '<small>Locked</small>' : '') +
-          '</div>'
-        );
-      }).join('');
-    }
-
     function presetLabel() {
       if (rangeKey === 'today') return 'Today';
       if (rangeKey === 'yesterday') return 'Yesterday';
@@ -740,7 +708,6 @@ export function initialize(scope) {
       renderList();
     });
 
-    renderBadges();
     render();
   })();
 }

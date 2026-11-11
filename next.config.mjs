@@ -21,6 +21,7 @@ const nextConfig = {
         'profile',
         'calendar',
         'reviews',
+        'badges',
         'transactions',
         'settings',
         'person',
