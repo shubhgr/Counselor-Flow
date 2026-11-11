@@ -47,8 +47,6 @@ function ProfileSectionTitle({ title, description, privateSection = false }) {
 export const View = memo(function View() {
   const activeTab = useSearchParams().get('tab') || 'edit';
   const overview = activeTab === 'edit';
-  const testimonials = activeTab === 'testimonials';
-  const servicesTab = activeTab === 'services';
   return (
     <>
       <PageActions>
@@ -57,21 +55,7 @@ export const View = memo(function View() {
             <span id="profile-save-status" className="hint-text" role="status" hidden>
               Saved just now
             </span>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/profile?tab=preview">View as student</Link>
-            </Button>
           </div>
-        )}
-        {testimonials && (
-          <Button type="button" id="toggle-new-testimonial" variant="secondary" size="sm">
-            + Add testimonial
-          </Button>
-        )}
-        {servicesTab && (
-          <Button type="button" id="toggle-new-service" variant="secondary" size="sm">
-            <Plus size={16} aria-hidden="true" />
-            New service
-          </Button>
         )}
       </PageActions>
       <div className={'content gr-scroll'}>
@@ -483,6 +467,10 @@ export const View = memo(function View() {
           <section className="services-offered" aria-labelledby="services-offered-title">
             <div className="panel-head">
               <h2 id="services-offered-title">Services you offer</h2>
+              <Button type="button" id="toggle-new-service" variant="secondary" size="sm">
+                <Plus size={16} aria-hidden="true" />
+                New service
+              </Button>
             </div>
             <dialog
               id="service-dialog"
@@ -528,7 +516,16 @@ export const View = memo(function View() {
           </section>
         </div>
         <div id={'panel-testimonials'} hidden>
-          <div className={'testi-list'} id={'testi-list'} />
+          <section className="services-offered" aria-labelledby="testimonials-title">
+            <div className="panel-head">
+              <h2 id="testimonials-title">Testimonials</h2>
+              <Button type="button" id="toggle-new-testimonial" variant="secondary" size="sm">
+                <Plus size={16} aria-hidden="true" />
+                Add testimonial
+              </Button>
+            </div>
+            <div className={'testi-list'} id={'testi-list'} />
+          </section>
         </div>
         <div id={'panel-preview'} hidden>
           <PublicProfileDetails />
