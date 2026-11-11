@@ -3865,6 +3865,9 @@ body[data-page='community'] .community-rail-note {
   width: 100%;
   overflow-y: auto;
   display: grid;
+  align-content: start;
+  align-items: start;
+  grid-auto-rows: min-content;
   gap: var(--space-3);
   margin: 0;
   padding: var(--space-1) var(--space-3) var(--space-5);
@@ -3904,6 +3907,11 @@ body[data-page='community'] .community-rail-note {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: baseline;
+  align-content: start;
+  align-self: start;
+  width: 100%;
+  height: auto;
+  min-height: 0;
   column-gap: var(--space-3);
   row-gap: var(--space-1);
   padding: var(--space-4);
