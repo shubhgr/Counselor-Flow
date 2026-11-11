@@ -340,6 +340,132 @@ body[data-page='profile'] #panel-edit .profile-overview-aside > .panel {
   padding: var(--space-5);
 }
 
+.country-stats {
+  gap: var(--space-3);
+}
+
+.country-stat-table {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.country-stat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7.5rem 7.5rem 1.75rem;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.country-stat-head {
+  margin-bottom: calc(var(--space-2) * -1);
+  font-size: 0.75rem;
+  font-weight: 550;
+  color: var(--muted);
+}
+
+.country-stat-row input[type='number'] {
+  height: 2.75rem;
+  padding: 0 var(--space-4);
+  -moz-appearance: textfield;
+}
+
+.country-stat-row input[type='number']::-webkit-outer-spin-button,
+.country-stat-row input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.country-stat-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 550;
+}
+
+.onboard-remove {
+  flex-shrink: 0;
+  justify-self: end;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-7);
+  color: var(--gray-400);
+  background: transparent;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
+}
+
+.onboard-remove:hover,
+.onboard-remove:focus-visible {
+  color: var(--ink);
+  background: var(--gray-100);
+}
+
+.onboard-remove .app-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.onboard-inline-add {
+  align-self: center;
+  width: auto;
+  padding-inline: var(--space-2);
+  color: var(--brand);
+  font-weight: 550;
+}
+
+.onboard-inline-add:hover {
+  color: var(--brand-hover);
+  background: var(--purple-50);
+}
+
+.country-stat-picker {
+  position: relative;
+}
+
+.country-stat-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.country-stat-search > .app-icon {
+  position: absolute;
+  left: var(--space-4);
+  z-index: 1;
+  width: 1rem;
+  height: 1rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.country-stat-search-input {
+  height: 2.75rem;
+  padding-left: 2.5rem;
+}
+
+.country-stat-results {
+  max-height: 280px;
+}
+
+.country-stat-results .country-result {
+  padding: var(--space-3) var(--space-5);
+}
+
+@media (max-width: 560px) {
+  .country-stat-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 2rem;
+  }
+  .country-stat-name {
+    grid-column: 1 / -1;
+  }
+  .country-stat-head {
+    display: none;
+  }
+}
+
 .country-token-remove:focus-visible {
   outline: var(--stroke-1) solid var(--brand);
   outline-offset: var(--stroke-2);
@@ -1345,12 +1471,12 @@ span.app-icon > svg {
 }
 .onboard-address-input {
   min-height: 2.75rem;
-  padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
+  padding-top: calc((2.75rem - 1.25rem - 2px) / 2);
+  padding-bottom: calc((2.75rem - 1.25rem - 2px) / 2);
   padding-left: 2.5rem;
   padding-right: 8.5rem;
   resize: none;
-  line-height: 1.45;
+  line-height: 1.25rem;
   overflow-wrap: anywhere;
 }
 .otp-form {

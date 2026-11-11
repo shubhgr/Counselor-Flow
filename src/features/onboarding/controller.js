@@ -33,24 +33,18 @@ export function initialize(scope) {
 
   var skipBtn = document.getElementById('skip-btn');
 
-  function selectedCountries() {
-    return [...document.querySelectorAll('#countries .chip.selected')].map(function (el) {
-      return el.textContent.trim();
-    });
+  function countryStats() {
+    return (window.GradRightOnboardingCountries && GradRightOnboardingCountries.get()) || [];
   }
 
   function updateReview() {
-    var countries = selectedCountries();
-    var served = (document.getElementById('students-served') || {}).value;
-    var admits = (document.getElementById('admits') || {}).value;
-    var parts = [];
-    if (countries.length)
-      parts.push(
-        countries.slice(0, 6).join(', ') +
-          (countries.length > 6 ? ' +' + (countries.length - 6) : ''),
-      );
-    if (served) parts.push(served + ' students served');
-    if (admits) parts.push(admits + ' admits');
+    var rows = countryStats();
+    var parts = rows.map(function (row) {
+      var stats = [];
+      if (row.served) stats.push(row.served + ' served');
+      if (row.admits) stats.push(row.admits + ' admits');
+      return row.country + (stats.length ? ' (' + stats.join(', ') + ')' : '');
+    });
     document.getElementById('review-background').textContent = parts.length
       ? parts.join(' · ')
       : 'No background added yet';
@@ -77,21 +71,6 @@ export function initialize(scope) {
     }
     if (n === 5) updateReview();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function addCountry() {
-    const input = document.getElementById('custom-country');
-    const name = input.value.trim();
-    if (!name) return;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'chip selected';
-    btn.textContent = name;
-    btn.onclick = function () {
-      this.classList.toggle('selected');
-    };
-    document.getElementById('countries').appendChild(btn);
-    input.value = '';
   }
 
   const docInput = document.getElementById('doc-input');
@@ -309,5 +288,4 @@ export function initialize(scope) {
   });
 
   window.goStep = goStep;
-  window.addCountry = addCountry;
 }

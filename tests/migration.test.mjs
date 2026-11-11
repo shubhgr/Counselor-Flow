@@ -6,7 +6,7 @@ const routes = JSON.parse(
 );
 import config from '../next.config.mjs';
 test('every Counselor flow has a native Next route and a React view', () => {
-  assert.equal(Object.keys(routes).length, 19);
+  assert.equal(Object.keys(routes).length, 20);
   for (const [name, { route, workspace }] of Object.entries(routes)) {
     const group = workspace ? '(workspace)' : '(public)';
     assert.ok(fs.existsSync(`src/app/${group}${route === '/' ? '' : route}/page.jsx`), route);

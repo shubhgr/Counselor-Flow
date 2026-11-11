@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { AddressPicker } from './address-picker';
+import { CountryStats } from './country-stats';
 
 export const View = memo(function View() {
   return (
@@ -55,11 +56,20 @@ export const View = memo(function View() {
               </div>
             </section>
             <section className={'step'} id={'step-2'} hidden>
-              <h1>{'Intro video'}</h1>
+              <h1>{'Introduce yourself'}</h1>
               <p className={'lead'}>
-                {'Optional. A short clip helps students get to know you before they connect.'}
+                {'Optional. A short bio and clip help students get to know you before they connect.'}
               </p>
               <div className={'field'}>
+                <Label htmlFor={'bio'}>{'Short bio'}</Label>
+                <Textarea
+                  id={'bio'}
+                  placeholder={'How you help students get into colleges and countries…'}
+                  defaultValue={''}
+                />
+              </div>
+              <div className={'field'}>
+                <Label>{'Intro video'}</Label>
                 <Input
                   type={'file'}
                   id={'video-input'}
@@ -167,302 +177,10 @@ export const View = memo(function View() {
               <h1>{'Counseling background'}</h1>
               <p className={'lead'}>
                 {
-                  'Optional. Skip if you prefer. Helps students and admins understand your track record.'
+                  'Optional. Add each country you guide students for, with your students served and admits there.'
                 }
               </p>
-              <div className={'field'}>
-                <Label>{'Countries you give guidance for'}</Label>
-                <div className={'chip-select'} id={'countries'}>
-                  <Button
-                    type={'button'}
-                    className={'chip selected'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'USA'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip selected'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'UK'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip selected'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Canada'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Germany'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Australia'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Ireland'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Netherlands'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'France'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Singapore'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'New Zealand'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'UAE'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Sweden'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Italy'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Japan'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'India'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'China'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Hong Kong'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Switzerland'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Spain'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Denmark'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'South Korea'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Malaysia'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Qatar'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Poland'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Austria'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Belgium'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Finland'}
-                  </Button>
-                  <Button
-                    type={'button'}
-                    className={'chip'}
-                    onClick={(event) => event.currentTarget.classList.toggle('selected')}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Norway'}
-                  </Button>
-                </div>
-                <div className={'custom-country'}>
-                  <Input
-                    id={'custom-country'}
-                    type={'text'}
-                    placeholder={'Add a custom country…'}
-                  />
-                  <Button
-                    className={''}
-                    type={'button'}
-                    onClick={(event) => {
-                      window.addCountry?.();
-                    }}
-                    variant={'secondary'}
-                    size={'sm'}
-                  >
-                    {'Add'}
-                  </Button>
-                </div>
-              </div>
-              <div className={'field-row'}>
-                <div className={'field'}>
-                  <Label htmlFor={'students-served'}>{'Students served till now'}</Label>
-                  <Input id={'students-served'} type={'number'} placeholder={'e.g. 120'} />
-                </div>
-                <div className={'field'}>
-                  <Label htmlFor={'admits'}>{'Admits across these countries'}</Label>
-                  <Input id={'admits'} type={'number'} placeholder={'e.g. 85'} />
-                </div>
-              </div>
-              <div className={'field'}>
-                <Label htmlFor={'bio'}>{'Short bio (optional)'}</Label>
-                <Textarea
-                  id={'bio'}
-                  placeholder={'How you help students get into colleges and countries…'}
-                  defaultValue={''}
-                />
-              </div>
+              <CountryStats />
               <div className={'onboard-actions'}>
                 <Button
                   className={''}
@@ -561,7 +279,7 @@ export const View = memo(function View() {
                   <div className={'meta'}>
                     <strong>{'Background'}</strong>
                     <span id={'review-background'}>
-                      {'Countries, students served, and admits (if filled)'}
+                      {'Countries with students served and admits (if filled)'}
                     </span>
                   </div>
                 </div>
