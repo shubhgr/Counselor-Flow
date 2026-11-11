@@ -1,6 +1,5 @@
 'use client';
 import { memo } from 'react';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -71,7 +70,7 @@ export const View = memo(function View() {
             <div id={'panel-signup'}>
               <h2>{'Create counselor account'}</h2>
               <p className={'sub'}>
-                {'We’ll send an OTP to your mobile. Email can be verified later from profile.'}
+                {'We’ll send an OTP to your mobile, then to your email.'}
               </p>
               <form action={'/otp'} method={'get'}>
                 <div className={'field'}>
@@ -93,9 +92,6 @@ export const View = memo(function View() {
                     defaultValue={'1234567890'}
                     required
                   />
-                  <p className={'hint-text'}>
-                    {'Any number · sign up stays pending until admin approval'}
-                  </p>
                 </div>
                 <div className={'field'}>
                   <Label htmlFor={'su-email'}>{'Email'}</Label>
@@ -106,9 +102,6 @@ export const View = memo(function View() {
                     defaultValue={'priya.sharma@gmail.com'}
                     required
                   />
-                  <p className={'hint-text'}>
-                    {'Saved now · not verified yet · verify anytime from profile'}
-                  </p>
                 </div>
                 <Button className={''} type={'submit'} variant={'default'} size={'default'}>
                   {'Send OTP'}
@@ -123,18 +116,11 @@ export const View = memo(function View() {
                 <div className={'field'}>
                   <Label htmlFor={'li-phone'}>{'Mobile number'}</Label>
                   <Input id={'li-phone'} name={'phone'} type={'tel'} defaultValue={'0987654321'} />
-                  <p className={'hint-text'}>{'Any number · log in as a verified counselor'}</p>
                 </div>
                 <Button className={''} type={'submit'} variant={'default'} size={'default'}>
                   {'Send OTP'}
                 </Button>
               </form>
-              <p className={'auth-footer'}>
-                {'Still waiting for approval?'}
-                <Link href={'/dashboard'} prefetch={false}>
-                  {'Open pending dashboard'}
-                </Link>
-              </p>
             </div>
           </div>
         </main>

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
+import { AddressPicker } from './address-picker';
 
 export const View = memo(function View() {
   return (
@@ -29,56 +30,36 @@ export const View = memo(function View() {
               <div className={'bar'} data-step={'2'} />
               <div className={'bar'} data-step={'3'} />
               <div className={'bar'} data-step={'4'} />
+              <div className={'bar'} data-step={'5'} />
             </div>
             <section className={'step'} id={'step-1'}>
-              <h1>{'Tell us who you are'}</h1>
+              <h1>{'Where you counsel from'}</h1>
               <p className={'lead'}>
-                {'Mobile is locked after OTP. Email can be verified later from your profile.'}
+                {'Add one or more locations. Type any address, pick a suggestion, or choose it on the map.'}
+              </p>
+              <AddressPicker />
+              <div className={'onboard-actions'}>
+                <span />
+                <Button
+                  className={''}
+                  type={'button'}
+                  style={{ width: 'auto' }}
+                  onClick={(event) => {
+                    window.goStep?.(2);
+                  }}
+                  variant={'default'}
+                  size={'default'}
+                >
+                  {'Continue'}
+                </Button>
+              </div>
+            </section>
+            <section className={'step'} id={'step-2'} hidden>
+              <h1>{'Intro video'}</h1>
+              <p className={'lead'}>
+                {'Optional. A short clip helps students get to know you before they connect.'}
               </p>
               <div className={'field'}>
-                <Label htmlFor={'name'}>{'Full name'}</Label>
-                <Input id={'name'} type={'text'} defaultValue={'Priya Sharma'} />
-              </div>
-              <div className={'field'}>
-                <Label htmlFor={'phone'}>{'Mobile number'}</Label>
-                <div className={'input-with-action'}>
-                  <Input
-                    id={'phone'}
-                    className={'input-locked'}
-                    type={'tel'}
-                    defaultValue={'+91 12345 67890'}
-                    readOnly
-                  />
-                  <span className={'verified-inline'}>{'Verified'}</span>
-                </div>
-              </div>
-              <div className={'field'}>
-                <Label htmlFor={'email'}>{'Email'}</Label>
-                <div className={'input-with-action'}>
-                  <Input id={'email'} type={'email'} defaultValue={'priya.sharma@gmail.com'} />
-                  <Button
-                    className={'btn-verify-inline'}
-                    type={'button'}
-                    id={'verify-email-btn'}
-                    onClick={(event) => {
-                      window.verifyEmail?.();
-                    }}
-                    variant={'unstyled'}
-                    size={'unstyled'}
-                  >
-                    {'Verify'}
-                  </Button>
-                </div>
-                <p className={'hint-text'} id={'email-hint'}>
-                  {'Not verified yet · optional for now'}
-                </p>
-              </div>
-              <div className={'field'}>
-                <Label htmlFor={'address'}>{'Address'}</Label>
-                <Textarea id={'address'} defaultValue={'Bandra West, Mumbai, Maharashtra'} />
-              </div>
-              <div className={'field'}>
-                <Label>{'Intro video'}</Label>
                 <Input
                   type={'file'}
                   id={'video-input'}
@@ -157,13 +138,23 @@ export const View = memo(function View() {
                 </div>
               </div>
               <div className={'onboard-actions'}>
-                <span />
+                <Button
+                  className={''}
+                  type={'button'}
+                  onClick={(event) => {
+                    window.goStep?.(1);
+                  }}
+                  variant={'ghost'}
+                  size={'default'}
+                >
+                  {'Back'}
+                </Button>
                 <Button
                   className={''}
                   type={'button'}
                   style={{ width: 'auto' }}
                   onClick={(event) => {
-                    window.goStep?.(2);
+                    window.goStep?.(3);
                   }}
                   variant={'default'}
                   size={'default'}
@@ -172,7 +163,7 @@ export const View = memo(function View() {
                 </Button>
               </div>
             </section>
-            <section className={'step'} id={'step-2'} hidden>
+            <section className={'step'} id={'step-3'} hidden>
               <h1>{'Counseling background'}</h1>
               <p className={'lead'}>
                 {
@@ -477,7 +468,7 @@ export const View = memo(function View() {
                   className={''}
                   type={'button'}
                   onClick={(event) => {
-                    window.goStep?.(1);
+                    window.goStep?.(2);
                   }}
                   variant={'ghost'}
                   size={'default'}
@@ -489,7 +480,7 @@ export const View = memo(function View() {
                   type={'button'}
                   style={{ width: 'auto' }}
                   onClick={(event) => {
-                    window.goStep?.(3);
+                    window.goStep?.(4);
                   }}
                   variant={'default'}
                   size={'default'}
@@ -498,7 +489,7 @@ export const View = memo(function View() {
                 </Button>
               </div>
             </section>
-            <section className={'step'} id={'step-3'} hidden>
+            <section className={'step'} id={'step-4'} hidden>
               <h1>{'Verification documents'}</h1>
               <p className={'lead'}>
                 {
@@ -528,7 +519,7 @@ export const View = memo(function View() {
                   className={''}
                   type={'button'}
                   onClick={(event) => {
-                    window.goStep?.(2);
+                    window.goStep?.(3);
                   }}
                   variant={'ghost'}
                   size={'default'}
@@ -540,7 +531,7 @@ export const View = memo(function View() {
                   type={'button'}
                   style={{ width: 'auto' }}
                   onClick={(event) => {
-                    window.goStep?.(4);
+                    window.goStep?.(5);
                   }}
                   variant={'default'}
                   size={'default'}
@@ -549,7 +540,7 @@ export const View = memo(function View() {
                 </Button>
               </div>
             </section>
-            <section className={'step'} id={'step-4'} hidden>
+            <section className={'step'} id={'step-5'} hidden>
               <h1>{'Submit for admin approval'}</h1>
               <p className={'lead'}>
                 {
@@ -563,7 +554,7 @@ export const View = memo(function View() {
                   </div>
                   <div className={'meta'}>
                     <strong id={'review-name'}>{'Priya Sharma'}</strong>
-                    <span id={'review-meta'}>{'+91 12345 67890 · email pending verify'}</span>
+                    <span id={'review-meta'}>{'+91 12345 67890 · email verified'}</span>
                   </div>
                 </div>
                 <div className={'list-item'}>
@@ -596,7 +587,7 @@ export const View = memo(function View() {
                   className={''}
                   type={'button'}
                   onClick={(event) => {
-                    window.goStep?.(3);
+                    window.goStep?.(4);
                   }}
                   variant={'ghost'}
                   size={'default'}

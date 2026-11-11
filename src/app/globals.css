@@ -1343,6 +1343,16 @@ span.app-icon > svg {
 .app-icon {
   pointer-events: none;
 }
+.onboard-address-input {
+  min-height: 2.75rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  padding-left: 2.5rem;
+  padding-right: 8.5rem;
+  resize: none;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
 .otp-form {
   display: grid;
   justify-items: center;
