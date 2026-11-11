@@ -79,17 +79,47 @@ export async function createComment(draft) {
   return rows[0];
 }
 
+function readAnchor(input) {
+  const selector = text(input?.selector, 1000);
+  if (!selector) return null;
+  return {
+    selector,
+    offsetX: clamp(input.offsetX, 0, 1, 0.5),
+    offsetY: clamp(input.offsetY, 0, 1, 0.5),
+    pageX: clamp(input.pageX, 0, 100000, 0),
+    pageY: clamp(input.pageY, 0, 100000, 0),
+    viewportW: Math.round(clamp(input.viewportW, 0, 10000, 0)),
+  };
+}
+
 export async function updateComment(id, patch) {
   const body = patch.body === undefined ? null : text(patch.body, 2000).trim();
   const resolved = typeof patch.resolved === 'boolean' ? patch.resolved : null;
+  const anchor = readAnchor(patch);
   const rows = await db().query(
     `UPDATE prototype_comments
         SET body = COALESCE($2, body),
             resolved = COALESCE($3, resolved),
+            selector = COALESCE($4, selector),
+            offset_x = COALESCE($5, offset_x),
+            offset_y = COALESCE($6, offset_y),
+            page_x = COALESCE($7, page_x),
+            page_y = COALESCE($8, page_y),
+            viewport_w = COALESCE($9, viewport_w),
             updated_at = now()
       WHERE id = $1
       RETURNING ${COLUMNS}`,
-    [id, body, resolved],
+    [
+      id,
+      body,
+      resolved,
+      anchor?.selector ?? null,
+      anchor?.offsetX ?? null,
+      anchor?.offsetY ?? null,
+      anchor?.pageX ?? null,
+      anchor?.pageY ?? null,
+      anchor?.viewportW ?? null,
+    ],
   );
   return rows[0] ?? null;
 }

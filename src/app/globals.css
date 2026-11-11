@@ -4859,11 +4859,19 @@ html.proto-commenting [data-proto-comments] * {
   line-height: 1;
   transform: translate(0, -100%);
   box-shadow: 0 4px 12px rgb(18 16 34 / 0.25);
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
 }
 .proto-pin:hover,
-.proto-pin.is-open {
+.proto-pin.is-open,
+.proto-pin.is-dragging {
   background: var(--brand-hover);
+}
+.proto-pin.is-dragging {
+  z-index: 9002;
+  cursor: grabbing;
+  box-shadow: 0 8px 20px rgb(18 16 34 / 0.32);
 }
 .proto-pin.is-draft {
   opacity: 0.85;

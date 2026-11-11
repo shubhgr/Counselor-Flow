@@ -54,6 +54,18 @@ function pickTarget(x, y) {
   return hit.closest('svg') || hit;
 }
 
+function anchorAt(target, x, y) {
+  const rect = target.getBoundingClientRect();
+  return {
+    selector: cssPath(target),
+    offsetX: rect.width ? (x - rect.left) / rect.width : 0.5,
+    offsetY: rect.height ? (y - rect.top) / rect.height : 0.5,
+    pageX: x + window.scrollX,
+    pageY: y + window.scrollY,
+    viewportW: window.innerWidth,
+  };
+}
+
 function isShown(element) {
   if (!element) return false;
   if (element.checkVisibility && !element.checkVisibility()) return false;
@@ -300,7 +312,10 @@ export function PrototypeComments() {
   const [draft, setDraft] = useState(null);
   const [openId, setOpenId] = useState(null);
   const [notice, setNotice] = useState('');
+  const [drag, setDrag] = useState(null);
   const commentsRef = useRef(comments);
+  const dragRef = useRef(null);
+  const skipClickRef = useRef(false);
 
   useEffect(() => {
     commentsRef.current = comments;
@@ -411,14 +426,9 @@ export function PrototypeComments() {
       event.stopPropagation();
       const target = pickTarget(event.clientX, event.clientY);
       if (!target) return;
-      const rect = target.getBoundingClientRect();
       setDraft({
         point: { x: event.clientX, y: event.clientY },
-        selector: cssPath(target),
-        offsetX: rect.width ? (event.clientX - rect.left) / rect.width : 0.5,
-        offsetY: rect.height ? (event.clientY - rect.top) / rect.height : 0.5,
-        pageX: event.pageX,
-        pageY: event.pageY,
+        ...anchorAt(target, event.clientX, event.clientY),
       });
       setPlacing(false);
     };
@@ -451,7 +461,7 @@ export function PrototypeComments() {
         offsetY: draft.offsetY,
         pageX: draft.pageX,
         pageY: draft.pageY,
-        viewportW: window.innerWidth,
+        viewportW: draft.viewportW,
         body,
       }),
     });
@@ -465,6 +475,66 @@ export function PrototypeComments() {
       body: JSON.stringify({ body }),
     });
     setComments((current) => current.map((item) => (item.id === id ? data.comment : item)));
+  }
+
+  async function relocate(id, anchor) {
+    const previous = commentsRef.current.find((item) => item.id === id);
+    const swap = (next) =>
+      setComments((current) => current.map((item) => (item.id === id ? next : item)));
+    swap({ ...previous, ...anchor });
+    try {
+      const data = await request(pin, `/api/prototype-comments/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(anchor),
+      });
+      swap(data.comment);
+    } catch (failure) {
+      if (failure.status === 401) return lock();
+      swap(previous);
+      setNotice(failure.message);
+    }
+  }
+
+  function startDrag(event, id) {
+    skipClickRef.current = false;
+    const point = positions[id];
+    if (event.button !== 0 || !point) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = {
+      id,
+      startX: event.clientX,
+      startY: event.clientY,
+      dx: event.clientX - point.x,
+      dy: event.clientY - point.y,
+      moved: false,
+    };
+  }
+
+  function moveDrag(event) {
+    const state = dragRef.current;
+    if (!state) return;
+    if (!state.moved) {
+      if (Math.hypot(event.clientX - state.startX, event.clientY - state.startY) < 4) return;
+      state.moved = true;
+      setOpenId(null);
+      setDraft(null);
+    }
+    setDrag({ id: state.id, x: event.clientX - state.dx, y: event.clientY - state.dy });
+  }
+
+  function endDrag(event) {
+    const state = dragRef.current;
+    dragRef.current = null;
+    if (!state?.moved) return;
+    skipClickRef.current = true;
+    setDrag(null);
+    if (event.type === 'pointercancel') return;
+    const x = event.clientX - state.dx;
+    const y = event.clientY - state.dy;
+    const target = pickTarget(x, y);
+    if (!target) return;
+    setPositions((current) => ({ ...current, [state.id]: { x, y } }));
+    relocate(state.id, anchorAt(target, x, y));
   }
 
   async function remove(id) {
@@ -493,10 +563,25 @@ export function PrototypeComments() {
               <button
                 key={comment.id}
                 type="button"
-                className={`proto-pin${openId === comment.id ? ' is-open' : ''}`}
-                style={{ left: positions[comment.id].x, top: positions[comment.id].y }}
+                className={`proto-pin${openId === comment.id ? ' is-open' : ''}${
+                  drag?.id === comment.id ? ' is-dragging' : ''
+                }`}
+                style={
+                  drag?.id === comment.id
+                    ? { left: drag.x, top: drag.y }
+                    : { left: positions[comment.id].x, top: positions[comment.id].y }
+                }
                 aria-label={`Comment ${index + 1}`}
+                title="Click to open · drag to move"
+                onPointerDown={(event) => startDrag(event, comment.id)}
+                onPointerMove={moveDrag}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
                 onClick={() => {
+                  if (skipClickRef.current) {
+                    skipClickRef.current = false;
+                    return;
+                  }
                   setDraft(null);
                   setOpenId((current) => (current === comment.id ? null : comment.id));
                 }}
