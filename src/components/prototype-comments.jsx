@@ -307,13 +307,14 @@ export function PrototypeComments() {
   const [askPin, setAskPin] = useState(false);
   const [comments, setComments] = useState([]);
   const [positions, setPositions] = useState({});
-  const [placing, setPlacing] = useState(false);
+  const [active, setActive] = useState(false);
   const [hover, setHover] = useState(null);
   const [draft, setDraft] = useState(null);
   const [openId, setOpenId] = useState(null);
   const [notice, setNotice] = useState('');
   const [drag, setDrag] = useState(null);
   const commentsRef = useRef(comments);
+  const popupRef = useRef(false);
   const dragRef = useRef(null);
   const skipClickRef = useRef(false);
 
@@ -322,26 +323,25 @@ export function PrototypeComments() {
   }, [comments]);
 
   useEffect(() => {
+    popupRef.current = Boolean(draft || openId);
+  }, [draft, openId]);
+
+  useEffect(() => {
     setPin(localStorage.getItem(PIN_KEY));
   }, []);
 
-  useEffect(() => {
-    if (!openId) return undefined;
-    const close = (event) => {
-      if (!event.target.closest?.(`[${UI_ATTR}]`)) setOpenId(null);
-    };
-    document.addEventListener('pointerdown', close, true);
-    return () => document.removeEventListener('pointerdown', close, true);
-  }, [openId]);
+  const exit = useCallback(() => {
+    setActive(false);
+    setDraft(null);
+    setOpenId(null);
+  }, []);
 
   const lock = useCallback(() => {
     localStorage.removeItem(PIN_KEY);
     setPin(null);
     setComments([]);
-    setPlacing(false);
-    setDraft(null);
-    setOpenId(null);
-  }, []);
+    exit();
+  }, [exit]);
 
   const load = useCallback(async () => {
     if (!pin) return;
@@ -361,11 +361,11 @@ export function PrototypeComments() {
   useEffect(() => {
     setOpenId(null);
     setDraft(null);
+    if (!pin || !active) return undefined;
     load();
-    if (!pin) return undefined;
     const timer = window.setInterval(load, POLL_MS);
     return () => window.clearInterval(timer);
-  }, [load, pin]);
+  }, [load, pin, active]);
 
   useEffect(() => {
     const shortcut = (event) => {
@@ -375,16 +375,16 @@ export function PrototypeComments() {
       if (target.closest?.('input, textarea, select, [contenteditable="true"], [role="dialog"]'))
         return;
       event.preventDefault();
-      setOpenId(null);
       if (!pin) setAskPin(true);
-      else setPlacing((value) => !value);
+      else if (active) exit();
+      else setActive(true);
     };
     document.addEventListener('keydown', shortcut);
     return () => document.removeEventListener('keydown', shortcut);
-  }, [pin, askPin, draft]);
+  }, [pin, askPin, draft, active, exit]);
 
   useEffect(() => {
-    if (!pin) return undefined;
+    if (!pin || !active) return undefined;
     let frame = 0;
     let last = '';
     const tick = () => {
@@ -402,10 +402,10 @@ export function PrototypeComments() {
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [pin]);
+  }, [pin, active]);
 
   useEffect(() => {
-    if (!placing) return undefined;
+    if (!active) return undefined;
     document.documentElement.classList.add('proto-commenting');
     const insideUi = (event) => event.target.closest?.(`[${UI_ATTR}]`);
     const block = (event) => {
@@ -414,7 +414,7 @@ export function PrototypeComments() {
       event.stopPropagation();
     };
     const move = (event) => {
-      if (insideUi(event)) return setHover(null);
+      if (insideUi(event) || popupRef.current) return setHover(null);
       const target = pickTarget(event.clientX, event.clientY);
       if (!target) return setHover(null);
       const rect = target.getBoundingClientRect();
@@ -424,16 +424,24 @@ export function PrototypeComments() {
       if (insideUi(event)) return;
       event.preventDefault();
       event.stopPropagation();
+      if (popupRef.current) {
+        setDraft(null);
+        setOpenId(null);
+        return;
+      }
       const target = pickTarget(event.clientX, event.clientY);
       if (!target) return;
+      setHover(null);
       setDraft({
         point: { x: event.clientX, y: event.clientY },
         ...anchorAt(target, event.clientX, event.clientY),
       });
-      setPlacing(false);
     };
     const key = (event) => {
-      if (event.key === 'Escape') setPlacing(false);
+      if (event.key !== 'Escape') return;
+      if (!popupRef.current) return exit();
+      setDraft(null);
+      setOpenId(null);
     };
     const blocked = ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'dblclick'];
     blocked.forEach((type) => document.addEventListener(type, block, true));
@@ -448,7 +456,7 @@ export function PrototypeComments() {
       document.removeEventListener('keydown', key, true);
       setHover(null);
     };
-  }, [placing]);
+  }, [active, exit]);
 
   async function create(body) {
     const data = await request(pin, '/api/prototype-comments', {
@@ -547,17 +555,17 @@ export function PrototypeComments() {
 
   return (
     <>
-      {pin && (placing || notice) ? (
+      {pin && active ? (
         <p className="proto-notice" role="status" {...{ [UI_ATTR]: '' }}>
-          {notice || 'Click anywhere to comment · Esc to cancel'}
+          {notice || 'Click to comment · drag pins to move · Esc to exit'}
         </p>
       ) : null}
 
-      {placing && hover ? (
+      {active && hover ? (
         <div className="proto-hover" style={hover} aria-hidden="true" {...{ [UI_ATTR]: '' }} />
       ) : null}
 
-      {pin
+      {pin && active
         ? comments.map((comment, index) =>
             positions[comment.id] ? (
               <button
@@ -631,7 +639,7 @@ export function PrototypeComments() {
           localStorage.setItem(PIN_KEY, value);
           setPin(value);
           setAskPin(false);
-          setPlacing(true);
+          setActive(true);
         }}
       />
     </>
