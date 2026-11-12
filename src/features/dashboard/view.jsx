@@ -1,4 +1,5 @@
 'use client';
+import { ProfileNextBanner } from '@/components/profile-next-banner';
 import { memo } from 'react';
 import { Icon } from '@/components/icon';
 import Link from 'next/link';
@@ -21,26 +22,7 @@ export const View = memo(function View() {
       </PageActions>
       <div className={'calls-workspace'} id={'dash-workspace'}>
         <div className={'content'}>
-          <div className={'pending-banner'} data-unverified-only={''}>
-            <div className={'icon'}>
-              <Icon name="schedule" className={'app-icon'} aria-hidden={'true'} />
-            </div>
-            <div>
-              <h3>{'Pending admin approval'}</h3>
-              <p>
-                {
-                  'Your listing stays hidden until GradRight verifies you. Stats, meets, and connects stay empty until then.'
-                }
-              </p>
-            </div>
-            <Link
-              className={'btn btn-secondary btn-sm'}
-              href={'/profile?tab=preview'}
-              prefetch={false}
-            >
-              {'Student preview'}
-            </Link>
-          </div>
+          <ProfileNextBanner />
           <div className={'dash-top'}>
             <Card className={'panel analytics-panel'}>
               <div className={'analytics-stats is-4'}>
@@ -120,7 +102,7 @@ export const View = memo(function View() {
                 className={'dash-agenda-track'}
                 head={
                   <>
-                    <h2 id={'dash-calls-title'}>{"Today's meets"}</h2>
+                    <h2>Upcoming meets</h2>
                     <Link href={'/calls'} prefetch={false}>
                       {'All →'}
                     </Link>
@@ -135,7 +117,7 @@ export const View = memo(function View() {
                 className={'dash-connect-list'}
                 head={
                   <>
-                    <h2 id={'dash-connects-title'}>{"Today's connects"}</h2>
+                    <h2>Student connects</h2>
                     <Link href={'/students?view=connected'} prefetch={false}>
                       {'All →'}
                     </Link>

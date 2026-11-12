@@ -1,8 +1,8 @@
 'use client';
+import { ProfileNextBanner } from '@/components/profile-next-banner';
 import { Table, TableHeader, TableBody, TableRow, TableHead } from '@/components/ui/table';
 import { memo } from 'react';
 import { Icon } from '@/components/icon';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -172,26 +172,7 @@ export const View = memo(function View() {
       <div className={'community-workspace'} id={'people-workspace'}>
         <div className={'community-primary'}>
           <div className={'content'}>
-            <div className={'pending-banner'} data-unverified-only={''}>
-              <div className={'icon'}>
-                <Icon name="schedule" className={'app-icon'} aria-hidden={'true'} />
-              </div>
-              <div>
-                <h3>{'Pending admin approval'}</h3>
-                <p>
-                  {
-                    'People stay empty until GradRight verifies you. Visitors and connections fill in after that.'
-                  }
-                </p>
-              </div>
-              <Link
-                className={'btn btn-secondary btn-sm'}
-                href={'/profile?tab=preview'}
-                prefetch={false}
-              >
-                {'Student preview'}
-              </Link>
-            </div>
+            <ProfileNextBanner />
             <Card className={'panel analytics-panel'}>
               <div className={'analytics-stats is-4'}>
                 <div className={'analytics-stat'}>

@@ -93,6 +93,7 @@ export function AppShell({ children }) {
   return (
     <SidebarProvider
       data-next-app
+      defaultOpen={false}
       className="counselor-app h-dvh min-h-0 overflow-hidden"
       style={{
         '--sidebar-width': 'var(--sidebar-w)',
@@ -182,33 +183,33 @@ function WorkspaceChrome({ children }) {
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {links.map(([id, label, icon]) => (
-                        <SidebarMenuItem key={id}>
-                          <SidebarMenuButton
-                            asChild
-                            isActive={id === 'profile' ? activeProfilePage(page) : active === id}
-                            tooltip={label}
+                      <SidebarMenuItem key={id}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={id === 'profile' ? activeProfilePage(page) : active === id}
+                          tooltip={label}
+                        >
+                          <Link
+                            prefetch={false}
+                            href={id === 'profile' ? '/profile?tab=edit' : `/${id}`}
+                            aria-label={label}
+                            aria-current={
+                              (id === 'profile' ? activeProfilePage(page) : active === id)
+                                ? 'page'
+                                : undefined
+                            }
+                            onClick={() => {
+                              if (isMobile) setOpenMobile(false);
+                            }}
                           >
-                            <Link
-                              prefetch={false}
-                              href={id === 'profile' ? '/profile?tab=edit' : `/${id}`}
-                              aria-label={label}
-                              aria-current={
-                                (id === 'profile' ? activeProfilePage(page) : active === id)
-                                  ? 'page'
-                                  : undefined
-                              }
-                              onClick={() => {
-                                if (isMobile) setOpenMobile(false);
-                              }}
-                            >
-                              <Icon name={icon} className="ico" />
-                              <span className="workspace-nav-text">{label}</span>
-                              {id === 'chats' && verified && (
-                                <span className="workspace-chat-count">5</span>
-                              )}
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
+                            <Icon name={icon} className="ico" />
+                            <span className="workspace-nav-text">{label}</span>
+                            {id === 'chats' && verified && (
+                              <span className="workspace-chat-count">5</span>
+                            )}
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
                     ))}
                   </SidebarMenu>
                 </SidebarGroupContent>
@@ -296,52 +297,54 @@ function WorkspaceChrome({ children }) {
       <SidebarInset
         className={`main bg-[var(--bg)]${['students', 'community'].includes(page) ? ' community-main' : ''}`}
       >
-        <header className="topbar app-header" role="banner">
-          <div className="topbar-lead">
-            <SidebarTrigger
-              id="nav-toggle"
-              aria-label={
-                isMobile
-                  ? 'Open menu'
-                  : state === 'collapsed'
-                    ? 'Expand sidebar'
-                    : 'Collapse sidebar'
-              }
-              aria-expanded={state === 'expanded'}
-            />
-            {page === 'person' && (
-              <Button variant="ghost" size="icon" asChild>
-                <Link id="person-back" href={`/${returnPage}`} aria-label="Back">
-                  <Icon name="arrow_back" />
-                </Link>
-              </Button>
-            )}
-            <h1 id={page === 'person' ? 'person-top-title' : undefined}>{pageTitle}</h1>
-          </div>
-          <div className="actions">
-            {activeProfilePage(page) && (
-              <nav className="profile-header-nav" aria-label="Profile sections">
-                {SECTIONS.map(([section, title]) => {
-                  const selected = profileSection === section;
-                  return (
-                    <Link
-                      key={section}
-                      prefetch={false}
-                      href={section === 'calendar' ? '/calendar' : `/profile?tab=${section}`}
-                      className={`profile-header-tab${selected ? ' is-active' : ''}`}
-                      data-label={title}
-                      aria-current={selected ? 'page' : undefined}
-                    >
-                      {title}
-                    </Link>
-                  );
-                })}
-              </nav>
-            )}
-            <div id="page-header-actions" key={`page-actions:${pathname}`} />
-            <Notifications />
-          </div>
-        </header>
+        {page !== 'chats' && (
+          <header className="topbar app-header" role="banner">
+            <div className="topbar-lead">
+              <SidebarTrigger
+                id="nav-toggle"
+                aria-label={
+                  isMobile
+                    ? 'Open menu'
+                    : state === 'collapsed'
+                      ? 'Expand sidebar'
+                      : 'Collapse sidebar'
+                }
+                aria-expanded={state === 'expanded'}
+              />
+              {page === 'person' && (
+                <Button variant="ghost" size="icon" asChild>
+                  <Link id="person-back" href={`/${returnPage}`} aria-label="Back">
+                    <Icon name="arrow_back" />
+                  </Link>
+                </Button>
+              )}
+              <h1 id={page === 'person' ? 'person-top-title' : undefined}>{pageTitle}</h1>
+            </div>
+            <div className="actions">
+              {activeProfilePage(page) && (
+                <nav className="profile-header-nav" aria-label="Profile sections">
+                  {SECTIONS.map(([section, title]) => {
+                    const selected = profileSection === section;
+                    return (
+                      <Link
+                        key={section}
+                        prefetch={false}
+                        href={section === 'calendar' ? '/calendar' : `/profile?tab=${section}`}
+                        className={`profile-header-tab${selected ? ' is-active' : ''}`}
+                        data-label={title}
+                        aria-current={selected ? 'page' : undefined}
+                      >
+                        {title}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              )}
+              <div id="page-header-actions" key={`page-actions:${pathname}`} />
+              <Notifications />
+            </div>
+          </header>
+        )}
         {children}
       </SidebarInset>
     </>

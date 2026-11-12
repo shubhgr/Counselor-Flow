@@ -1019,27 +1019,22 @@ body[data-page='students'] .people-table thead th,
   padding: var(--space-1) var(--space-3) var(--space-5);
 }
 .notification-group {
-  position: relative;
-  isolation: isolate;
   margin-bottom: var(--space-4);
+  border: var(--stroke-1) solid var(--gray-200);
+  border-radius: var(--radius-4);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  overflow: hidden;
 }
 .notification-group-trigger {
   display: flex;
   align-items: flex-start;
   width: 100%;
   gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: var(--radius-4);
-  border: var(--stroke-1) solid var(--gray-200);
-  background: var(--surface);
-  backdrop-filter: blur(8px);
+  padding: var(--space-5);
+  background: transparent;
   text-align: left;
   white-space: normal;
   color: var(--ink);
-  box-shadow: var(--card-shadow);
-}
-.notification-group-trigger:hover {
-  background: color-mix(in srgb, var(--surface) 94%, transparent);
 }
 .notification-group-icon {
   display: grid;
@@ -1055,10 +1050,9 @@ body[data-page='students'] .people-table thead th,
   display: grid;
   min-width: 0;
   flex: 1;
-  gap: var(--space-1);
 }
 .notification-group-title {
-  min-height: var(--space-5);
+  min-height: var(--space-8);
   line-height: 1.5;
   display: flex;
   align-items: center;
@@ -1098,53 +1092,76 @@ body[data-page='students'] .people-table thead th,
   margin-top: var(--space-1);
   color: var(--muted);
 }
+.notification-group-summary,
 .notification-group-items {
-  margin-top: var(--space-3);
   display: grid;
-  gap: var(--space-3);
+  transition: grid-template-rows 220ms ease;
 }
-.notification-group-items[hidden] {
-  display: none;
+.notification-group-summary,
+.notification-group[data-expanded='true'] .notification-group-items {
+  grid-template-rows: 1fr;
+}
+.notification-group-items,
+.notification-group[data-expanded='true'] .notification-group-summary {
+  grid-template-rows: 0fr;
+}
+.notification-group-summary > span,
+.notification-group-items > div {
+  min-height: 0;
+  overflow: hidden;
+}
+.notification-group-summary > span {
+  display: grid;
+  gap: var(--space-1);
+}
+.notification-group-items .notification-item:first-child {
+  border-top: var(--stroke-1) solid var(--gray-200);
+}
+.notification-group-chevron {
+  transition: transform 220ms ease;
+}
+.notification-group[data-expanded='true'] .notification-group-chevron {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .notification-group-summary,
+  .notification-group-items,
+  .notification-group-chevron {
+    transition: none;
+  }
 }
 .notification-item {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-4);
+  padding: var(--space-4) var(--space-5);
   border: 0;
   border-bottom: var(--stroke-1) solid var(--gray-100);
   border-radius: 0;
-  background: var(--surface);
+  background: transparent;
   color: var(--ink);
 }
 .notification-item:last-child {
   border-bottom: 0;
 }
-.notification-item:hover {
-  background: var(--gray-50);
-}
-.notification-item.is-unread {
-  background: var(--purple-50);
-}
-.notification-item.is-unread:hover {
-  background: var(--purple-100);
-}
 .notification-item:focus-visible,
 .notification-group-trigger:focus-visible {
   outline: var(--stroke-2) solid var(--brand);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 .notification-item > div {
+  display: grid;
+  gap: var(--space-1);
   min-width: 0;
 }
 .notification-item strong {
-  font-size: var(--notification-title-size);
+  font-size: var(--notification-body-size);
   font-weight: 600;
 }
 .notification-item p {
   font-size: var(--notification-body-size);
   line-height: 1.5;
-  margin: var(--space-1) 0;
+  margin: 0;
   color: var(--ink-soft);
   overflow-wrap: anywhere;
 }
@@ -1165,8 +1182,7 @@ body[data-page='students'] .people-table thead th,
   text-align: center;
 }
 @media (prefers-reduced-transparency: reduce) {
-  .notification-group-trigger,
-  .notification-item {
+  .notification-group {
     background: var(--surface);
   }
 }
@@ -1556,41 +1572,6 @@ span.app-icon > svg {
 .notification-scroll-blur-bottom {
   top: auto;
 }
-.notification-expanded-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: var(--stroke-1) solid var(--gray-200);
-}
-.notification-expanded-heading h3 {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin: 0;
-  font-size: var(--notification-title-size);
-  font-weight: 600;
-}
-.notification-expanded-heading h3 > svg {
-  color: var(--brand);
-}
-.notification-show-less {
-  color: var(--muted);
-}
-.notification-group.is-expanded {
-  border: var(--stroke-1) solid var(--gray-200);
-  border-radius: var(--radius-4);
-  background: var(--surface);
-  overflow: hidden;
-}
-.notification-group.is-expanded .notification-group-items {
-  margin-top: 0;
-  gap: 0;
-}
-.notification-show-less {
-  font-size: var(--notification-meta-size);
-}
 .notification-item strong {
   display: block;
   line-height: 1.5;
@@ -1612,10 +1593,13 @@ span.app-icon > svg {
   display: inline-flex;
 }
 [data-slot='sidebar'][data-collapsible='icon'] .counselor-sidebar .workspace-sidebar-header {
+  align-items: center;
   padding-inline: var(--space-3);
+  padding-block: var(--space-4);
 }
 [data-slot='sidebar'][data-collapsible='icon'] .counselor-sidebar .brand-mark {
   width: var(--sidebar-logo-symbol-width);
+  margin-inline-start: var(--space-2);
   overflow: hidden;
   padding: 0;
 }
@@ -2156,11 +2140,6 @@ span.app-icon > svg {
   background: var(--gray-200);
   color: var(--gray-900);
 }
-.notification-expanded-heading h3,
-.notification-expanded-heading .notification-show-less {
-  color: var(--gray-900);
-}
-
 .notification-heading button {
   border-radius: var(--radius-2);
 }
@@ -3584,6 +3563,13 @@ body:is([data-page='calls'], [data-page='transactions'], [data-page='reviews'])
   :is(.calls-live-column .panel, .bank-panel) {
   animation-delay: 80ms;
 }
+@media (prefers-reduced-motion: no-preference) {
+  [data-screen='chats'] > .content-chat,
+  [data-screen='community'] > .community-workspace,
+  [data-screen='profile'] > .content {
+    animation: overview-card-enter 480ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   body:is(
       [data-page='dashboard'],
@@ -4348,13 +4334,12 @@ body[data-page='community'] .community-rail-note {
 
 .chat-quick-filters {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-1) var(--space-4);
   padding: var(--space-3) var(--space-5);
   border-bottom: var(--stroke-1) solid var(--line);
-  overflow-x: auto;
   flex-shrink: 0;
-  scrollbar-width: thin;
 }
 .chat-quick-filters > button {
   display: inline-flex;

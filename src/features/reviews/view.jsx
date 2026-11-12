@@ -1,7 +1,7 @@
 'use client';
+import { ProfileNextBanner } from '@/components/profile-next-banner';
 import { memo } from 'react';
 import { Icon } from '@/components/icon';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -169,26 +169,7 @@ export const View = memo(function View() {
         </div>
       </PageActions>
       <div className={'content'}>
-        <div className={'pending-banner'} data-unverified-only={''}>
-          <div className={'icon'}>
-            <Icon name="schedule" className={'app-icon'} aria-hidden={'true'} />
-          </div>
-          <div>
-            <h3>{'Pending admin approval'}</h3>
-            <p>
-              {
-                'Reviews stay empty until GradRight verifies you. Student feedback lands here after that.'
-              }
-            </p>
-          </div>
-          <Link
-            className={'btn btn-secondary btn-sm'}
-            href={'/profile?tab=preview'}
-            prefetch={false}
-          >
-            {'Student preview'}
-          </Link>
-        </div>
+        <ProfileNextBanner />
         <div className="reviews-top">
           <Card className={'panel analytics-panel'}>
             <div className={'analytics-stats is-3'}>

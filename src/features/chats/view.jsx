@@ -1,33 +1,21 @@
 'use client';
+import { ProfileNextBanner } from '@/components/profile-next-banner';
 import { memo } from 'react';
 import { Icon } from '@/components/icon';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 export const View = memo(function View() {
   return (
     <>
       <div className={'content content-chat'}>
-        <div className={'pending-banner'} data-unverified-only={''}>
-          <div className={'icon'}>
-            <Icon name="schedule" className={'app-icon'} aria-hidden={'true'} />
-          </div>
-          <div>
-            <h3>{'Pending admin approval'}</h3>
-            <p>
-              {
-                'Chats stay empty until GradRight verifies you. Threads appear after students connect.'
-              }
-            </p>
-          </div>
-          <Link className={'btn btn-secondary btn-sm'} href={'/dashboard'} prefetch={false}>
-            {'Check status'}
-          </Link>
-        </div>
+        <h1 className="sr-only">Chats</h1>
+        <ProfileNextBanner />
         <div className={'chat-layout'} id={'chat-workspace'}>
           <aside className={'chat-list'}>
             <div className={'chat-list-head'}>
+              <SidebarTrigger className="shrink-0" />
               <Input
                 type={'search'}
                 className={'people-search'}
