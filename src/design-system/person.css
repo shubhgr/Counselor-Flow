@@ -174,8 +174,7 @@
   margin-top: var(--space-4);
 }
 
-.person-grid + .panel,
-.person-page .person-grid + .cpp-safety {
+.person-grid + .panel {
   margin-top: var(--space-4);
 }
 
@@ -183,19 +182,19 @@
   margin-top: var(--space-4);
 }
 
-.person-page .cpp-safety {
+.person-page > .cpp-safety {
   margin-top: var(--space-5);
   padding-top: var(--space-4);
-  border-top: 1px solid var(--line);
+  border-top: var(--stroke-1) solid var(--line);
 }
 
 .person-page .panel + .panel {
   margin-top: var(--space-4);
 }
 
-.person-page .person-grid + .cpp-safety,
-.person-page .person-grid + .cpp-safety {
+.person-drawer .person-page > .cpp-safety {
   margin-top: var(--space-5);
+  padding-top: var(--space-4);
 }
 
 .person-top-actions .btn {
@@ -220,5 +219,40 @@ body[data-page='person'] .content.person-page {
 
   .person-actions .btn {
     width: 100%;
+  }
+}
+
+.person-drawer .person-drawer-body {
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-1) var(--space-3) var(--space-5);
+}
+
+.person-drawer .person-grid,
+.person-drawer .person-pref-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.person-drawer .person-page .panel {
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+}
+
+.person-drawer-actions .btn {
+  width: auto;
+}
+
+.person-drawer .notification-heading {
+  gap: var(--space-3);
+}
+
+.person-drawer .notification-header > .notification-close-button {
+  margin-left: 0;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .person-drawer .person-page .panel {
+    background: var(--surface);
   }
 }

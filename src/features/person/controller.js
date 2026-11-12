@@ -1,6 +1,6 @@
 // Route-scoped workflow: subscriptions, timers and generated overlays are
 // owned by createRouteScope and disposed when Next navigation leaves this screen.
-export function initialize(scope) {
+export function initialize(scope, drawer) {
   const {
     document,
     window,
@@ -129,7 +129,7 @@ export function initialize(scope) {
     };
 
     function params() {
-      return new URLSearchParams(location.search);
+      return new URLSearchParams(drawer?.search ?? location.search);
     }
 
     function escapeHtml(str) {
@@ -518,10 +518,10 @@ export function initialize(scope) {
       var q = params();
       var from = q.get('from') || 'people';
       var person = resolvePerson();
-      var root = document.getElementById('person-root');
-      var back = document.getElementById('person-back');
-      var title = document.getElementById('person-top-title');
-      var actions = document.getElementById('person-top-actions');
+      var root = drawer?.root ?? document.getElementById('person-root');
+      var back = drawer ? null : document.getElementById('person-back');
+      var title = drawer?.title ?? document.getElementById('person-top-title');
+      var actions = drawer?.actions ?? document.getElementById('person-top-actions');
       if (!root) return;
       if (!person) {
         root.innerHTML =
@@ -548,7 +548,7 @@ export function initialize(scope) {
 
       if (back) back.href = backHref(from, person.communityOnly ? '' : person.id);
       if (title) title.textContent = person.name;
-      document.title = person.name + ' — GradRight Counselor';
+      if (!drawer) document.title = person.name + ' — GradRight Counselor';
       if (actions) {
         actions.innerHTML = chatHref
           ? '<a class="btn btn-primary btn-sm" href="' + chatHref + '">Chat</a>'
@@ -743,11 +743,11 @@ export function initialize(scope) {
         communityHtml +
         ((window.GradRightSafety && GradRightSafety.actionsHtml(person)) || '');
 
-      bind(person, calls);
+      bind(root, person, calls);
     }
 
-    function bind(person, calls) {
-      var follow = document.getElementById('person-follow');
+    function bind(root, person, calls) {
+      var follow = root.querySelector('#person-follow');
       if (follow) {
         scope.listen(follow, 'click', function () {
           var on = !isFollowing(person.name);
@@ -764,7 +764,7 @@ export function initialize(scope) {
         })
       ) {
         window.setInterval(function () {
-          document.querySelectorAll('[data-live-left]').forEach(function (el) {
+          root.querySelectorAll('[data-live-left]').forEach(function (el) {
             var id = el.getAttribute('data-live-left');
             var call = calls.filter(function (c) {
               return c.id === id;

@@ -5,6 +5,7 @@ import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useRuntime } from './runtime-provider';
 import { AccountSettings } from './account-settings';
 import { Notifications } from './notifications';
+import { PersonDrawer } from './person-drawer';
 import { Icon } from './icon';
 import { Button } from './ui/button';
 import { ChevronsUpDown, BadgeCheck, Settings, LogOut } from 'lucide-react';
@@ -36,13 +37,7 @@ import {
   useSidebar,
 } from './ui/sidebar';
 const GROUPS = [
-  [
-    'Workspace',
-    [
-      ['dashboard', 'Dashboard', 'home'],
-      ['students', 'People', 'group'],
-    ],
-  ],
+  ['Workspace', [['dashboard', 'Dashboard', 'home']]],
   [
     'Connect',
     [
@@ -174,11 +169,18 @@ function WorkspaceChrome({ children }) {
           <Link href="/dashboard" className="brand-mark" aria-label="GradRight dashboard">
             <img className="brand-logo" src="/assets/gradright-logo.png" alt="GradRight" />
           </Link>
+          {!isMobile && (
+            <SidebarTrigger
+              className="workspace-sidebar-toggle"
+              aria-label={state === 'collapsed' ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={state === 'collapsed' ? 'Expand sidebar' : 'Collapse sidebar'}
+            />
+          )}
         </SidebarHeader>
         <SidebarContent>
           <nav aria-label="Main navigation">
             {GROUPS.map(([title, links]) => (
-              <SidebarGroup key={title}>
+              <SidebarGroup key={title} className="group-data-[collapsible=icon]:px-1">
                 <SidebarGroupLabel>{title}</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
@@ -186,13 +188,14 @@ function WorkspaceChrome({ children }) {
                       <SidebarMenuItem key={id}>
                         <SidebarMenuButton
                           asChild
+                          className="group-data-[collapsible=icon]:w-full! group-data-[collapsible=icon]:justify-center"
                           isActive={id === 'profile' ? activeProfilePage(page) : active === id}
                           tooltip={label}
                         >
                           <Link
                             prefetch={false}
                             href={id === 'profile' ? '/profile?tab=edit' : `/${id}`}
-                            aria-label={label}
+                            aria-label={id === 'chats' && verified ? 'Chats, 5 unread' : label}
                             aria-current={
                               (id === 'profile' ? activeProfilePage(page) : active === id)
                                 ? 'page'
@@ -205,7 +208,9 @@ function WorkspaceChrome({ children }) {
                             <Icon name={icon} className="ico" />
                             <span className="workspace-nav-text">{label}</span>
                             {id === 'chats' && verified && (
-                              <span className="workspace-chat-count">5</span>
+                              <span className="workspace-chat-count" aria-hidden="true">
+                                5
+                              </span>
                             )}
                           </Link>
                         </SidebarMenuButton>
@@ -300,17 +305,7 @@ function WorkspaceChrome({ children }) {
         {page !== 'chats' && (
           <header className="topbar app-header" role="banner">
             <div className="topbar-lead">
-              <SidebarTrigger
-                id="nav-toggle"
-                aria-label={
-                  isMobile
-                    ? 'Open menu'
-                    : state === 'collapsed'
-                      ? 'Expand sidebar'
-                      : 'Collapse sidebar'
-                }
-                aria-expanded={state === 'expanded'}
-              />
+              {isMobile && <SidebarTrigger id="nav-toggle" aria-label="Open menu" />}
               {page === 'person' && (
                 <Button variant="ghost" size="icon" asChild>
                   <Link id="person-back" href={`/${returnPage}`} aria-label="Back">
@@ -346,6 +341,7 @@ function WorkspaceChrome({ children }) {
           </header>
         )}
         {children}
+        <PersonDrawer key={pathname + params.toString()} />
       </SidebarInset>
     </>
   );

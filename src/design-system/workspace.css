@@ -6333,8 +6333,7 @@ input[type='search']::-webkit-search-cancel-button:hover {
   margin-top: 0;
 }
 
-.people-who.is-blurred .avatar,
-.people-who.is-blurred strong {
+:is(.people-who, .dash-connect).is-blurred :is(.avatar, strong) {
   filter: blur(5px);
   user-select: none;
   pointer-events: none;

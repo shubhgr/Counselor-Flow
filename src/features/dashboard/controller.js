@@ -19,7 +19,7 @@ export function initialize(scope) {
     fetch,
   } = scope;
   /**
-   * Dashboard top: date range, visitors / connects / earnings / reviews, chart.
+   * Dashboard top: date range, visitors / connects / time spent / reviews, chart.
    * Earnings = sum of each connected person's amount (people.csv).
    */
   (function () {
@@ -157,12 +157,10 @@ export function initialize(scope) {
       return '₹' + Number(n || 0).toLocaleString('en-IN');
     }
 
-    function formatInrCompact(n) {
-      n = Number(n || 0);
-      if (n >= 10000000) return '₹' + (n / 10000000).toFixed(1).replace(/\.0$/, '') + 'Cr';
-      if (n >= 100000) return '₹' + (n / 100000).toFixed(1).replace(/\.0$/, '') + 'L';
-      if (n >= 10000) return '₹' + Math.round(n / 1000) + 'k';
-      return formatInr(n);
+    function formatTimeSpent(average) {
+      if (average === null) return '—';
+      const seconds = Math.round(average);
+      return Math.floor(seconds / 60) + 'm ' + (seconds % 60) + 's';
     }
 
     const ALL_TIME = (function () {
@@ -219,7 +217,7 @@ export function initialize(scope) {
     }
 
     function emptyBucket() {
-      return { visitors: 0, unique: {}, connections: 0, earnings: 0, reviews: 0, ratingSum: 0 };
+      return { visitors: 0, unique: {}, connections: 0, reviews: 0, ratingSum: 0 };
     }
 
     const REVIEWS = (function () {
@@ -261,15 +259,12 @@ export function initialize(scope) {
           hour.unique[p.id] = true;
         });
         if (p.connected && p.connectedOn) {
-          const amt = connectAmount(p);
           const dayKeyOn = dayKey(p.connectedOn);
           const day = bucket(days, dayKeyOn);
           day.connections += 1;
-          day.earnings += amt;
           const hk = dayKeyOn + ' ' + String(stampHour(p.connectedOn)).padStart(2, '0');
           const hour = bucket(hours, hk);
           hour.connections += 1;
-          hour.earnings += amt;
         }
       });
       REVIEWS.forEach(function (rv) {
@@ -309,7 +304,6 @@ export function initialize(scope) {
         visitors: bucket.visitors,
         unique: Object.keys(bucket.unique).length,
         connections: bucket.connections,
-        earnings: bucket.earnings,
         reviews: bucket.reviews,
         ratingSum: bucket.ratingSum,
       };
@@ -376,6 +370,13 @@ export function initialize(scope) {
       paintAnalyticsChart({ document, TODAY, formatWhen, formatShort, series, grain });
     }
 
+    function funnelCounts(impressions) {
+      // The demo fixtures do not record a linked sequence of booking events.
+      const profileOpens = Math.round(impressions * 0.4);
+      const bookingStarts = Math.round(profileOpens * 0.3);
+      return [impressions, profileOpens, bookingStarts, Math.round(bookingStarts * 0.6)];
+    }
+
     function renderStats() {
       const built = buildSeries();
       const series = built.series;
@@ -391,38 +392,47 @@ export function initialize(scope) {
       const ratingSum = series.reduce(function (n, d) {
         return n + d.ratingSum;
       }, 0);
-      const unique = {};
-      if (isApproved()) {
-        PEOPLE.forEach(function (p) {
-          (p.views || []).forEach(function (v) {
-            if (inRange(v.when)) unique[p.id] = true;
-          });
-        });
-      }
-      const uniqueCount = Object.keys(unique).length;
-      const earnings = series.reduce(function (n, d) {
-        return n + d.earnings;
-      }, 0);
+      const visits = visitStats(inRange);
+      const uniqueCount = visits.unique;
       const avg = reviews ? ratingSum / reviews : 0;
 
+      const previous = rangeKey !== 'all' && isApproved() ? statsForRange(previousRange()) : null;
+      const counts = funnelCounts(visitors);
+      const previousCounts = previous ? funnelCounts(previous.impressions) : null;
+      const trends = previousCounts
+        ? counts.map((count, index) => formatDelta(count, previousCounts[index]))
+        : [];
+      window.dispatchEvent(
+        new CustomEvent('counselor:dashboard-funnel', {
+          detail: {
+            counts,
+            trends,
+            activity: series.map((point) => ({
+              count: point.visitors,
+              date: built.grain === 'hour' ? formatWhen(point.date, TODAY) : formatShort(point.date),
+            })),
+          },
+        }),
+      );
       document.getElementById('stat-visitors').textContent = visitors.toLocaleString('en-IN');
       document.getElementById('stat-visitors-hint').textContent =
         uniqueCount.toLocaleString('en-IN') + ' unique';
       document.getElementById('stat-connects').textContent = connections.toLocaleString('en-IN');
       document.getElementById('stat-connects-hint').textContent = 'All paid connections';
-      document.getElementById('stat-earnings').textContent = formatInrCompact(earnings);
-      document.getElementById('stat-earnings-hint').textContent =
-        'Across ' + connections.toLocaleString('en-IN') + ' connections';
+      document.getElementById('stat-time-spent').textContent = formatTimeSpent(visits.average);
       document.getElementById('stat-reviews').textContent = reviews ? avg.toFixed(1) : '—';
       document.getElementById('stat-reviews-hint').textContent =
         reviews.toLocaleString('en-IN') + ' reviews received';
 
-      paintTrends({
-        unique: uniqueCount,
-        connections: connections,
-        earnings: earnings,
-        reviews: reviews,
-      });
+      paintTrends(
+        {
+          unique: uniqueCount,
+          connections: connections,
+          average: visits.average,
+          reviews: reviews,
+        },
+        previous,
+      );
 
       renderChart(series, built.grain);
       renderSources();
@@ -448,32 +458,42 @@ export function initialize(scope) {
       return key >= r.startKey && key <= r.endKey;
     }
 
-    function statsForRange(r) {
-      const unique = {};
-      let connections = 0;
-      let earnings = 0;
-      let reviews = 0;
-      if (!isApproved()) {
-        return { unique: 0, connections: 0, earnings: 0, reviews: 0 };
-      }
-      PEOPLE.forEach(function (p) {
-        (p.views || []).forEach(function (v) {
-          if (inGivenRange(v.when, r)) unique[p.id] = true;
+    function visitStats(inPeriod) {
+      const unique = new Set();
+      let seconds = 0;
+      let timedVisits = 0;
+      let impressions = 0;
+      if (isApproved()) {
+        PEOPLE.forEach(function (person) {
+          (person.views || []).forEach(function (visit) {
+            if (!inPeriod(visit.when)) return;
+            unique.add(person.id);
+            impressions += 1;
+            if (Number.isFinite(visit.seconds) && visit.seconds >= 0) {
+              seconds += visit.seconds;
+              timedVisits += 1;
+            }
+          });
         });
-        if (p.connected && p.connectedOn && inGivenRange(p.connectedOn, r)) {
-          connections += 1;
-          earnings += connectAmount(p);
-        }
+      }
+      return {
+        impressions,
+        unique: unique.size,
+        average: timedVisits ? seconds / timedVisits : null,
+      };
+    }
+
+    function statsForRange(r) {
+      const visits = visitStats((when) => inGivenRange(when, r));
+      let connections = 0;
+      let reviews = 0;
+      PEOPLE.forEach(function (p) {
+        if (p.connected && p.connectedOn && inGivenRange(p.connectedOn, r)) connections += 1;
       });
       REVIEWS.forEach(function (rv) {
         if (inGivenRange(rv.day, r)) reviews += 1;
       });
-      return {
-        unique: Object.keys(unique).length,
-        connections: connections,
-        earnings: earnings,
-        reviews: reviews,
-      };
+      return { ...visits, connections, reviews };
     }
 
     function formatDelta(curr, prev) {
@@ -502,12 +522,12 @@ export function initialize(scope) {
       el.classList.toggle('down', d.cls === 'down');
     }
 
-    function paintTrends(curr) {
-      if (rangeKey === 'all' || !isApproved()) {
+    function paintTrends(curr, prev) {
+      if (!prev) {
         [
           'stat-visitors-trend',
           'stat-connects-trend',
-          'stat-earnings-trend',
+          'stat-time-spent-trend',
           'stat-reviews-trend',
         ].forEach(function (id) {
           const el = document.getElementById(id);
@@ -518,10 +538,13 @@ export function initialize(scope) {
         });
         return;
       }
-      const prev = statsForRange(previousRange());
       paintTrend('stat-visitors-trend', curr.unique, prev.unique);
       paintTrend('stat-connects-trend', curr.connections, prev.connections);
-      paintTrend('stat-earnings-trend', curr.earnings, prev.earnings);
+      if (curr.average !== null && prev.average > 0) {
+        paintTrend('stat-time-spent-trend', curr.average, prev.average);
+      } else {
+        document.getElementById('stat-time-spent-trend').hidden = true;
+      }
       paintTrend('stat-reviews-trend', curr.reviews, prev.reviews);
     }
 
@@ -663,6 +686,7 @@ export function initialize(scope) {
       renderStats();
       renderTodayCalls();
       renderRecentConnects();
+      renderPeople();
     }
 
     scope.listen(window, 'counselor:dashboard-range', function (event) {
@@ -1033,6 +1057,53 @@ export function initialize(scope) {
           );
         })
         .join('');
+    }
+
+    function renderPeople() {
+      const mount = document.getElementById('dashboard-people');
+      if (!isApproved()) {
+        mount.innerHTML =
+          '<div class="dash-empty"><strong>No people yet</strong><span>Profile activity will appear here after approval.</span></div>';
+        return;
+      }
+
+      const rows = PEOPLE.flatMap((person) => {
+        if (window.GradRightSafety?.isBlocked(person)) return [];
+        const visit = (person.views || []).find((view) => inRange(view.when));
+        const connectedInRange =
+          person.connected && person.connectedOn && inRange(person.connectedOn);
+        if (!visit && !connectedInRange) return [];
+        const stamp = visit?.at || visit?.when || person.connectedOn;
+        return [{ person, visit, stamp }];
+      }).sort((a, b) => b.stamp.localeCompare(a.stamp));
+
+      mount.innerHTML = rows.length
+        ? rows
+            .map(({ person, visit, stamp }) => {
+              const source = visit?.source || person.source;
+              const detail = [source, formatWhen(stamp, TODAY)].filter(Boolean).join(' · ');
+              const copy =
+                '<span class="avatar sm' +
+                (person.amber ? ' amber' : '') +
+                '">' +
+                escapeHtml(person.connected ? person.initials : '?') +
+                '</span><span class="meta"><strong>' +
+                escapeHtml(person.connected ? person.name : 'Profile visitor') +
+                '</strong><span>' +
+                escapeHtml(detail) +
+                '</span></span>';
+              return person.connected
+                ? '<a class="dash-connect" href="/person?id=' +
+                    encodeURIComponent(person.id) +
+                    '&amp;from=dashboard">' +
+                    copy +
+                    '</a>'
+                : '<div class="dash-connect is-blurred">' +
+                    copy +
+                    '<span class="dash-connect-lock" role="img" aria-label="Profile locked"><span class="app-icon" aria-hidden="true">lock</span></span></div>';
+            })
+            .join('')
+        : '<div class="dash-empty"><strong>No people in this period</strong><span>Try a different date range.</span></div>';
     }
 
     function renderRecentConnects() {

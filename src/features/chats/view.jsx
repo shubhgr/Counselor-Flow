@@ -4,9 +4,10 @@ import { memo } from 'react';
 import { Icon } from '@/components/icon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 
 export const View = memo(function View() {
+  const { isMobile } = useSidebar();
   return (
     <>
       <div className={'content content-chat'}>
@@ -15,7 +16,7 @@ export const View = memo(function View() {
         <div className={'chat-layout'} id={'chat-workspace'}>
           <aside className={'chat-list'}>
             <div className={'chat-list-head'}>
-              <SidebarTrigger className="shrink-0" />
+              {isMobile && <SidebarTrigger className="shrink-0" aria-label="Open menu" />}
               <Input
                 type={'search'}
                 className={'people-search'}
