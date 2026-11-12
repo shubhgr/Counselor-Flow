@@ -59,7 +59,6 @@ export function SourceBreakdown() {
         <>
           <h2>Impressions</h2>
           <label className="source-view-toggle">
-            <span>Graph</span>
             <Switch
               checked={table}
               onCheckedChange={setTable}

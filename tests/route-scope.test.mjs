@@ -40,6 +40,7 @@ function browser() {
     document,
     location,
     URL: BrowserURL,
+    CustomEvent,
     setTimeout(fn) {
       const id = ++sequence;
       timers.set(id, fn);
@@ -142,6 +143,14 @@ test('workflow redirects use the Next router and restore route commands', () => 
       ['push', '/person?id=aarav'],
       ['replace', '/profile?tab=services'],
     ]);
+    const drawer = [];
+    env.window.addEventListener('counselor:person-drawer', (event) => {
+      event.preventDefault();
+      drawer.push(event.detail);
+    });
+    scope.location.href = '/person?id=aarav&from=chats';
+    assert.deepEqual(drawer, ['?id=aarav&from=chats']);
+    assert.equal(navigation.length, 2);
     env.window.command = 'before';
     scope.window.command = () => {};
     scope.dispose();

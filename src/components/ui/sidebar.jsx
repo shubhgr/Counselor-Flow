@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
-import { PanelLeftIcon } from 'lucide-react';
+import { Menu, PanelLeftIcon } from 'lucide-react';
 import { Slot } from 'radix-ui';
 
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -226,7 +226,9 @@ function Sidebar({
 }
 
 function SidebarTrigger({ className, onClick, ...props }) {
-  const { toggleSidebar } = useSidebar();
+  const { isMobile, openMobile, state, toggleSidebar } = useSidebar();
+  const expanded = isMobile ? openMobile : state === 'expanded';
+  const TriggerIcon = isMobile ? Menu : PanelLeftIcon;
 
   return (
     <Button
@@ -234,6 +236,7 @@ function SidebarTrigger({ className, onClick, ...props }) {
       data-slot="sidebar-trigger"
       variant="ghost"
       size="icon"
+      aria-expanded={expanded}
       className={cn('size-7', className)}
       onClick={(event) => {
         onClick?.(event);
@@ -241,7 +244,7 @@ function SidebarTrigger({ className, onClick, ...props }) {
       }}
       {...props}
     >
-      <PanelLeftIcon />
+      <TriggerIcon aria-hidden="true" />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );

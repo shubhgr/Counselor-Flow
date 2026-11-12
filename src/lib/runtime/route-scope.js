@@ -1,3 +1,5 @@
+import { requestPersonDrawer } from './person-navigation.js';
+
 /** A lifecycle boundary for migrated workflows. Never patches browser globals.
  * Every document/window subscription, timer, observer, blob URL and generated
  * overlay belongs to this route and is disposed before the next one starts. */
@@ -43,6 +45,7 @@ export function createRouteScope({ router, global = false } = {}) {
   };
   function navigate(value, replace = false) {
     const url = new nativeWindow.URL(String(value), nativeWindow.location.href);
+    if (!replace && requestPersonDrawer(nativeWindow, url)) return;
     if (url.origin === nativeWindow.location.origin && router) {
       const href = url.pathname + url.search + url.hash;
       (replace ? router.replace : router.push)(href);

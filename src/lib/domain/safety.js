@@ -256,19 +256,25 @@ export function initialize(scope) {
       var modal = document.getElementById('safety-modal');
       if (!modal) return;
       modal.hidden = true;
+      if (modal.parentElement !== document.body) document.body.appendChild(modal);
       document.body.classList.remove('cal-modal-open');
       pending = null;
       mode = '';
     }
 
-    function openModal() {
+    function openModal(container) {
       ensureUi();
       var modal = document.getElementById('safety-modal');
+      if (container) {
+        container.appendChild(modal);
+        // The sheet hides body siblings from assistive technology while open.
+        modal.removeAttribute('aria-hidden');
+      }
       modal.hidden = false;
       document.body.classList.add('cal-modal-open');
     }
 
-    function openReport(user) {
+    function openReport(user, container) {
       var n = normalize(user);
       if (!n.id || isSelf(n)) return;
       pending = n;
@@ -286,12 +292,12 @@ export function initialize(scope) {
       document.getElementById('safety-actions').innerHTML =
         '<button type="button" class="btn btn-secondary btn-sm" data-safety-close>Cancel</button>' +
         '<button type="button" class="btn btn-primary btn-sm" data-safety="submit-report">Submit report</button>';
-      openModal();
+      openModal(container);
       var field = document.getElementById('safety-details');
       if (field) field.focus();
     }
 
-    function openBlock(user) {
+    function openBlock(user, container) {
       var n = normalize(user);
       if (!n.id || isSelf(n)) return;
       if (isBlocked(n)) {
@@ -307,7 +313,7 @@ export function initialize(scope) {
       document.getElementById('safety-actions').innerHTML =
         '<button type="button" class="btn btn-secondary btn-sm" data-safety-close>Cancel</button>' +
         '<button type="button" class="btn btn-danger btn-sm" data-safety="confirm-block">Block</button>';
-      openModal();
+      openModal(container);
     }
 
     function toast(title, sub) {
@@ -340,10 +346,10 @@ export function initialize(scope) {
         var action = btn.getAttribute('data-safety');
         if (action === 'report') {
           e.preventDefault();
-          openReport(userFromBtn(btn));
+          openReport(userFromBtn(btn), btn.closest('.person-drawer'));
         } else if (action === 'block') {
           e.preventDefault();
-          openBlock(userFromBtn(btn));
+          openBlock(userFromBtn(btn), btn.closest('.person-drawer'));
         } else if (action === 'unblock') {
           e.preventDefault();
           unblock(btn.getAttribute('data-id') || btn.getAttribute('data-name'));
