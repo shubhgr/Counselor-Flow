@@ -744,7 +744,7 @@ html.icons-ready .settings-back:hover .ico {
 }
 
 .content-chat {
-  padding: var(--space-6) var(--space-8) var(--space-6);
+  padding-block: var(--space-6);
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -1575,9 +1575,29 @@ body[data-page='dashboard'] .dash-grid {
   color: var(--muted);
 }
 
+:is(.dash-agenda-track, .dash-connect-list) .scroll-panel-body:has(.dash-empty) {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  text-align: center;
+}
+
 body[data-page='dashboard'] .pending-banner {
   flex-shrink: 0;
   margin-bottom: var(--space-5);
+}
+
+.profile-next-banner {
+  background: var(--purple-50);
+  border: var(--stroke-1) solid var(--purple-200);
+}
+
+.profile-next-banner .icon {
+  color: var(--brand);
+}
+
+.profile-next-banner .btn-primary {
+  width: auto;
 }
 
 .dash-chat {
@@ -2476,7 +2496,7 @@ body[data-page='chats'] .cpp-section {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-4) var(--space-5) var(--space-4);
-  background: var(--gray-50);
+  background: var(--surface);
   border-bottom: var(--stroke-1) solid var(--line);
   z-index: 2;
 }
@@ -2491,6 +2511,12 @@ body[data-page='chats'] .cpp-section {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+}
+
+.chat-threads > .dash-empty {
+  min-height: 100%;
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
 }
 
 .chat-thread {
@@ -4518,6 +4544,7 @@ body[data-page='profile'] #panel-edit .field-row:has(> .field:only-child) {
   align-items: center;
   gap: var(--space-1);
   min-width: 0;
+  height: var(--btn-h);
   padding: var(--space-1);
   border-radius: var(--radius-btn);
   background: var(--surface);
@@ -4542,7 +4569,7 @@ body[data-page='profile'] #panel-edit .field-row:has(> .field:only-child) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: calc(var(--btn-h) - var(--space-2));
+  height: 100%;
   padding: 0 var(--space-3);
   border-radius: var(--radius-sm);
   color: var(--muted);
@@ -6065,6 +6092,11 @@ body[data-page='reviews'] .analytics-path.visitors {
   gap: var(--space-2);
 }
 
+.community-read-only {
+  flex: none;
+  white-space: nowrap;
+}
+
 body[data-page='community'] .people-search {
   width: 14rem;
 }
@@ -6386,7 +6418,6 @@ input[type='search']::-webkit-search-cancel-button:hover {
 }
 
 .people-empty.dash-empty,
-.chat-threads .dash-empty,
 .chat-pane .messages .dash-empty {
   min-height: 8.5rem;
   padding: var(--space-6) var(--space-5);

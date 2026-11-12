@@ -121,9 +121,12 @@
     padding-bottom: var(--space-0);
   }
 
-  .content,
-  .content-chat {
+  .content {
     padding: var(--space-4) var(--space-5) var(--space-7);
+  }
+
+  .content-chat {
+    padding-block: var(--space-7);
   }
 
   body[data-page='dashboard'] .main,

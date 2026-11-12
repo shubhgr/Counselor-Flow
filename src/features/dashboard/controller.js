@@ -41,12 +41,15 @@ export function initialize(scope) {
     function emptyNote(kind) {
       if (!isApproved()) {
         if (kind === 'calls') {
-          return { title: 'No meets yet', text: 'Bookings show up here after you are approved.' };
+          return {
+            title: 'No upcoming meets',
+            text: 'Student bookings will appear here after your profile is approved.',
+          };
         }
         if (kind === 'connects') {
           return {
-            title: 'No connects yet',
-            text: 'Paid connections show up here after you are approved.',
+            title: 'No student connects yet',
+            text: 'Student connections will appear here after your profile is approved.',
           };
         }
         return { title: 'No visitors yet', text: 'Sources show up here after you are approved.' };
@@ -774,20 +777,6 @@ export function initialize(scope) {
       return !!(r && r.startKey && r.startKey === r.endKey);
     }
 
-    function rangeListTitle(kind) {
-      const noun = kind === 'calls' ? 'meets' : 'connects';
-      if (rangeKey === 'today') return 'Today’s ' + noun;
-      if (rangeKey === 'yesterday') return 'Yesterday’s ' + noun;
-      return noun.charAt(0).toUpperCase() + noun.slice(1);
-    }
-
-    function syncSectionTitles() {
-      const calls = document.getElementById('dash-calls-title');
-      const connects = document.getElementById('dash-connects-title');
-      if (calls) calls.textContent = rangeListTitle('calls');
-      if (connects) connects.textContent = rangeListTitle('connects');
-    }
-
     function callDayLabel(day) {
       if (window.GradRightCalls && GradRightCalls.dayLabel) {
         return GradRightCalls.dayLabel(day);
@@ -1006,7 +995,6 @@ export function initialize(scope) {
 
     function renderTodayCalls() {
       const mount = document.getElementById('today-calls');
-      syncSectionTitles();
       if (!mount) return;
       const list = loadRangeCalls().filter(function (call) {
         return callPhase(call) !== 'cancelled';
@@ -1049,7 +1037,6 @@ export function initialize(scope) {
 
     function renderRecentConnects() {
       const mount = document.getElementById('recent-connects');
-      syncSectionTitles();
       if (!mount) return;
       const pool = (window.GradRightDB && GradRightDB.connected) || PEOPLE;
       const connected = pool

@@ -1,7 +1,7 @@
 'use client';
+import { ProfileNextBanner } from '@/components/profile-next-banner';
 import { memo } from 'react';
 import { Icon } from '@/components/icon';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,8 +13,12 @@ export const View = memo(function View() {
     <>
       <PageActions>
         <div className={'actions people-top-actions'}>
-          <span className={'pill warn'} data-unverified-only={''}>
-            {'Read-only until verified'}
+          <span
+            className={'pill warn community-read-only'}
+            data-unverified-only={''}
+            title={'Posting and reacting unlock after verification'}
+          >
+            {'Read-only'}
           </span>
           <Input
             type={'search'}
@@ -93,26 +97,7 @@ export const View = memo(function View() {
       <div className={'community-workspace'} id={'community-workspace'}>
         <div className={'community-primary gr-scroll'}>
           <div className={'content'}>
-            <div
-              className={'pending-banner'}
-              data-unverified-only={''}
-              style={{ marginBottom: '1.25rem' }}
-            >
-              <div className={'icon'}>
-                <Icon name="lock" className={'app-icon ico-inline'} />
-              </div>
-              <div>
-                <h3>{'You can read, not interact'}</h3>
-                <p>
-                  {
-                    'Browse questions from students and answers from counselors. Posting and reacting unlock after admin verification.'
-                  }
-                </p>
-              </div>
-              <Link className={'btn btn-secondary btn-sm'} href={'/dashboard'} prefetch={false}>
-                {'Check status'}
-              </Link>
-            </div>
+            <ProfileNextBanner />
             <Card className={'community-compose-panel panel'} id={'composer'} hidden>
               <Textarea
                 id={'compose-text'}

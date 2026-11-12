@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Icon } from './icon';
 import { useRuntime } from './runtime-provider';
@@ -29,7 +29,6 @@ export function Notifications() {
   const { ready } = useRuntime();
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(null);
-  const lastToggled = useRef(null);
   const [scrollElement, setScrollElement] = useState(null);
   const [edges, setEdges] = useState({ top: false, bottom: false });
   const [version, setVersion] = useState(0);
@@ -57,15 +56,7 @@ export function Notifications() {
       scrollElement.removeEventListener('scroll', update);
     };
   }, [scrollElement]);
-  useEffect(() => {
-    if (!lastToggled.current) return;
-    const suffix = expanded === lastToggled.current ? 'less' : 'trigger';
-    document
-      .getElementById(`${id}-${lastToggled.current}-${suffix}`)
-      ?.focus({ preventScroll: true });
-  }, [expanded, id]);
   function toggle(key) {
-    lastToggled.current = key;
     setExpanded((previous) => (previous === key ? null : key));
   }
   return (
@@ -140,98 +131,72 @@ export function Notifications() {
                 return (
                   <section
                     key={group.key}
-                    className={`notification-group${group.items.length > 1 && !isExpanded ? ' is-stacked' : ''}${isExpanded ? ' is-expanded' : ''}`}
+                    className="notification-group"
+                    data-expanded={isExpanded}
                   >
-                    {isExpanded ? (
-                      <div className="notification-expanded-heading">
-                        <h3 id={`${controls}-title`}>
-                          <Icon name={icon} />
-                          {label}
+                    <Button
+                      variant="unstyled"
+                      size="unstyled"
+                      className="notification-group-trigger"
+                      id={`${controls}-trigger`}
+                      aria-expanded={isExpanded}
+                      aria-controls={controls}
+                      onClick={() => toggle(group.key)}
+                    >
+                      <span className="notification-group-icon">
+                        <Icon name={icon} />
+                      </span>
+                      <span className="notification-group-copy">
+                        <span className="notification-group-title">
+                          <strong>{label}</strong>
                           <span className="notification-group-count">{group.items.length}</span>
-                        </h3>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="notification-show-less"
-                          id={`${controls}-less`}
-                          aria-label={`Show less ${label.toLowerCase()}`}
-                          aria-expanded="true"
-                          aria-controls={controls}
-                          onClick={() => toggle(group.key)}
-                        >
-                          Show less
-                          <Icon name="expand_less" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="unstyled"
-                        size="unstyled"
-                        className="notification-group-trigger"
-                        id={`${controls}-trigger`}
-                        aria-expanded={isExpanded}
-                        aria-controls={controls}
-                        onClick={() => toggle(group.key)}
-                      >
-                        <span className="notification-group-icon">
-                          <Icon name={icon} />
+                          {group.unread > 0 && (
+                            <span
+                              className="notification-unread-dot"
+                              aria-label={`${group.unread} unread`}
+                            />
+                          )}
                         </span>
-                        <span className="notification-group-copy">
-                          <span className="notification-group-title">
-                            <strong>{label}</strong>
-                            <span className="notification-group-count">{group.items.length}</span>
-                            {group.unread > 0 && (
-                              <span
-                                className="notification-unread-dot"
-                                aria-label={`${group.unread} unread`}
-                              />
-                            )}
+                        <span className="notification-group-summary" aria-hidden={isExpanded}>
+                          <span>
+                            <span className="notification-group-preview">{first.body}</span>
+                            <small>{model.formatWhen(first.at)}</small>
                           </span>
-                          <span className="notification-group-preview">
-                            {isExpanded
-                              ? `${group.items.length} ${group.items.length === 1 ? 'notification' : 'notifications'}`
-                              : first.body}
-                          </span>
-                          <small>{model.formatWhen(first.at)}</small>
                         </span>
-                        <Icon
-                          name={isExpanded ? 'expand_less' : 'expand_more'}
-                          className="notification-group-chevron"
-                        />
-                      </Button>
-                    )}
+                      </span>
+                      <Icon name="expand_more" className="notification-group-chevron" />
+                    </Button>
                     <div
                       id={controls}
-                      hidden={!isExpanded}
+                      inert={!isExpanded}
                       className="notification-group-items"
                       role="region"
                       aria-label={`${label} notifications`}
                     >
-                      {group.items.map((item) => (
-                        <Link
-                          prefetch={false}
-                          key={item.id}
-                          href={item.href}
-                          className={`notification-item${item.unread ? ' is-unread' : ''}`}
-                          onClick={() => {
-                            model.markRead(item.id);
-                            setVersion((value) => value + 1);
-                            setOpen(false);
-                          }}
-                        >
-                          <span className="notification-group-icon">
-                            <Icon name={item.icon} />
-                          </span>
-                          <div>
-                            <strong>{item.title}</strong>
-                            <p>{item.body}</p>
-                            <small>{model.formatWhen(item.at)}</small>
-                          </div>
-                          {item.unread && (
-                            <span className="notification-unread-dot" aria-label="Unread" />
-                          )}
-                        </Link>
-                      ))}
+                      <div>
+                        {group.items.map((item) => (
+                          <Link
+                            prefetch={false}
+                            key={item.id}
+                            href={item.href}
+                            className="notification-item"
+                            onClick={() => {
+                              model.markRead(item.id);
+                              setVersion((value) => value + 1);
+                              setOpen(false);
+                            }}
+                          >
+                            <div>
+                              <strong>{item.title}</strong>
+                              <p>{item.body}</p>
+                              <small>{model.formatWhen(item.at)}</small>
+                            </div>
+                            {item.unread && (
+                              <span className="notification-unread-dot" aria-label="Unread" />
+                            )}
+                          </Link>
+                        ))}
+                      </div>
                     </div>
                   </section>
                 );

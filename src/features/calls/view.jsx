@@ -1,7 +1,7 @@
 'use client';
+import { ProfileNextBanner } from '@/components/profile-next-banner';
 import { memo } from 'react';
 import { Icon } from '@/components/icon';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ScrollPanel } from '@/components/ui/scroll-panel';
@@ -51,18 +51,7 @@ export const View = memo(function View() {
       </PageActions>
       <div className={'calls-workspace'} id={'calls-workspace'}>
         <div className={'content'}>
-          <div className={'pending-banner'} data-unverified-only={''}>
-            <div className={'icon'}>
-              <Icon name="schedule" className={'app-icon'} aria-hidden={'true'} />
-            </div>
-            <div>
-              <h3>{'Pending admin approval'}</h3>
-              <p>{'Meets stay empty until GradRight verifies you. Bookings fill in after that.'}</p>
-            </div>
-            <Link className={'btn btn-secondary btn-sm'} href={'/dashboard'} prefetch={false}>
-              {'Check status'}
-            </Link>
-          </div>
+          <ProfileNextBanner />
           <div className="calls-top">
             <Card className={'panel analytics-panel'}>
               <div className={'analytics-stats is-4'}>
