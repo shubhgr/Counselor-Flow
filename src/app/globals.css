@@ -3614,6 +3614,14 @@ body[data-page='badges'] .rev-side-panel .scroll-panel-head {
 }
 
 /* Community uses the workspace card, type, and spacing scale. */
+[data-screen='community'] > .community-next {
+  flex: 0 0 auto;
+  padding-right: var(--space-6);
+  padding-bottom: var(--space-2);
+}
+.community-next > .profile-next-banner {
+  margin-bottom: 0;
+}
 body[data-page='community'] .community-workspace {
   grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
   gap: var(--space-5);

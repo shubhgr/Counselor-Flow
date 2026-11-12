@@ -94,10 +94,12 @@ export const View = memo(function View() {
           </Button>
         </div>
       </PageActions>
+      <div className="content community-next" data-unverified-only="">
+        <ProfileNextBanner />
+      </div>
       <div className={'community-workspace'} id={'community-workspace'}>
         <div className={'community-primary gr-scroll'}>
           <div className={'content'}>
-            <ProfileNextBanner />
             <Card className={'community-compose-panel panel'} id={'composer'} hidden>
               <Textarea
                 id={'compose-text'}
