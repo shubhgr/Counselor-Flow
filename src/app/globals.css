@@ -1022,7 +1022,7 @@ body[data-page='students'] .people-table thead th,
   margin-bottom: var(--space-4);
   border: var(--stroke-1) solid var(--gray-200);
   border-radius: var(--radius-4);
-  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
   overflow: hidden;
 }
 .notification-group-trigger {
