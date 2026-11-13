@@ -1852,7 +1852,7 @@ body[data-page='dashboard'] .pending-banner {
   margin: -0.45rem 0 var(--space-5);
 }
 
-.list-item {
+:is(.list-item, .onboarding-review-row) {
   display: flex;
   align-items: center;
   gap: var(--space-4);
@@ -1860,27 +1860,27 @@ body[data-page='dashboard'] .pending-banner {
   border-bottom: var(--stroke-1) solid var(--line);
 }
 
-.list-item:last-child {
+:is(.list-item, .onboarding-review-row):last-child {
   border-bottom: none;
   padding-bottom: 0;
 }
 
-.list-item:first-child {
+:is(.list-item, .onboarding-review-row):first-child {
   padding-top: 0;
 }
 
-.list-item .meta {
+:is(.list-item, .onboarding-review-row) .meta {
   flex: 1;
   min-width: 0;
 }
 
-.list-item .meta strong {
+:is(.list-item, .onboarding-review-row) .meta strong {
   display: block;
   font-size: 0.9rem;
   font-weight: 600;
 }
 
-.list-item .meta span {
+:is(.list-item, .onboarding-review-row) .meta span {
   font-size: 0.78rem;
   color: var(--muted);
 }

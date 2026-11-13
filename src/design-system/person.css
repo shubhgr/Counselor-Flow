@@ -44,29 +44,8 @@
 }
 
 .person-ai {
-  background: var(--purple-50);
-  border-radius: var(--radius);
-  padding: var(--space-5) var(--space-6);
-}
-
-.person-ai-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--brand);
-  margin-bottom: var(--space-3);
-}
-
-.person-ai-label .app-icon {
-  font-size: 1rem;
-}
-
-.person-ai p {
-  font-size: 0.94rem;
+  margin: 0;
+  font-size: var(--scroll-head-meta-size);
   line-height: 1.55;
   color: var(--ink-soft);
 }
@@ -86,34 +65,34 @@
 
 .person-pref-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-
-.person-pref-grid .person-pref:last-child {
-  grid-column: 1 / -1;
 }
 
 .person-pref {
-  background: var(--bg);
-  border-radius: var(--radius-sm);
-  padding: var(--space-4) var(--space-5);
-  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+}
+
+.person-pref + .person-pref {
+  border-top: var(--stroke-1) solid var(--line);
+}
+
+.person-pref span,
+.person-pref strong {
+  font-size: var(--scroll-head-meta-size);
+  overflow-wrap: anywhere;
 }
 
 .person-pref span {
-  display: block;
-  font-size: 0.72rem;
-  font-weight: 650;
   color: var(--muted);
-  margin-bottom: var(--space-1);
 }
 
 .person-pref strong {
-  display: block;
-  font-size: 0.92rem;
   font-weight: 600;
   color: var(--ink);
+  text-align: end;
 }
 
 .person-facts {
@@ -209,10 +188,6 @@ body[data-page='person'] .content.person-page {
 
 @media (max-width: 860px) {
   .person-grid,
-  .person-pref-grid {
-    grid-template-columns: 1fr;
-  }
-
   .person-actions {
     flex-direction: column;
   }
@@ -231,10 +206,6 @@ body[data-page='person'] .content.person-page {
 }
 
 .person-drawer .person-grid,
-.person-drawer .person-pref-grid {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 .person-drawer .person-page .panel {
   background: color-mix(in srgb, var(--surface) 90%, transparent);
 }
@@ -244,11 +215,12 @@ body[data-page='person'] .content.person-page {
 }
 
 .person-drawer .notification-heading {
-  gap: var(--space-3);
+  gap: var(--space-5);
 }
 
-.person-drawer .notification-header > .notification-close-button {
-  margin-left: 0;
+.person-drawer .notification-header > button {
+  margin-inline-start: 0;
+  flex-shrink: 0;
 }
 
 @media (prefers-reduced-transparency: reduce) {

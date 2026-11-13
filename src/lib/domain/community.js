@@ -470,3 +470,51 @@ export function buildSocialGraph(meName) {
     AUTHORS[name].following = socialGraph[name].following.length;
   });
 }
+
+export function readPublishedPosts(storage, email) {
+  try {
+    const saved = JSON.parse(storage.getItem('gradright:community-posts:' + email.toLowerCase()));
+    return Array.isArray(saved) ? saved : [];
+  } catch {
+    return [];
+  }
+}
+
+export function savePublishedPosts(storage, email, publishedPosts) {
+  storage.setItem(
+    'gradright:community-posts:' + email.toLowerCase(),
+    JSON.stringify(publishedPosts),
+  );
+  storage.setItem('gradright:community-first-post:' + email.toLowerCase(), '1');
+}
+
+export function parseCommunityTime(label, today, parseStamp) {
+  const s = String(label || '')
+    .trim()
+    .toLowerCase();
+  const d = new Date(today);
+  if (!s || s === 'just now') return d;
+  if (s === 'yesterday') {
+    d.setDate(d.getDate() - 1);
+    d.setHours(11, 15, 0, 0);
+    return d;
+  }
+  let m = s.match(/^(\d+)\s*m(?:in)?(?:utes?)?\s*ago$/);
+  if (m) {
+    d.setMinutes(d.getMinutes() - Number(m[1]));
+    return d;
+  }
+  m = s.match(/^(\d+)\s*h(?:r|ours?)?\s*ago$/);
+  if (m) {
+    d.setHours(d.getHours() - Number(m[1]));
+    return d;
+  }
+  m = s.match(/^(\d+)\s*d(?:ays?)?\s*ago$/);
+  if (m) {
+    d.setDate(d.getDate() - Number(m[1]));
+    d.setHours(16, 0, 0, 0);
+    return d;
+  }
+  const stamped = parseStamp(label);
+  return stamped || d;
+}

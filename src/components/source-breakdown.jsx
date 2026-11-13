@@ -41,7 +41,7 @@ function AnimatedCount({ value }) {
 
 export function SourceBreakdown() {
   const [rows, setRows] = useState([]),
-    [table, setTable] = useState(false);
+    [table, setTable] = useState(true);
   useEffect(() => {
     const update = (e) => setRows(e.detail);
     window.addEventListener('counselor:source-breakdown', update);

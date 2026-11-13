@@ -36,7 +36,9 @@ export const View = memo(function View() {
             <section className={'step'} id={'step-1'}>
               <h1>{'Where you counsel from'}</h1>
               <p className={'lead'}>
-                {'Add one or more locations. Type any address, pick a suggestion, or choose it on the map.'}
+                {
+                  'Add one or more locations. Type any address, pick a suggestion, or choose it on the map.'
+                }
               </p>
               <AddressPicker />
               <div className={'onboard-actions'}>
@@ -58,8 +60,24 @@ export const View = memo(function View() {
             <section className={'step'} id={'step-2'} hidden>
               <h1>{'Introduce yourself'}</h1>
               <p className={'lead'}>
-                {'Optional. A short bio and clip help students get to know you before they connect.'}
+                {
+                  'Optional. A short bio and clip help students get to know you before they connect.'
+                }
               </p>
+              <div className="field">
+                <Label htmlFor="headline">Headline (optional)</Label>
+                <Textarea
+                  id="headline"
+                  name="headline"
+                  rows={2}
+                  maxLength={220}
+                  placeholder="Summarize how you help students"
+                  aria-describedby="headline-limit"
+                />
+                <p className="hint-text" id="headline-limit">
+                  Up to 220 characters
+                </p>
+              </div>
               <div className={'field'}>
                 <Label htmlFor={'bio'}>{'Short bio'}</Label>
                 <Textarea
@@ -259,14 +277,14 @@ export const View = memo(function View() {
               </div>
             </section>
             <section className={'step'} id={'step-5'} hidden>
-              <h1>{'Submit for admin approval'}</h1>
+              <h1>{'Review and submit'}</h1>
               <p className={'lead'}>
                 {
                   'You’ll land in your dashboard next. Earnings and transactions stay at zero until you’re verified. You can still see leads, setup, and calendar.'
                 }
               </p>
               <Card className={'panel'} style={{ marginBottom: '1rem' }}>
-                <div className={'list-item'}>
+                <div className={'onboarding-review-row'}>
                   <div className={'avatar'} id={'review-avatar'}>
                     {'PS'}
                   </div>
@@ -275,7 +293,7 @@ export const View = memo(function View() {
                     <span id={'review-meta'}>{'+91 12345 67890 · email verified'}</span>
                   </div>
                 </div>
-                <div className={'list-item'}>
+                <div className={'onboarding-review-row'}>
                   <div className={'meta'}>
                     <strong>{'Background'}</strong>
                     <span id={'review-background'}>
@@ -283,7 +301,7 @@ export const View = memo(function View() {
                     </span>
                   </div>
                 </div>
-                <div className={'list-item'}>
+                <div className={'onboarding-review-row'}>
                   <div className={'meta'}>
                     <strong>{'Intro video'}</strong>
                     <span id={'review-video'}>
@@ -291,7 +309,7 @@ export const View = memo(function View() {
                     </span>
                   </div>
                 </div>
-                <div className={'list-item'}>
+                <div className={'onboarding-review-row'}>
                   <div className={'meta'}>
                     <strong>{'Documents'}</strong>
                     <span id={'review-docs'}>

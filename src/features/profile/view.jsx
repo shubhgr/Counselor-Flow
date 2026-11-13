@@ -226,6 +226,20 @@ export const View = memo(function View() {
                     />
                   </div>
 
+                  <div className="field">
+                    <Label htmlFor="field-headline">Headline (optional)</Label>
+                    <Textarea
+                      id="field-headline"
+                      name="headline"
+                      rows={2}
+                      maxLength={220}
+                      placeholder="Summarize how you help students"
+                      aria-describedby="field-headline-limit"
+                    />
+                    <p className="hint-text" id="field-headline-limit">
+                      Up to 220 characters
+                    </p>
+                  </div>
                   <div className={'field'}>
                     <Label htmlFor={'field-bio'}>{'Bio'}</Label>
                     <Textarea

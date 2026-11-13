@@ -1,5 +1,13 @@
 import { readPublicIdentity } from '@/lib/domain/public-identity';
-import { AUTHORS, posts, socialGraph, buildSocialGraph } from '@/lib/domain/community';
+import {
+  AUTHORS,
+  posts,
+  socialGraph,
+  buildSocialGraph,
+  readPublishedPosts,
+  savePublishedPosts,
+  parseCommunityTime,
+} from '@/lib/domain/community';
 
 // Route-scoped workflow: subscriptions, timers and generated overlays are
 // owned by createRouteScope and disposed when Next navigation leaves this screen.
@@ -72,34 +80,7 @@ export function initialize(scope) {
   }
 
   function parseRelativeTime(label) {
-    const s = String(label || '')
-      .trim()
-      .toLowerCase();
-    const d = new Date(TODAY);
-    if (!s || s === 'just now') return d;
-    if (s === 'yesterday') {
-      d.setDate(d.getDate() - 1);
-      d.setHours(11, 15, 0, 0);
-      return d;
-    }
-    let m = s.match(/^(\d+)\s*m(?:in)?(?:utes?)?\s*ago$/);
-    if (m) {
-      d.setMinutes(d.getMinutes() - Number(m[1]));
-      return d;
-    }
-    m = s.match(/^(\d+)\s*h(?:r|ours?)?\s*ago$/);
-    if (m) {
-      d.setHours(d.getHours() - Number(m[1]));
-      return d;
-    }
-    m = s.match(/^(\d+)\s*d(?:ays?)?\s*ago$/);
-    if (m) {
-      d.setDate(d.getDate() - Number(m[1]));
-      d.setHours(16, 0, 0, 0);
-      return d;
-    }
-    const stamped = parseStamp(label);
-    return stamped || d;
+    return parseCommunityTime(label, TODAY, parseStamp);
   }
 
   function formatCommunityWhen(stamp) {
@@ -369,7 +350,13 @@ export function initialize(scope) {
     );
   }
 
+  function ownedPosts() {
+    const { email } = communitySession();
+    return email ? readPublishedPosts(window.localStorage, email) : [];
+  }
+
   function renderPost(p) {
+    const ownPost = ownedPosts().some((post) => post.id === p.id);
     const meta = authorMeta(p.author);
     const threadOpen = openThreads.has(p.id);
     const menuOpen = openMenus.has(p.id);
@@ -397,15 +384,17 @@ export function initialize(scope) {
       ' · ' +
       p.tag +
       '</span></div>' +
-      '<button type="button" class="btn ' +
-      (p.following ? 'btn-secondary' : 'btn-primary') +
-      ' btn-sm c-follow" data-action="follow" data-id="' +
-      p.id +
-      '"' +
-      (locked ? ' disabled' : '') +
-      '>' +
-      (p.following ? 'Following' : 'Follow') +
-      '</button>' +
+      (ownPost
+        ? ''
+        : '<button type="button" class="btn ' +
+          (p.following ? 'btn-secondary' : 'btn-primary') +
+          ' btn-sm c-follow" data-action="follow" data-id="' +
+          p.id +
+          '"' +
+          (locked ? ' disabled' : '') +
+          '>' +
+          (p.following ? 'Following' : 'Follow') +
+          '</button>') +
       '<button type="button" class="icon-btn' +
       (p.saved ? ' on' : '') +
       '" data-action="save" data-id="' +
@@ -432,12 +421,16 @@ export function initialize(scope) {
           '<button type="button" data-action="open-profile" data-author="' +
           encodeURIComponent(p.author) +
           '">View profile</button>' +
-          '<button type="button" data-action="report" data-id="' +
-          p.id +
-          '">Report</button>' +
-          '<button type="button" class="danger" data-action="block" data-id="' +
-          p.id +
-          '">Block</button>' +
+          (ownPost
+            ? '<button type="button" class="danger" data-action="delete-post" data-id="' +
+              p.id +
+              '">Delete post</button>'
+            : '<button type="button" data-action="report" data-id="' +
+              p.id +
+              '">Report</button>' +
+              '<button type="button" class="danger" data-action="block" data-id="' +
+              p.id +
+              '">Block</button>') +
           '</div>'
         : '') +
       '</div></div>' +
@@ -930,11 +923,13 @@ export function initialize(scope) {
     closePanel();
   }
 
-  scope.listen(document.getElementById('open-composer'), 'click', () => {
+  function openComposer() {
     if (!canInteract()) return;
     composer.hidden = false;
     composeText.focus();
-  });
+  }
+
+  scope.listen(document.getElementById('open-composer'), 'click', openComposer);
   scope.listen(document.getElementById('cancel-composer'), 'click', () => {
     composer.hidden = true;
     composeText.value = '';
@@ -953,7 +948,7 @@ export function initialize(scope) {
       followers: 0,
       following: 0,
     };
-    posts.unshift({
+    const post = {
       id: 'p' + Date.now(),
       author: s.name,
       at: isoStamp(TODAY),
@@ -967,7 +962,12 @@ export function initialize(scope) {
       dislikes: 0,
       body: text,
       comments: [],
-    });
+    };
+    posts.unshift(post);
+    if (s.email) {
+      const storage = window.localStorage;
+      savePublishedPosts(storage, s.email, [post, ...readPublishedPosts(storage, s.email)]);
+    }
     composeText.value = '';
     composer.hidden = true;
     filter = 'recent';
@@ -1144,6 +1144,26 @@ export function initialize(scope) {
     }
 
     if (!post) return;
+
+    if (action === 'delete-post') {
+      const { email } = communitySession();
+      const published = ownedPosts();
+      if (!email || !published.some((entry) => entry.id === id)) return;
+      if (!window.confirm('Delete this post?')) return;
+
+      savePublishedPosts(
+        window.localStorage,
+        email,
+        published.filter((entry) => entry.id !== id),
+      );
+      posts.splice(posts.indexOf(post), 1);
+      openMenus.delete(id);
+      openThreads.delete(id);
+      delete replyTo[id];
+      render();
+      return;
+    }
+
     if (
       !canInteract() &&
       ['follow', 'save', 'like', 'dislike', 'share', 'copy', 'report', 'block'].includes(action)
@@ -1270,6 +1290,11 @@ export function initialize(scope) {
 
   function boot() {
     currentMe();
+    const { email } = communitySession();
+    if (email) {
+      const savedPosts = readPublishedPosts(window.localStorage, email);
+      posts.unshift(...savedPosts.filter((post) => !findPost(post.id)));
+    }
     hydrateTimes(posts);
     buildSocialGraph(meName);
     const meta = authorMeta(meName);
@@ -1283,6 +1308,7 @@ export function initialize(scope) {
       closePanel();
       const postId = new URLSearchParams(location.search).get('post');
       if (postId) focusPost(postId);
+      if (new URLSearchParams(location.search).get('compose') === '1') openComposer();
     }
   }
 

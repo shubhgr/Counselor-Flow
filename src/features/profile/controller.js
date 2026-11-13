@@ -1213,6 +1213,7 @@ export function initialize(scope) {
         address: document.getElementById('field-address').value,
         students: document.getElementById('field-students').value,
         admits: document.getElementById('field-admits').value,
+        headline: document.getElementById('field-headline').value,
         bio: document.getElementById('field-bio').value,
         countries: selectedCountries(),
         emailVerified: emailVerified,
@@ -1550,6 +1551,7 @@ export function initialize(scope) {
         address: document.getElementById('field-address').value,
         students: document.getElementById('field-students').value,
         admits: document.getElementById('field-admits').value,
+        headline: document.getElementById('field-headline').value,
         bio: document.getElementById('field-bio').value,
         countries: selectedCountries(),
         emailVerified: emailVerified,
@@ -1572,6 +1574,7 @@ export function initialize(scope) {
       document.getElementById('field-address').value = state.address;
       document.getElementById('field-students').value = state.students;
       document.getElementById('field-admits').value = state.admits;
+      document.getElementById('field-headline').value = state.headline;
       document.getElementById('field-bio').value = state.bio;
 
       window.GradRightCountriesDraft?.restore(state.countries);
@@ -1818,6 +1821,7 @@ export function initialize(scope) {
           address: document.getElementById('field-address').value,
           students: document.getElementById('field-students').value,
           admits: document.getElementById('field-admits').value,
+          headline: document.getElementById('field-headline').value,
           bio: document.getElementById('field-bio').value,
           countries: selectedCountries(),
         });
@@ -1851,7 +1855,7 @@ export function initialize(scope) {
       document.getElementById('field-name').value = identity.name;
       syncPreviewCopy(identity.name, document.getElementById('field-bio').value);
     }
-    for (const field of ['address', 'students', 'admits', 'bio']) {
+    for (const field of ['address', 'students', 'admits', 'headline', 'bio']) {
       if (identity[field] !== undefined)
         document.getElementById('field-' + field).value = identity[field];
     }
