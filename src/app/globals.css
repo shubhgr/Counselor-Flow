@@ -5383,6 +5383,10 @@ body[data-page='dashboard'] .panel-head > .dash-list-toggle:hover {
   background: var(--surface);
 }
 
+#dash-workspace .dashboard-first-post:has(> #dashboard-first-post-prompt:not([hidden])) {
+  padding-block: var(--space-9);
+}
+
 #dashboard-first-post-prompt p {
   margin-top: var(--space-2);
 }
@@ -5470,7 +5474,7 @@ body[data-page='dashboard'] .panel-head > .dash-list-toggle:hover {
 }
 
 @media (min-width: 1201px) {
-  #dash-workspace .dashboard-first-post {
+  #dash-workspace .dashboard-first-post:has(#dashboard-recent-posts:not([hidden])) {
     height: 50%;
   }
 
