@@ -1,4 +1,5 @@
 import {
+  createLucideIcon,
   AlarmClock,
   ArrowDown,
   ArrowDownLeft,
@@ -282,8 +283,19 @@ const components = {
   ZoomIn,
   ZoomOut,
 };
+const Community = createLucideIcon('Community', [
+  ['circle', { cx: 12, cy: 8.5, r: 3.25, key: 'center-head' }],
+  ['circle', { cx: 5, cy: 9.75, r: 2.25, key: 'left-head' }],
+  ['circle', { cx: 19, cy: 9.75, r: 2.25, key: 'right-head' }],
+  ['path', { d: 'M6.75 18.75a5.25 7 0 0 1 10.5 0', key: 'center-body' }],
+  [
+    'path',
+    { d: 'M1.25 17a3.75 5 0 0 1 6.9-2.7M22.75 17a3.75 5 0 0 0-6.9-2.7', key: 'side-bodies' },
+  ],
+]);
+
 export function Icon({ name, className, ...props }) {
-  const Component = components[aliases[name]] || CircleHelp;
+  const Component = name === 'community' ? Community : components[aliases[name]] || CircleHelp;
   return (
     <Component
       aria-hidden="true"

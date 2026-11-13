@@ -22,7 +22,7 @@ const TYPES = {
   connect: ['Connections', 'person_add'],
   refund: ['Refunds', 'undo'],
   withdrawal: ['Withdrawals', 'account_balance'],
-  community: ['Community', 'forum'],
+  community: ['Community', 'community'],
 };
 export function Notifications() {
   const id = useId();

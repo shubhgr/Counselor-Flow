@@ -43,7 +43,7 @@ const GROUPS = [
     [
       ['chats', 'Chats', 'chat'],
       ['calls', 'Meet', 'videocam'],
-      ['community', 'Community', 'forum'],
+      ['community', 'Community', 'community'],
     ],
   ],
   [

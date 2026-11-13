@@ -189,7 +189,7 @@ export const View = memo(function View() {
     }
   }
 
-  const [showFunnel, setShowFunnel] = useState(false);
+  const [showFunnel, setShowFunnel] = useState(true);
   const [funnel, setFunnel] = useState({ counts: [0, 0, 0, 0], trends: [], activity: [] });
 
   useEffect(() => {
@@ -297,26 +297,11 @@ export const View = memo(function View() {
               </div>
               {showFunnel && <DashboardFunnel {...funnel} />}
             </Card>
-            <Card className={'panel source-panel p-0'}>
+            <Card className={'panel source-panel p-0'} hidden>
               <SourceBreakdown />
             </Card>
           </div>
           <div className={'grid-2 dash-grid'}>
-            <Card className={'panel dash-calls-panel p-0'}>
-              <ScrollPanel
-                className={'dash-agenda-track'}
-                head={
-                  <>
-                    <h2>Upcoming meets</h2>
-                    <Link href={'/calls'} prefetch={false}>
-                      {'All →'}
-                    </Link>
-                  </>
-                }
-              >
-                <div id={'today-calls'} />
-              </ScrollPanel>
-            </Card>
             <Card className="panel dash-connects-panel dash-student-connects-panel p-0">
               <ScrollPanel
                 className={'dash-connect-list'}
@@ -332,6 +317,9 @@ export const View = memo(function View() {
                       aria-controls="recent-connects"
                       onClick={(event) => toggleList(event, connectsExpanded, setConnectsExpanded)}
                     >
+                      {connectsExpanded && (
+                        <Icon name="close" className="size-3" strokeWidth={1.5} />
+                      )}
                       {connectsExpanded ? 'View less' : 'View more'}
                     </Button>
                   </>
@@ -340,29 +328,86 @@ export const View = memo(function View() {
                 <div id={'recent-connects'} />
               </ScrollPanel>
             </Card>
-            <Card className="panel dash-connects-panel dash-people-panel p-0">
+            <Card className={'panel dash-calls-panel p-0'}>
               <ScrollPanel
-                className="dash-connect-list"
+                className={'dash-agenda-track'}
                 head={
                   <>
-                    <h2>All people</h2>
-                    <Button
-                      type="button"
-                      variant="unstyled"
-                      size="unstyled"
-                      className="dash-list-toggle"
-                      aria-expanded={peopleExpanded}
-                      aria-controls="dashboard-people"
-                      onClick={(event) => toggleList(event, peopleExpanded, setPeopleExpanded)}
-                    >
-                      {peopleExpanded ? 'View less' : 'View more'}
-                    </Button>
+                    <h2>Upcoming meets</h2>
+                    <Link href={'/calls'} prefetch={false}>
+                      {'All →'}
+                    </Link>
                   </>
                 }
               >
-                <div id="dashboard-people" />
+                <div id={'today-calls'} />
               </ScrollPanel>
             </Card>
+            <div className="dash-people-column">
+              <Card
+                id="dashboard-first-post"
+                className="panel dashboard-first-post"
+                data-verified-only=""
+                hidden
+              >
+                <div id="dashboard-first-post-prompt">
+                  <h2>Make your first post</h2>
+                  <p>Share an admissions tip in Community.</p>
+                  <Link
+                    className="btn btn-primary btn-sm"
+                    href="/community?compose=1"
+                    prefetch={false}
+                  >
+                    Write a post
+                  </Link>
+                </div>
+                <ScrollPanel
+                  id="dashboard-recent-posts"
+                  hidden
+                  head={
+                    <>
+                      <h2>Recent posts</h2>
+                      <Link
+                        id="dashboard-view-community"
+                        className="dash-list-toggle"
+                        href="/community"
+                        prefetch={false}
+                      >
+                        View community
+                      </Link>
+                    </>
+                  }
+                >
+                  <ul aria-label="Latest Community posts" />
+                </ScrollPanel>
+              </Card>
+              <Card className="panel dash-connects-panel dash-people-panel p-0">
+                <ScrollPanel
+                  className="dash-connect-list"
+                  head={
+                    <>
+                      <h2>Recent activity</h2>
+                      <Button
+                        type="button"
+                        variant="unstyled"
+                        size="unstyled"
+                        className="dash-list-toggle"
+                        aria-expanded={peopleExpanded}
+                        aria-controls="dashboard-people"
+                        onClick={(event) => toggleList(event, peopleExpanded, setPeopleExpanded)}
+                      >
+                        {peopleExpanded && (
+                          <Icon name="close" className="size-3" strokeWidth={1.5} />
+                        )}
+                        {peopleExpanded ? 'View less' : 'View more'}
+                      </Button>
+                    </>
+                  }
+                >
+                  <div id="dashboard-people" />
+                </ScrollPanel>
+              </Card>
+            </div>
           </div>
         </div>
         <aside

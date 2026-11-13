@@ -10,6 +10,7 @@ export function useLiveProfile() {
     countries: [],
     students: '120',
     admits: '85',
+    headline: '',
     bio: '',
     photo: '',
     username: '',
@@ -31,6 +32,7 @@ export function useLiveProfile() {
         countries: window.GradRightCountriesDraft?.get() || [],
         students: value('field-students'),
         admits: value('field-admits'),
+        headline: value('field-headline'),
         bio: value('field-bio'),
         photo: photo && !photo.hidden ? photo.getAttribute('src') : '',
         video: Boolean(document.getElementById('video-preview-el')?.getAttribute('src')),
@@ -106,6 +108,7 @@ export function StudentProfilePreview() {
           <span>Admits secured</span>
         </div>
       </div>
+      {profile.headline.trim() && <strong className="block break-words">{profile.headline}</strong>}
       <p className="student-profile-summary-bio">{profile.bio || 'Your bio will appear here.'}</p>
       {(profile.email || profile.phone) && (
         <div className="student-profile-summary-contact">

@@ -1,3 +1,4 @@
+import { parseCommunityTime, posts, readPublishedPosts } from '@/lib/domain/community';
 import { paintAnalyticsChart } from '@/lib/charts/analytics';
 // Route-scoped workflow: subscriptions, timers and generated overlays are
 // owned by createRouteScope and disposed when Next navigation leaves this screen.
@@ -409,7 +410,8 @@ export function initialize(scope) {
             trends,
             activity: series.map((point) => ({
               count: point.visitors,
-              date: built.grain === 'hour' ? formatWhen(point.date, TODAY) : formatShort(point.date),
+              date:
+                built.grain === 'hour' ? formatWhen(point.date, TODAY) : formatShort(point.date),
             })),
           },
         }),
@@ -680,6 +682,65 @@ export function initialize(scope) {
           '</button>';
       }
       document.getElementById('cal-grid-' + side).innerHTML = html;
+    }
+
+    const account = window.GradRightSession?.get();
+    const recentPosts = document.getElementById('dashboard-recent-posts');
+    if (recentPosts && account?.email) {
+      const storage = window.localStorage;
+      const publishedPosts = readPublishedPosts(storage, account.email);
+      const hasPosted = publishedPosts.length > 0;
+      document.getElementById('dashboard-first-post-prompt').hidden = hasPosted;
+      recentPosts.hidden = !hasPosted;
+
+      if (hasPosted) {
+        const list = recentPosts.querySelector('ul');
+        const items = document.createDocumentFragment();
+        const latest = [
+          ...publishedPosts,
+          ...posts.filter((post) => !publishedPosts.some((published) => published.id === post.id)),
+        ].filter(
+          (post) =>
+            !window.GradRightSafety?.isBlocked({ id: 'c:' + post.author, name: post.author }),
+        );
+        const parseStamp = window.GradRightDB?.parseStamp || (() => null);
+        const datedPosts = latest
+          .map((post) => ({
+            post,
+            date: parseStamp(post.at) || parseCommunityTime(post.time, TODAY, parseStamp),
+          }))
+          .sort((first, second) => second.date - first.date);
+        for (const { post, date } of datedPosts.slice(0, 5)) {
+          const item = document.createElement('li');
+          const link = document.createElement('a');
+          link.href = '/community?post=' + encodeURIComponent(post.id);
+          const avatar = document.createElement('span');
+          avatar.className = 'avatar sm' + (post.author === account.name ? ' amber' : '');
+          avatar.setAttribute('aria-hidden', 'true');
+          avatar.textContent = post.author.trim().split(/\s+/).slice(0, 2)
+            .map((part) => part[0]).join('').toUpperCase();
+
+          const details = document.createElement('div');
+          const heading = document.createElement('div');
+          heading.className = 'recent-post-heading';
+          const author = document.createElement('strong');
+          author.textContent = post.author;
+          const metadata = document.createElement('span');
+          metadata.className = 'recent-post-meta';
+          const timestamp = formatWhen(date, TODAY);
+          metadata.textContent = timestamp.startsWith('Today, ')
+            ? timestamp.slice('Today, '.length)
+            : timestamp.split(',')[0];
+          heading.append(author, metadata);
+          const preview = document.createElement('p');
+          preview.textContent = post.body;
+          details.append(heading, preview);
+          link.append(avatar, details);
+          item.append(link);
+          items.append(item);
+        }
+        list.replaceChildren(items);
+      }
     }
 
     function render() {

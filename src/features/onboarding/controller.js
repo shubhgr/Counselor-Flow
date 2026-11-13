@@ -1,3 +1,5 @@
+import { readPublicIdentity, savePublicIdentity } from '@/lib/domain/public-identity';
+
 // Route-scoped workflow: subscriptions, timers and generated overlays are
 // owned by createRouteScope and disposed when Next navigation leaves this screen.
 export function initialize(scope) {
@@ -30,6 +32,17 @@ export function initialize(scope) {
       document.getElementById('submit-dashboard').href = '/dashboard';
     }
   })();
+
+  const headline = document.getElementById('headline');
+  headline.value = (readPublicIdentity().headline || '').slice(0, 220);
+  scope.listen(document.getElementById('submit-dashboard'), 'click', (event) => {
+    try {
+      savePublicIdentity({ headline: headline.value.trim().slice(0, 220) });
+    } catch {
+      event.preventDefault();
+      window.alert('Unable to save your headline. Try again.');
+    }
+  });
 
   var skipBtn = document.getElementById('skip-btn');
 

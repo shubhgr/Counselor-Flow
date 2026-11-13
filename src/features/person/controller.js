@@ -726,9 +726,9 @@ export function initialize(scope, drawer) {
         '</section>' +
         panel(
           'AI summary',
-          '<div class="person-ai"><div class="person-ai-label"><span class="app-icon" aria-hidden="true">auto_awesome</span>Profile read</div><p>' +
+          '<p class="person-ai">' +
             escapeHtml(aiSummary(person, plan, comm)) +
-            '</p></div>',
+            '</p>',
         ) +
         (prefsHtml && nextMeetHtml
           ? '<div class="person-grid"><div class="person-col">' +
