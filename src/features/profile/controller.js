@@ -368,7 +368,7 @@ export function initialize(scope) {
       return (
         '<article class="service" data-service-id="' +
         s.id +
-        '"><div class="service-row"><div><h3></h3><p class="service-teaser"></p></div>' +
+        '"><div class="service-row"><div><h3></h3><p class="service-teaser"></p><ul class="service-countries" aria-label="Countries" hidden></ul></div>' +
         '<div class="service-actions c-menu-wrap"><details><summary aria-label="Service actions" title="Service actions"><svg class="app-icon service-actions-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M12 5h.01M12 12h.01M12 19h.01"/></svg></summary>' +
         '<div class="c-menu"><button type="button" data-service-edit>Edit</button>' +
         '<button class="danger" type="button" data-service-delete>Delete</button></div></details>' +
@@ -410,6 +410,15 @@ export function initialize(scope) {
         if (!s) return;
         card.querySelector('h3').textContent = s.title;
         card.querySelector('.service-teaser').textContent = s.description;
+        const countries = s.countries ?? [];
+        const countryList = card.querySelector('.service-countries');
+        countryList.hidden = !countries.length;
+        for (const country of countries) {
+          const chip = document.createElement('li');
+          chip.className = 'country-token';
+          chip.textContent = country;
+          countryList.appendChild(chip);
+        }
       });
       paintPreviewServices();
     }

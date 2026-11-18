@@ -4266,6 +4266,14 @@ body[data-page='community'] .community-rail-note {
 #panel-services .service h3 {
   font-size: 0.875rem;
 }
+#panel-services .service-countries:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
 #panel-services .service-teaser {
   font-size: 0.8rem;
 }
