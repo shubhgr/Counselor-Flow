@@ -516,6 +516,7 @@ export const View = memo(function View() {
                     aria-required="true"
                   />
                 </div>
+                <CountrySelector service />
               </div>
               <div className="service-dialog-actions">
                 <Button type="button" id="service-dialog-cancel" variant="outline">

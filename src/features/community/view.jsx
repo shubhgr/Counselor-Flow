@@ -68,30 +68,6 @@ export const View = memo(function View() {
               </Button>
             </div>
           </div>
-          <Button
-            className={''}
-            type={'button'}
-            id={'open-composer'}
-            data-verified-only={''}
-            data-connect-action={''}
-            variant={'default'}
-            size={'sm'}
-          >
-            {'New post'}
-          </Button>
-          <Button
-            type={'button'}
-            className={'community-me'}
-            id={'open-my-profile'}
-            title={'Your profile'}
-            aria-label={'Your profile'}
-            variant={'unstyled'}
-            size={'unstyled'}
-          >
-            <span className={'avatar sm'} id={'me-avatar'}>
-              {'PS'}
-            </span>
-          </Button>
         </div>
       </PageActions>
       <div className="content community-next" data-unverified-only="">
@@ -100,7 +76,7 @@ export const View = memo(function View() {
       <div className={'community-workspace'} id={'community-workspace'}>
         <div className={'community-primary gr-scroll'}>
           <div className={'content'}>
-            <Card className={'community-compose-panel panel'} id={'composer'} hidden>
+            <Card className={'community-compose-panel panel'} id={'composer'}>
               <Textarea
                 id={'compose-text'}
                 rows={'3'}

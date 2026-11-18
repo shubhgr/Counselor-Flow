@@ -255,6 +255,7 @@ export function initialize(scope) {
           id: s.id || slugify(s.title) || 'service-' + (i + 1),
           title: s.title || 'Service',
           description: s.description || '',
+          countries: Array.isArray(s.countries) ? s.countries : [],
         };
       });
       try {

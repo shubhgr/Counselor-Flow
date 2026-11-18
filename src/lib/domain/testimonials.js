@@ -288,19 +288,26 @@ export function initialize(scope) {
       return person;
     }
 
-    function mediaEl(item) {
+    function mediaEl(item, showThumbnail) {
       if (item.kind === 'video' && item.youtube) {
         var wrap = document.createElement('div');
         wrap.className = 'testi-yt';
-        var thumbnail = document.createElement('img');
-        thumbnail.src = 'https://i.ytimg.com/vi/' + item.youtube + '/hqdefault.jpg';
-        thumbnail.alt = '';
-        thumbnail.loading = 'lazy';
         var play = document.createElement('button');
         play.type = 'button';
         play.className = 'testi-yt-play';
         play.setAttribute('aria-label', 'Play ' + (item.name || 'testimonial') + ' video');
-        play.innerHTML = '<span aria-hidden="true"></span>';
+        if (showThumbnail) {
+          var thumbnail = document.createElement('img');
+          thumbnail.src = 'https://i.ytimg.com/vi/' + item.youtube + '/hqdefault.jpg';
+          thumbnail.alt = '';
+          thumbnail.loading = 'lazy';
+          wrap.appendChild(thumbnail);
+          play.innerHTML = '<span aria-hidden="true"></span>';
+        } else {
+          wrap.className = 'testi-video-action';
+          play.className = 'btn btn-secondary btn-sm';
+          play.textContent = 'Play video';
+        }
         play.addEventListener('click', function () {
           var iframe = document.createElement('iframe');
           iframe.src = 'https://www.youtube-nocookie.com/embed/' + item.youtube + '?autoplay=1';
@@ -310,10 +317,11 @@ export function initialize(scope) {
             'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
           );
           iframe.setAttribute('allowfullscreen', '');
+          wrap.className = 'testi-yt';
           wrap.replaceChildren(iframe);
           iframe.focus();
         });
-        wrap.append(thumbnail, play);
+        wrap.appendChild(play);
         return wrap;
       }
       if (item.kind === 'video' && item.video) {
@@ -388,7 +396,7 @@ export function initialize(scope) {
       }
 
       article.appendChild(head);
-      var media = mediaEl(item);
+      var media = mediaEl(item, !opts.actions);
       var hasMedia = !!(item.video || item.youtube || item.link);
       if (media && item.text && hasMedia) {
         var content = document.createElement('div');

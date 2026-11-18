@@ -4,8 +4,10 @@ import { X } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { countryMatches, customCountry } from '@/lib/domain/countries';
 
-export function CountrySelector() {
-  const [selected, setSelected] = useState(['USA', 'UK', 'Canada']);
+export function CountrySelector({ service = false }) {
+  const prefix = service ? 'service-country' : 'country';
+  const draftKey = service ? 'GradRightServiceCountriesDraft' : 'GradRightCountriesDraft';
+  const [selected, setSelected] = useState(service ? [] : ['USA', 'UK', 'Canada']);
   const selectedRef = useRef(selected);
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -32,19 +34,22 @@ export function CountrySelector() {
         setActive(0);
       },
     };
-    window.GradRightCountriesDraft = api;
+    window[draftKey] = api;
     return () => {
-      if (window.GradRightCountriesDraft === api) delete window.GradRightCountriesDraft;
+      if (window[draftKey] === api) delete window[draftKey];
     };
-  }, []);
+  }, [draftKey]);
   useEffect(() => {
-    window.GradRightProfileDirty?.edit?.();
-    window.dispatchEvent(new Event('gradright:public-draft'));
-  }, [selected]);
+    if (service) window.GradRightProfileDirty?.services?.();
+    else {
+      window.GradRightProfileDirty?.edit?.();
+      window.dispatchEvent(new Event('gradright:public-draft'));
+    }
+  }, [selected, service]);
   useEffect(() => {
     if (open)
-      document.getElementById(`country-option-${active}`)?.scrollIntoView({ block: 'nearest' });
-  }, [open, active]);
+      document.getElementById(`${prefix}-option-${active}`)?.scrollIntoView({ block: 'nearest' });
+  }, [open, active, prefix]);
   function add(name) {
     if (!selectedRef.current.includes(name)) update([...selectedRef.current, name]);
     setQuery('');
@@ -84,7 +89,9 @@ export function CountrySelector() {
       }}
     >
       <div className="profile-field-heading">
-        <Label htmlFor="country-search">Countries you advise on</Label>
+        <Label htmlFor={`${prefix}-search`}>
+          {service ? 'Countries for this service' : 'Countries you advise on'}
+        </Label>
         <span className="hint-text" aria-live="polite">
           {selected.length} selected
         </span>
@@ -92,7 +99,7 @@ export function CountrySelector() {
       <div className="country-combobox-anchor">
         <div
           className="country-token-field"
-          id="countries"
+          id={service ? undefined : 'countries'}
           onClick={(event) => {
             if (!event.target.closest('button')) input.current?.focus();
           }}
@@ -115,14 +122,14 @@ export function CountrySelector() {
           ))}
           <input
             ref={input}
-            id="country-search"
+            id={`${prefix}-search`}
             className="country-token-search"
             role="combobox"
             aria-autocomplete="list"
             aria-expanded={open}
-            aria-controls="country-options"
-            aria-activedescendant={open && options[active] ? `country-option-${active}` : undefined}
-            aria-describedby="country-help"
+            aria-controls={`${prefix}-options`}
+            aria-activedescendant={open && options[active] ? `${prefix}-option-${active}` : undefined}
+            aria-describedby={`${prefix}-help`}
             autoComplete="off"
             placeholder="Search countries…"
             value={query}
@@ -139,7 +146,7 @@ export function CountrySelector() {
         </div>
         {open && (
           <div
-            id="country-options"
+            id={`${prefix}-options`}
             role="listbox"
             aria-label="Country suggestions"
             className="country-results"
@@ -150,7 +157,7 @@ export function CountrySelector() {
                   type="button"
                   role="option"
                   tabIndex={-1}
-                  id={`country-option-${index}`}
+                  id={`${prefix}-option-${index}`}
                   key={`${option.custom}:${option.name}`}
                   aria-selected={index === active}
                   className="country-result"
@@ -174,7 +181,7 @@ export function CountrySelector() {
           </div>
         )}
       </div>
-      <p className="hint-text" id="country-help">
+      <p className="hint-text" id={`${prefix}-help`}>
         Pick from the list, or type a country that isn’t listed.
       </p>
     </div>

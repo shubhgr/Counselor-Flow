@@ -416,14 +416,24 @@ export function initialize(scope) {
 
     paintServices();
 
+    function savedServiceCountries(card) {
+      const id = card?.getAttribute('data-service-id');
+      return services.find((service) => service.id === id)?.countries ?? [];
+    }
+
     function serviceFormDirty() {
       if (!form || !form.classList.contains('open')) return false;
       const name = (nameInput && nameInput.value.trim()) || '';
       const desc = (descInput && descInput.value.trim()) || '';
-      if (!editing) return !!(name || desc);
+      const countries = window.GradRightServiceCountriesDraft?.get() ?? [];
+      if (!editing) return Boolean(name || desc || countries.length);
       const origName = ((editing.querySelector('h3') || {}).textContent || '').trim();
       const origDesc = ((editing.querySelector('.service-teaser') || {}).textContent || '').trim();
-      return name !== origName || desc !== origDesc;
+      return (
+        name !== origName ||
+        desc !== origDesc ||
+        JSON.stringify(countries) !== JSON.stringify(savedServiceCountries(editing))
+      );
     }
 
     function markServicesDirty() {
@@ -462,6 +472,7 @@ export function initialize(scope) {
         descInput.value = card
           ? (card.querySelector('.service-teaser') || {}).textContent || ''
           : '';
+      window.GradRightServiceCountriesDraft?.restore(savedServiceCountries(card));
       if (form) form.classList.add('open');
       const title = document.getElementById('service-dialog-title');
       if (title) title.textContent = card ? 'Edit service' : 'New service';
@@ -476,6 +487,7 @@ export function initialize(scope) {
       if (!form || !form.classList.contains('open') || !list) return true;
       const name = (nameInput && nameInput.value.trim()) || '';
       const desc = (descInput && descInput.value.trim()) || '';
+      const countries = window.GradRightServiceCountriesDraft?.get() ?? [];
       const missingName = !name;
       const missingDescription = !desc;
       nameInput?.setCustomValidity(missingName ? 'Enter a service name.' : '');
@@ -489,7 +501,7 @@ export function initialize(scope) {
         const id = editing.getAttribute('data-service-id');
         services = services.map(function (s) {
           if (s.id !== id) return s;
-          return { id: s.id, title: name, description: desc };
+          return { ...s, title: name, description: desc, countries };
         });
       } else {
         const slug = window.GradRightServices
@@ -502,7 +514,7 @@ export function initialize(scope) {
           })
         )
           id = slug + '-' + Date.now().toString(36);
-        services.push({ id: id, title: name, description: desc });
+        services.push({ id, title: name, description: desc, countries });
       }
       if (window.GradRightServices) services = GradRightServices.set(services);
       savedServices = JSON.stringify(services);

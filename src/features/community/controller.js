@@ -132,7 +132,6 @@ export function initialize(scope) {
 
   const feed = document.getElementById('community-feed');
   const empty = document.getElementById('community-empty');
-  const composer = document.getElementById('composer');
   const composeText = document.getElementById('compose-text');
   const filterMenu = document.getElementById('filter-menu');
   const filterBtn = document.getElementById('filter-btn');
@@ -520,13 +519,11 @@ export function initialize(scope) {
 
   function render() {
     const list = filteredPosts();
-    const composerOpen = !composer.hidden;
     empty.hidden = list.length > 0;
     feed.innerHTML = list.map(renderPost).join('');
     renderRail();
     syncFilterUI();
     if (window.GradRightShell && GradRightShell.applyAccess) GradRightShell.applyAccess();
-    if (!composerOpen) composer.hidden = true;
   }
 
   function myExpertiseTags() {
@@ -718,10 +715,6 @@ export function initialize(scope) {
     else profileStack[profileStack.length - 1] = view;
     openPanel();
     renderProfilePanel();
-  }
-
-  function openMyProfile() {
-    location.href = '/profile';
   }
 
   function openProfile(name) {
@@ -925,13 +918,10 @@ export function initialize(scope) {
 
   function openComposer() {
     if (!canInteract()) return;
-    composer.hidden = false;
     composeText.focus();
   }
 
-  scope.listen(document.getElementById('open-composer'), 'click', openComposer);
   scope.listen(document.getElementById('cancel-composer'), 'click', () => {
-    composer.hidden = true;
     composeText.value = '';
   });
   scope.listen(document.getElementById('submit-post'), 'click', () => {
@@ -969,7 +959,6 @@ export function initialize(scope) {
       savePublishedPosts(storage, s.email, [post, ...readPublishedPosts(storage, s.email)]);
     }
     composeText.value = '';
-    composer.hidden = true;
     filter = 'recent';
     render();
   });
@@ -994,7 +983,6 @@ export function initialize(scope) {
     render();
   });
 
-  scope.listen(document.getElementById('open-my-profile'), 'click', openMyProfile);
   scope.listen(document.getElementById('profile-panel-close'), 'click', closePanel);
   scope.listen(document.getElementById('profile-back'), 'click', () => {
     if (profileStack.length > 1) {
@@ -1297,8 +1285,6 @@ export function initialize(scope) {
     }
     hydrateTimes(posts);
     buildSocialGraph(meName);
-    const meta = authorMeta(meName);
-    document.getElementById('me-avatar').textContent = meta.initials;
     if (window.GradRightShell && GradRightShell.applyAccess) {
       GradRightShell.applyAccess();
     }

@@ -4362,6 +4362,10 @@ body[data-page='community'] .community-rail-note {
   background: transparent;
   margin: 0;
 }
+.service-dialog .country-results {
+  position: static;
+  margin-top: var(--space-3);
+}
 .service-dialog #service-name {
   min-width: 0;
 }
@@ -4537,6 +4541,9 @@ body[data-page='community'] .community-rail-note {
 #panel-testimonials .testi-who span,
 #panel-testimonials .testi-quote {
   font-size: 1rem;
+}
+#panel-testimonials .testi-card > .testi-video-action {
+  margin-top: var(--space-4);
 }
 #panel-testimonials .testi-yt,
 #panel-testimonials .testi-video {
@@ -5498,5 +5505,71 @@ body[data-page='dashboard'] .panel-head > .dash-list-toggle:hover {
   #dash-workspace [data-people-expanded='true'] .dash-people-column > .dash-people-panel {
     flex: none;
     height: max(calc(2 * var(--analytics-card-height) + var(--space-6)), 65dvh);
+  }
+}
+
+@media (max-width: 860px) {
+  [data-next-app] > .main {
+    box-sizing: border-box;
+    padding: var(--space-5);
+  }
+
+  [data-next-app] > .main > .app-header {
+    min-height: 0;
+    padding: 0 0 var(--space-5);
+  }
+
+  [data-next-app] > .main > .app-header > .actions {
+    flex-wrap: wrap;
+  }
+
+  [data-next-app] > .main .route-screen :is(.content, .community-workspace, .calls-workspace) {
+    padding: 0;
+  }
+
+  [data-next-app] .profile-header-nav,
+  [data-next-app] #page-header-actions {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 860px) {
+  .route-screen > :is(.auth-shell, .onboard-page, .onboard-wrap, .market-shell) {
+    box-sizing: border-box;
+    padding: var(--space-5);
+  }
+
+  .route-screen > .onboard-wrap {
+    padding-block: var(--space-5) !important;
+  }
+
+  .auth-shell {
+    gap: var(--space-5);
+    min-height: 100dvh;
+  }
+
+  .auth-shell > .auth-visual {
+    min-height: 0;
+    gap: var(--space-5);
+    padding: var(--space-5);
+    border-radius: var(--radius-5);
+  }
+
+  .auth-shell > .auth-panel,
+  .market-shell > .market-body {
+    min-width: 0;
+    padding: 0;
+  }
+
+  .auth-card,
+  .otp-page .otp-card,
+  .onboard-page .onboard-card {
+    box-sizing: border-box;
+    padding: var(--space-5);
+  }
+
+  .market-shell > .market-top {
+    flex-wrap: wrap;
+    padding: 0 0 var(--space-5);
   }
 }
