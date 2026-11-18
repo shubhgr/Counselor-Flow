@@ -61,9 +61,9 @@ export function PublicProfileDetails({ editable = false, embedded = false }) {
           .replace(/[^a-z0-9]+/g, '.')
           .replace(/^\.|\.$/g, ''),
       email: identity.email ?? account?.email ?? 'priya.sharma@gmail.com',
-      phone: identity.phone || '',
+      phone: identity.phone || account?.phone || '',
       showEmail: Boolean(identity.email) && identity.showEmail !== false,
-      showPhone: identity.showPhone !== false,
+      showPhone: Boolean(identity.phone) && identity.showPhone !== false,
     });
   }, [identity, account]);
   useLayoutEffect(() => {
