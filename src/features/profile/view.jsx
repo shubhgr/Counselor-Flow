@@ -1,4 +1,5 @@
 'use client';
+import { BADGES } from '@/features/badges/data';
 import { memo } from 'react';
 import { Glass } from 'glisse';
 import { Check, History, Info, Pencil, Plus } from 'lucide-react';
@@ -14,10 +15,50 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { PageActions } from '@/components/page-actions';
 import { PublicProfileDetails } from '@/components/public-profile-details';
+import { PreviewCommunityFeed, PreviewTabs, StudentPreview } from './student-preview';
 import { CountrySelector } from './country-selector';
 import { ProfileStrength } from './profile-strength';
 import { StudentProfilePreview } from './student-profile-preview';
 import { CommunitySummary } from './community-summary';
+
+function PreviewProfileHero() {
+  return (
+    <header className="preview-community-hero">
+      <div className="avatar lg preview-avatar" aria-hidden="true">
+        PS
+      </div>
+      <div>
+        <h2 className="preview-name">Priya Sharma</h2>
+        <p className="preview-headline">Higher-education counselor</p>
+        <p className="preview-bio">Helping students map pathways into top universities.</p>
+        <p className="preview-cover-rating" data-verified-only="">
+          ★ 4.8 · 126 sessions
+        </p>
+        <p className="preview-cover-rating" data-unverified-only="">
+          Rating unavailable
+        </p>
+      </div>
+    </header>
+  );
+}
+
+function PreviewBadges() {
+  return (
+    <Card className="panel preview-badges" data-verified-only="">
+      <h3>Badges</h3>
+      <ul>
+        {BADGES.filter(({ locked }) => !locked)
+          .slice(0, 4)
+          .map(({ icon, label }) => (
+            <li key={label}>
+              <Icon name={icon} aria-hidden="true" />
+              {label}
+            </li>
+          ))}
+      </ul>
+    </Card>
+  );
+}
 
 function ProfileSectionTitle({ title, description, privateSection = false }) {
   return (
@@ -543,7 +584,6 @@ export const View = memo(function View() {
           </section>
         </div>
         <div id={'panel-preview'} hidden>
-          <PublicProfileDetails />
           <div className={'pending-banner'} data-unverified-only={''}>
             <div className={'icon'}>
               <Icon name="visibility" />
@@ -564,346 +604,228 @@ export const View = memo(function View() {
               {'Open full page'}
             </Link>
           </div>
-          <section className={'preview-section'}>
-            <div className={'preview-section-head'}>
-              <div>
-                <div className={'preview-title-row'}>
-                  <h2>{'Browse cards'}</h2>
-                  <span
-                    className={'preview-info'}
-                    tabIndex={'0'}
-                    aria-label={
-                      'Same card on desktop and mobile — tap the person to open their profile, Connect to pay and unlock chat.'
-                    }
-                  >
-                    <Icon name="info" className={'app-icon'} aria-hidden={'true'} />
-                    <span className={'preview-info-tip'}>
-                      {
-                        'Same card on desktop and mobile — tap the person to open their profile, Connect to pay & unlock chat.'
-                      }
-                    </span>
-                  </span>
-                </div>
-              </div>
-              <div className={'preview-live-chip'} data-verified-only={''}>
-                {'Live for students · visible in browse & community'}
-              </div>
-              <div className={'preview-live-chip is-pending'} data-unverified-only={''}>
-                {'Not live yet · hidden from student browse'}
-              </div>
-            </div>
-            <div className={'preview-card-compare'}>
-              <div className={'preview-device'}>
-                <div className={'preview-device-label'}>{'Desktop'}</div>
-                <div className={'preview-device-frame'}>
-                  <article className={'counselor-card'}>
-                    <Link
-                      className={'card-profile-link'}
-                      href={'/counselor-public'}
-                      prefetch={false}
-                    >
-                      <div
-                        className={'avatar lg preview-avatar'}
-                        style={{ width: '48px', height: '48px', fontSize: '0.9rem' }}
-                      >
-                        {'PS'}
-                      </div>
-                      <div>
-                        <h3 className={'preview-name'}>{'Priya Sharma'}</h3>
-                        <div className={'meta-line preview-meta-line'}>
-                          {'Mumbai · USA · UK · Canada'}
-                        </div>
-                        <div className={'rating'}>
-                          <span data-verified-only={''}>{'★ 4.8 · 126 sessions'}</span>
-                          <span data-unverified-only={''}>{'★ — · 0 sessions'}</span>
-                        </div>
-                      </div>
-                    </Link>
-                    <p className={'bio preview-bio'}>
-                      {'Helping students map pathways into top universities.'}
-                    </p>
-                    <div className={'preview-card-stats'}>
-                      <span>
-                        <strong className={'preview-students'}>{'120+'}</strong>
-                        {'students'}
-                      </span>
-                      <span>
-                        <strong className={'preview-admits'}>{'85+'}</strong>
-                        {'admits'}
-                      </span>
-                    </div>
-                    <div className={'preview-card-services'} data-preview-services={''}>
-                      <span className={'pill'}>{'College shortlisting'}</span>
-                      <span className={'pill'}>{'SOP & essay review'}</span>
-                      <span className={'pill'}>{'Visa readiness'}</span>
-                    </div>
-                    <div className={'card-foot'}>
-                      <span className={'fee'}>{'₹1,999 connect'}</span>
-                      <Link
-                        className={'btn btn-primary btn-sm'}
-                        href={'/counselor-public'}
-                        data-verified-only={''}
-                        prefetch={false}
-                      >
-                        {'Connect'}
-                      </Link>
-                      <span
-                        className={'btn btn-secondary btn-sm'}
-                        data-unverified-only={''}
-                        style={{ opacity: '0.65', pointerEvents: 'none' }}
-                      >
-                        {'Connect'}
-                      </span>
-                    </div>
-                  </article>
-                </div>
-              </div>
-              <div className={'preview-device'}>
-                <div className={'preview-device-label'}>{'Mobile'}</div>
-                <div className={'preview-device-frame phone'}>
-                  <div className={'preview-fullpage-chrome compact'}>
-                    <span className={'chrome-url'}>{'Browse'}</span>
-                  </div>
-                  <article className={'counselor-card counselor-card-mobile'}>
-                    <Link
-                      className={'card-profile-link'}
-                      href={'/counselor-public'}
-                      prefetch={false}
-                    >
-                      <div className={'avatar preview-avatar'}>{'PS'}</div>
-                      <div>
-                        <h3 className={'preview-name'}>{'Priya Sharma'}</h3>
-                        <div className={'meta-line preview-meta-line'}>
-                          {'Mumbai · USA · UK · Canada'}
-                        </div>
-                        <div className={'rating'}>
-                          <span data-verified-only={''}>{'★ 4.8 · 126 sessions'}</span>
-                          <span data-unverified-only={''}>{'★ — · 0 sessions'}</span>
-                        </div>
-                      </div>
-                    </Link>
-                    <p className={'bio preview-bio'}>
-                      {'Helping students map pathways into top universities.'}
-                    </p>
-                    <div className={'preview-card-stats'}>
-                      <span>
-                        <strong className={'preview-students'}>{'120+'}</strong>
-                        {'students'}
-                      </span>
-                      <span>
-                        <strong className={'preview-admits'}>{'85+'}</strong>
-                        {'admits'}
-                      </span>
-                    </div>
-                    <div className={'preview-card-services'} data-preview-services={''}>
-                      <span className={'pill'}>{'College shortlisting'}</span>
-                      <span className={'pill'}>{'SOP & essay review'}</span>
-                      <span className={'pill'}>{'Visa readiness'}</span>
-                    </div>
-                    <div className={'card-foot'}>
-                      <span className={'fee'}>{'₹1,999 connect'}</span>
-                      <Link
-                        className={'btn btn-primary btn-sm'}
-                        href={'/counselor-public'}
-                        data-verified-only={''}
-                        prefetch={false}
-                      >
-                        {'Connect'}
-                      </Link>
-                      <span
-                        className={'btn btn-secondary btn-sm'}
-                        data-unverified-only={''}
-                        style={{ opacity: '0.65', pointerEvents: 'none' }}
-                      >
-                        {'Connect'}
-                      </span>
-                    </div>
-                  </article>
-                </div>
-              </div>
-            </div>
-          </section>
-          <section className={'preview-section'}>
-            <div className={'preview-section-head'}>
-              <div>
-                <div className={'preview-title-row'}>
-                  <h2>{'Full profile page'}</h2>
-                  <span
-                    className={'preview-info'}
-                    tabIndex={'0'}
-                    aria-label={
-                      'Opened when a student taps your name or Connect — experience, countries, services, and fee.'
-                    }
-                  >
-                    <Icon name="info" className={'app-icon'} aria-hidden={'true'} />
-                    <span className={'preview-info-tip'}>
-                      {
-                        'Opened when a student taps your name or Connect — experience, countries, services, and fee.'
-                      }
-                    </span>
-                  </span>
-                </div>
-              </div>
-              <Link className={'btn btn-ghost btn-sm'} href={'/counselor-public'} prefetch={false}>
-                {'Open full view →'}
-              </Link>
-            </div>
-            <div className={'preview-fullpage-compare'}>
-              <div className={'preview-device'}>
-                <div className={'preview-device-label'}>{'Desktop'}</div>
-                <div className={'preview-fullpage-frame'}>
-                  <div className={'preview-fullpage-chrome'}>
-                    <span className={'chrome-dot'} />
-                    <span className={'chrome-dot'} />
-                    <span className={'chrome-dot'} />
-                    <span className={'chrome-url'}>{'gradright.com/counselors/priya-sharma'}</span>
-                  </div>
-                  <div className={'public-layout preview-fullpage-body'}>
+          <StudentPreview
+            desktopBrowse={
+              <div className={'preview-device-frame'}>
+                <article className="counselor-card preview-desktop-listing">
+                  <Link className={'card-profile-link'} href={'/counselor-public'} prefetch={false}>
+                    <div className="avatar lg preview-avatar">{'PS'}</div>
                     <div>
-                      <div className={'public-hero'}>
-                        <Link
-                          className={'avatar lg preview-avatar'}
-                          href={'/counselor-public'}
-                          id={'preview-hero-avatar'}
-                          style={{ display: 'grid' }}
-                          prefetch={false}
-                        >
-                          {'PS'}
-                        </Link>
+                      <h3 className={'preview-name'}>{'Priya Sharma'}</h3>
+                      <div className={'meta-line preview-meta-line'}>
+                        {'Mumbai · USA · UK · Canada'}
+                      </div>
+                      <div className={'rating'}>
+                        <span data-verified-only={''}>{'★ 4.8 · 126 sessions'}</span>
+                        <span data-unverified-only={''}>{'★ — · 0 sessions'}</span>
+                      </div>
+                    </div>
+                  </Link>
+                  <p className={'bio preview-bio'}>
+                    {'Helping students map pathways into top universities.'}
+                  </p>
+                  <div className={'preview-card-stats'}>
+                    <span>
+                      <strong className={'preview-students'}>{'120+'}</strong>
+                      {'students'}
+                    </span>
+                    <span>
+                      <strong className={'preview-admits'}>{'85+'}</strong>
+                      {'admits'}
+                    </span>
+                  </div>
+                  <h4>Services</h4>
+                  <div className={'preview-card-services'} data-preview-services={''}>
+                    <span className={'pill'}>{'College shortlisting'}</span>
+                    <span className={'pill'}>{'SOP & essay review'}</span>
+                    <span className={'pill'}>{'Visa readiness'}</span>
+                  </div>
+                  <div className={'card-foot'}>
+                    <span className={'fee'}>{'₹1,999 connect'}</span>
+                    <Link
+                      className={'btn btn-primary btn-sm'}
+                      href={'/counselor-public'}
+                      data-verified-only={''}
+                      prefetch={false}
+                    >
+                      {'Connect'}
+                    </Link>
+                    <span
+                      className={'btn btn-secondary btn-sm'}
+                      data-unverified-only={''}
+                      style={{ opacity: '0.65', pointerEvents: 'none' }}
+                    >
+                      {'Connect'}
+                    </span>
+                  </div>
+                </article>
+              </div>
+            }
+            mobileBrowse={
+              <div className={'preview-device-frame phone'}>
+                <div className={'preview-fullpage-chrome compact'}>
+                  <span className={'chrome-url'}>{'Browse'}</span>
+                </div>
+                <article className={'counselor-card counselor-card-mobile'}>
+                  <Link className={'card-profile-link'} href={'/counselor-public'} prefetch={false}>
+                    <div className={'avatar preview-avatar'}>{'PS'}</div>
+                    <div>
+                      <h3 className={'preview-name'}>{'Priya Sharma'}</h3>
+                      <div className={'meta-line preview-meta-line'}>
+                        {'Mumbai · USA · UK · Canada'}
+                      </div>
+                      <div className={'rating'}>
+                        <span data-verified-only={''}>{'★ 4.8 · 126 sessions'}</span>
+                        <span data-unverified-only={''}>{'★ — · 0 sessions'}</span>
+                      </div>
+                    </div>
+                  </Link>
+                  <p className={'bio preview-bio'}>
+                    {'Helping students map pathways into top universities.'}
+                  </p>
+                  <div className={'preview-card-stats'}>
+                    <span>
+                      <strong className={'preview-students'}>{'120+'}</strong>
+                      {'students'}
+                    </span>
+                    <span>
+                      <strong className={'preview-admits'}>{'85+'}</strong>
+                      {'admits'}
+                    </span>
+                  </div>
+                  <h4 className="preview-mobile-skills">Services</h4>
+                  <div className={'preview-card-services'} data-preview-services={''}>
+                    <span className={'pill'}>{'College shortlisting'}</span>
+                    <span className={'pill'}>{'SOP & essay review'}</span>
+                    <span className={'pill'}>{'Visa readiness'}</span>
+                  </div>
+                  <div className={'card-foot'}>
+                    <span className={'fee'}>{'₹1,999 connect'}</span>
+                    <Link
+                      className={'btn btn-primary btn-sm'}
+                      href={'/counselor-public'}
+                      data-verified-only={''}
+                      prefetch={false}
+                    >
+                      {'Connect'}
+                    </Link>
+                    <span
+                      className={'btn btn-secondary btn-sm'}
+                      data-unverified-only={''}
+                      style={{ opacity: '0.65', pointerEvents: 'none' }}
+                    >
+                      {'Connect'}
+                    </span>
+                  </div>
+                </article>
+              </div>
+            }
+            desktopProfile={
+              <div className={'preview-fullpage-frame'}>
+                <div className={'preview-fullpage-chrome'}>
+                  <span className={'chrome-dot'} />
+                  <span className={'chrome-dot'} />
+                  <span className={'chrome-dot'} />
+                  <span className={'chrome-url'}>{'gradright.com/counselors/priya-sharma'}</span>
+                </div>
+                <div className={'public-layout preview-fullpage-body'}>
+                  <div>
+                    <PreviewProfileHero />
+                    <PreviewTabs />
+                    <div className="preview-desktop-overview">
+                      <div className={'preview-stat-row'}>
                         <div>
-                          <h1 style={{ fontSize: '1.25rem' }}>
-                            <Link
-                              className={'preview-name preview-name-link'}
-                              href={'/counselor-public'}
-                              id={'preview-hero-name'}
-                              prefetch={false}
-                            >
-                              {'Priya Sharma'}
-                            </Link>
-                          </h1>
-                          <p style={{ color: 'var(--muted)', fontSize: '0.88rem' }}>
-                            {'Mumbai · Higher-education counselor'}
-                          </p>
-                          <div className={'preview-stat-row'}>
-                            <div>
-                              <strong data-verified-only={''}>{'4.8'}</strong>
-                              <strong data-unverified-only={''}>{'—'}</strong>
-                              <span>{'Rating'}</span>
-                            </div>
-                            <div>
-                              <strong data-verified-only={''}>{'126'}</strong>
-                              <strong data-unverified-only={''}>{'0'}</strong>
-                              <span>{'Sessions'}</span>
-                            </div>
-                            <div>
-                              <strong className={'preview-students'}>{'120+'}</strong>
-                              <span>{'Students'}</span>
-                            </div>
-                            <div>
-                              <strong className={'preview-admits'}>{'85+'}</strong>
-                              <span>{'Admits'}</span>
-                            </div>
-                          </div>
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              gap: '0.35rem',
-                              margin: '0.75rem 0 0',
-                            }}
-                          >
-                            <span className={'pill'}>{'USA'}</span>
-                            <span className={'pill'}>{'UK'}</span>
-                            <span className={'pill'}>{'Canada'}</span>
-                          </div>
-                          <p
-                            style={{
-                              fontSize: '0.88rem',
-                              maxWidth: '34rem',
-                              lineHeight: '1.5',
-                              color: 'var(--muted)',
-                              marginTop: '0.75rem',
-                            }}
-                            className={'preview-hero-bio'}
-                            id={'preview-hero-bio'}
-                          >
-                            {'Helping students map pathways into top universities.'}
-                          </p>
-                          <div className={'intro-video-embed preview-intro-video'} hidden>
-                            <p className={'intro-video-label'}>{'Intro video'}</p>
-                            <video
-                              className={'preview-intro-video-el'}
-                              controls
-                              playsInline
-                              preload={'metadata'}
-                            />
-                          </div>
+                          <strong data-verified-only={''}>{'126'}</strong>
+                          <strong data-unverified-only={''}>{'0'}</strong>
+                          <span>{'Sessions'}</span>
+                        </div>
+                        <div>
+                          <strong className={'preview-students'}>{'120+'}</strong>
+                          <span>{'Students'}</span>
+                        </div>
+                        <div>
+                          <strong className={'preview-admits'}>{'85+'}</strong>
+                          <span>{'Admits'}</span>
                         </div>
                       </div>
-                      <Card className={'panel'} style={{ marginTop: '1rem' }}>
-                        <div className={'panel-head'}>
-                          <h2>{'What students connect for'}</h2>
-                        </div>
-                        <div className={'list-item'}>
-                          <div className={'meta'}>
-                            <strong>{'College shortlisting'}</strong>
-                            <span>{'Reach / match / safety lists'}</span>
-                          </div>
-                        </div>
-                        <div className={'list-item'}>
-                          <div className={'meta'}>
-                            <strong>{'SOP & essay review'}</strong>
-                            <span>{'Structure, voice, program fit'}</span>
-                          </div>
-                        </div>
-                        <div className={'list-item'}>
-                          <div className={'meta'}>
-                            <strong>{'Visa readiness'}</strong>
-                            <span>{'Docs & interview practice'}</span>
-                          </div>
-                        </div>
-                      </Card>
-                      <Card className={'panel'} style={{ marginTop: '1rem' }}>
-                        <div className={'panel-head'}>
-                          <h2>{'Testimonials'}</h2>
-                        </div>
-                        <div
-                          className={'public-testi-list is-in-frame'}
-                          id={'preview-full-testi'}
+                      <p
+                        style={{
+                          fontSize: '0.88rem',
+                          maxWidth: '34rem',
+                          lineHeight: '1.5',
+                          color: 'var(--muted)',
+                          marginTop: '0.75rem',
+                        }}
+                        className={'preview-hero-bio'}
+                        id={'preview-hero-bio'}
+                      >
+                        {'Helping students map pathways into top universities.'}
+                      </p>
+                      <div
+                        className="preview-profile-countries"
+                        data-preview-profile-countries=""
+                      />
+                      <div className="preview-profile-availability">
+                        <p className="hint-text">Available on</p>
+                        <span className="pill">Chat</span>
+                        <span className="pill">Phone call</span>
+                        <span className="pill">Video call</span>
+                      </div>
+                      <div className={'intro-video-embed preview-intro-video'} hidden>
+                        <p className={'intro-video-label'}>{'Intro video'}</p>
+                        <video
+                          className={'preview-intro-video-el'}
+                          controls
+                          playsInline
+                          preload={'metadata'}
                         />
-                      </Card>
-                      <Card className={'panel'} style={{ marginTop: '1rem' }}>
-                        <div className={'panel-head'}>
-                          <h2>{'Reviews from GradRight students'}</h2>
-                        </div>
-                        <div className={'preview-reviews'}>
-                          <div className={'review'}>
-                            <div className={'stars'}>{'★★★★★'}</div>
-                            <strong>{'Aarav Reddy'}</strong>
-                            <p>
-                              {
-                                'Clear shortlist logic for USA CS. Explained reach vs match so my parents got it too.'
-                              }
-                            </p>
-                          </div>
-                          <div className={'review'}>
-                            <div className={'stars'}>{'★★★★★'}</div>
-                            <strong>{'Sana Iqbal'}</strong>
-                            <p>
-                              {
-                                'SOP feedback was precise — finally sounded specific without sounding generic.'
-                              }
-                            </p>
-                          </div>
-                          <div className={'review'}>
-                            <div className={'stars'}>{'★★★★☆'}</div>
-                            <strong>{'Meera Kapoor'}</strong>
-                            <p>{'Fee and intake timing were explained without the jargon.'}</p>
-                          </div>
-                        </div>
-                      </Card>
+                      </div>
                     </div>
-                    <aside className={'sticky-book'}>
+                    <Card className={'panel'} style={{ marginTop: '1rem' }}>
+                      <div className={'panel-head'}>
+                        <h2>{'What students connect for'}</h2>
+                      </div>
+                      <ul className="preview-profile-services" data-preview-profile-services="" />
+                    </Card>
+                    <Card className={'panel'} style={{ marginTop: '1rem' }}>
+                      <div className={'panel-head'}>
+                        <h2>{'Testimonials'}</h2>
+                      </div>
+                      <div className={'public-testi-list is-in-frame'} id={'preview-full-testi'} />
+                    </Card>
+                    <Card className={'panel'} style={{ marginTop: '1rem' }}>
+                      <div className={'panel-head'}>
+                        <h2>{'Reviews from GradRight students'}</h2>
+                      </div>
+                      <div className={'preview-reviews'}>
+                        <div className={'review'}>
+                          <div className={'stars'}>{'★★★★★'}</div>
+                          <strong>{'Aarav Reddy'}</strong>
+                          <p>
+                            {
+                              'Clear shortlist logic for USA CS. Explained reach vs match so my parents got it too.'
+                            }
+                          </p>
+                        </div>
+                        <div className={'review'}>
+                          <div className={'stars'}>{'★★★★★'}</div>
+                          <strong>{'Sana Iqbal'}</strong>
+                          <p>
+                            {
+                              'SOP feedback was precise — finally sounded specific without sounding generic.'
+                            }
+                          </p>
+                        </div>
+                        <div className={'review'}>
+                          <div className={'stars'}>{'★★★★☆'}</div>
+                          <strong>{'Meera Kapoor'}</strong>
+                          <p>{'Fee and intake timing were explained without the jargon.'}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                  <aside className="preview-community-rail">
+                    <div className="sticky-book">
                       <div
                         style={{ fontSize: '0.75rem', color: 'var(--muted)', fontWeight: '500' }}
                       >
@@ -950,331 +872,130 @@ export const View = memo(function View() {
                       >
                         {'Available after verification'}
                       </p>
-                    </aside>
-                  </div>
+                    </div>
+                    <PreviewBadges />
+                  </aside>
                 </div>
               </div>
-              <div className={'preview-device'}>
-                <div className={'preview-device-label'}>{'Mobile'}</div>
-                <div className={'preview-fullpage-frame phone-page'}>
-                  <div className={'preview-fullpage-chrome compact'}>
-                    <span className={'chrome-url'}>{'gradright.com/…/priya'}</span>
+            }
+            mobileProfile={
+              <div className={'preview-fullpage-frame phone-page'}>
+                <div className="preview-mobile-profile">
+                  <PreviewProfileHero />
+                  <PreviewTabs />
+                  <section className="preview-mobile-block preview-mobile-identity">
+                    <h3 className="preview-name">Priya Sharma</h3>
+                    <p className="preview-headline">Higher-education counselor</p>
+                  </section>
+                  <section className="preview-mobile-overview">
+                    <div className="preview-stat-row compact">
+                      <div>
+                        <strong data-verified-only="">126</strong>
+                        <strong data-unverified-only="">0</strong>
+                        <span>Sessions</span>
+                      </div>
+                      <div>
+                        <strong className="preview-students">120+</strong>
+                        <span>Students</span>
+                      </div>
+                      <div>
+                        <strong className="preview-admits">85+</strong>
+                        <span>Admits</span>
+                      </div>
+                    </div>
+                    <p className="preview-bio">
+                      Helping students map pathways into top universities.
+                    </p>
+                    <div className="preview-profile-countries" data-preview-profile-countries="" />
+                    <div className="preview-profile-availability">
+                      <p className="hint-text">Available on</p>
+                      <span className="pill">Chat</span>
+                      <span className="pill">Phone call</span>
+                      <span className="pill">Video call</span>
+                    </div>
+                  </section>
+                  <div className={'intro-video-embed preview-intro-video'} hidden>
+                    <p className={'intro-video-label'}>{'Intro video'}</p>
+                    <video
+                      className={'preview-intro-video-el'}
+                      controls
+                      playsInline
+                      preload={'metadata'}
+                    />
                   </div>
-                  <div className={'preview-mobile-profile'}>
+                  <section className="preview-mobile-block">
+                    <h3>What students connect for</h3>
+                    <ul className="preview-profile-services" data-preview-profile-services="" />
+                  </section>
+                  <div className={'preview-mobile-block'}>
+                    <h3>{'Testimonials'}</h3>
+                    <div className={'public-testi-list is-in-frame'} id={'preview-mobile-testi'} />
+                  </div>
+                  <div className={'preview-mobile-block'}>
+                    <h3>{'Reviews'}</h3>
+                    <div className={'preview-reviews is-compact'}>
+                      <div className={'review'}>
+                        <div className={'stars'}>{'★★★★★'}</div>
+                        <strong>{'Aarav Reddy'}</strong>
+                        <p>{'Clear shortlist logic for USA CS.'}</p>
+                      </div>
+                      <div className={'review'}>
+                        <div className={'stars'}>{'★★★★☆'}</div>
+                        <strong>{'Sana Iqbal'}</strong>
+                        <p>{'SOP feedback was precise and specific.'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={'preview-mobile-fee'}>
+                    <div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>
+                        {'Connect fee'}
+                      </div>
+                      <strong style={{ fontSize: '1.05rem' }} data-connect-fee={''}>
+                        {'₹1,999'}
+                      </strong>
+                    </div>
                     <Link
-                      className={'avatar lg preview-avatar'}
+                      className={'btn btn-primary btn-sm'}
                       href={'/counselor-public'}
-                      style={{ display: 'grid' }}
+                      data-verified-only={''}
                       prefetch={false}
                     >
-                      {'PS'}
+                      {'Connect'}
                     </Link>
-                    <h2
-                      className={'preview-name'}
-                      style={{ fontSize: '1.1rem', margin: '0.65rem 0 0.15rem' }}
+                    <span
+                      className={'btn btn-secondary btn-sm'}
+                      data-unverified-only={''}
+                      style={{ opacity: '0.65' }}
                     >
-                      {'Priya Sharma'}
-                    </h2>
-                    <p style={{ color: 'var(--muted)', fontSize: '0.8rem', margin: '0' }}>
-                      {'Mumbai · Higher-ed counselor'}
-                    </p>
-                    <div className={'preview-stat-row compact'}>
-                      <div>
-                        <strong data-verified-only={''}>{'4.8'}</strong>
-                        <strong data-unverified-only={''}>{'—'}</strong>
-                        <span>{'Rating'}</span>
-                      </div>
-                      <div>
-                        <strong data-verified-only={''}>{'126'}</strong>
-                        <strong data-unverified-only={''}>{'0'}</strong>
-                        <span>{'Sessions'}</span>
-                      </div>
-                      <div>
-                        <strong className={'preview-students'}>{'120+'}</strong>
-                        <span>{'Students'}</span>
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: '0.3rem',
-                        justifyContent: 'center',
-                        margin: '0.65rem 0',
-                      }}
-                    >
-                      <span className={'pill'}>{'USA'}</span>
-                      <span className={'pill'}>{'UK'}</span>
-                      <span className={'pill'}>{'Canada'}</span>
-                    </div>
-                    <p
-                      className={'preview-bio'}
-                      style={{
-                        fontSize: '0.8rem',
-                        color: 'var(--muted)',
-                        lineHeight: '1.45',
-                        margin: '0 0 0.85rem',
-                      }}
-                    >
-                      {'Helping students map pathways into top universities.'}
-                    </p>
-                    <div className={'intro-video-embed preview-intro-video'} hidden>
-                      <p className={'intro-video-label'}>{'Intro video'}</p>
-                      <video
-                        className={'preview-intro-video-el'}
-                        controls
-                        playsInline
-                        preload={'metadata'}
-                      />
-                    </div>
-                    <div className={'preview-mobile-fee'}>
-                      <div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>
-                          {'Connect fee'}
-                        </div>
-                        <strong style={{ fontSize: '1.05rem' }} data-connect-fee={''}>
-                          {'₹1,999'}
-                        </strong>
-                      </div>
-                      <Link
-                        className={'btn btn-primary btn-sm'}
-                        href={'/counselor-public'}
-                        data-verified-only={''}
-                        prefetch={false}
-                      >
-                        {'Connect'}
-                      </Link>
-                      <span
-                        className={'btn btn-secondary btn-sm'}
-                        data-unverified-only={''}
-                        style={{ opacity: '0.65' }}
-                      >
-                        {'Connect'}
-                      </span>
-                    </div>
-                    <div className={'preview-mobile-services'}>
-                      <p>{'College shortlisting'}</p>
-                      <p>{'SOP & essay review'}</p>
-                      <p>{'Visa readiness'}</p>
-                    </div>
-                    <div className={'preview-mobile-block'}>
-                      <h3>{'Testimonials'}</h3>
-                      <div
-                        className={'public-testi-list is-in-frame'}
-                        id={'preview-mobile-testi'}
-                      />
-                    </div>
-                    <div className={'preview-mobile-block'}>
-                      <h3>{'Reviews'}</h3>
-                      <div className={'preview-reviews is-compact'}>
-                        <div className={'review'}>
-                          <div className={'stars'}>{'★★★★★'}</div>
-                          <strong>{'Aarav Reddy'}</strong>
-                          <p>{'Clear shortlist logic for USA CS.'}</p>
-                        </div>
-                        <div className={'review'}>
-                          <div className={'stars'}>{'★★★★☆'}</div>
-                          <strong>{'Sana Iqbal'}</strong>
-                          <p>{'SOP feedback was precise and specific.'}</p>
-                        </div>
-                      </div>
-                    </div>
+                      {'Connect'}
+                    </span>
                   </div>
+                  <PreviewBadges />
                 </div>
               </div>
-            </div>
-          </section>
-          <section className={'preview-section'}>
-            <div className={'preview-section-head'}>
-              <div>
-                <div className={'preview-title-row'}>
-                  <h2>{'Testimonials'}</h2>
-                  <span
-                    className={'preview-info'}
-                    tabIndex={'0'}
-                    aria-label={
-                      'Quotes and videos you add for students, parents, or college contacts.'
-                    }
-                  >
-                    <Icon name="info" className={'app-icon'} aria-hidden={'true'} />
-                    <span className={'preview-info-tip'}>
-                      {'Quotes and videos you add for students, parents, or college contacts.'}
-                    </span>
-                  </span>
+            }
+            community={
+              <div className="preview-community-grid">
+                <div className="preview-community-main">
+                  <PreviewProfileHero />
+                  <PreviewTabs />
+                  <PreviewCommunityFeed />
                 </div>
-              </div>
-            </div>
-            <div className={'preview-testi-grid'} id={'preview-testi-list'} />
-            <div className={'preview-reviews-panel'}>
-              <h3>{'Reviews from GradRight students'}</h3>
-              <div className={'preview-reviews'}>
-                <div className={'review'}>
-                  <div className={'stars'}>{'★★★★★'}</div>
-                  <strong>{'Aarav Reddy'}</strong>
-                  <p>
-                    {
-                      'Clear shortlist logic for USA CS. Explained reach vs match so my parents got it too.'
-                    }
-                  </p>
-                </div>
-                <div className={'review'}>
-                  <div className={'stars'}>{'★★★★★'}</div>
-                  <strong>{'Sana Iqbal'}</strong>
-                  <p>
-                    {
-                      'SOP feedback was precise — finally sounded specific without sounding generic.'
-                    }
-                  </p>
-                </div>
-                <div className={'review'}>
-                  <div className={'stars'}>{'★★★★☆'}</div>
-                  <strong>{'Meera Kapoor'}</strong>
-                  <p>{'Fee and intake timing were explained without the jargon.'}</p>
-                </div>
-              </div>
-            </div>
-          </section>
-          <section className={'preview-section'}>
-            <div className={'preview-section-head'}>
-              <div>
-                <div className={'preview-title-row'}>
-                  <h2>{'Community'}</h2>
-                  <span className={'preview-info'} tabIndex={'0'}>
-                    <Icon name="info" className={'app-icon'} aria-hidden={'true'} />
-                    <span className={'preview-info-tip'}>
-                      {'Same post and profile panel students and counselors see in Community.'}
-                    </span>
-                  </span>
-                </div>
-              </div>
-              <Link className={'btn btn-ghost btn-sm'} href={'/community'} prefetch={false}>
-                {'Open community →'}
-              </Link>
-            </div>
-            <div className={'preview-community-grid'}>
-              <div>
-                <div className={'preview-device-label'}>{'Post in feed'}</div>
-                <article className={'c-post'}>
-                  <div className={'c-post-meta'}>
-                    <Link
-                      className={'avatar preview-avatar'}
-                      href={'/community'}
-                      style={{ display: 'grid' }}
-                      prefetch={false}
-                    >
-                      {'PS'}
+                <aside className="preview-community-rail">
+                  <Card className="panel preview-community-account">
+                    <h3 className="preview-name">Priya Sharma</h3>
+                    <p data-preview-community-handle="" hidden />
+                    <p data-preview-community-counts="" />
+                    <Link className="btn btn-secondary btn-sm" href="/community" prefetch={false}>
+                      View community
                     </Link>
-                    <div className={'c-post-who'}>
-                      <div className={'c-name-row'}>
-                        <Link
-                          className={'c-name-btn preview-name'}
-                          href={'/community'}
-                          prefetch={false}
-                        >
-                          {'Priya Sharma'}
-                        </Link>
-                        <span className={'role-badge counselor'}>{'Counselor'}</span>
-                      </div>
-                      <span>{'2h ago · General'}</span>
-                    </div>
-                    <Button
-                      type={'button'}
-                      className={'c-follow'}
-                      disabled
-                      variant={'default'}
-                      size={'sm'}
-                    >
-                      {'Follow'}
-                    </Button>
-                    <Button
-                      type={'button'}
-                      className={'icon-btn'}
-                      disabled
-                      title={'Save'}
-                      aria-hidden={'true'}
-                      variant={'unstyled'}
-                      size={'unstyled'}
-                    >
-                      <Icon name="bookmark_border" className={'app-icon'} />
-                    </Button>
-                  </div>
-                  <p className={'c-post-body'}>
-                    {
-                      'Sharing a short checklist I use for USA CS shortlists this season — reach vs match before parents join the meet.'
-                    }
-                  </p>
-                  <div className={'c-post-actions'} style={{ pointerEvents: 'none' }}>
-                    <Button
-                      type={'button'}
-                      className={'react-btn'}
-                      disabled
-                      variant={'unstyled'}
-                      size={'unstyled'}
-                    >
-                      <Icon name="thumb_up" className={'app-icon'} />
-                      {'12'}
-                    </Button>
-                    <Button
-                      type={'button'}
-                      className={'react-btn'}
-                      disabled
-                      variant={'unstyled'}
-                      size={'unstyled'}
-                    >
-                      <span className={'app-icon'}>{'chat_bubble'}</span>
-                      {'3'}
-                    </Button>
-                  </div>
-                </article>
+                  </Card>
+                  <PreviewBadges />
+                </aside>
               </div>
-              <div>
-                <div className={'preview-device-label'}>{'Profile panel'}</div>
-                <div className={'c-profile-sheet preview-community-sheet'}>
-                  <div className={'avatar lg preview-avatar'}>{'PS'}</div>
-                  <h2 className={'preview-name'}>{'Priya Sharma'}</h2>
-                  <div className={'c-profile-badge-row'}>
-                    <span className={'role-badge counselor'}>{'Counselor'}</span>
-                  </div>
-                  <p className={'c-profile-role'}>{'You · GradRight counselor'}</p>
-                  <p className={'c-profile-bio preview-bio'}>
-                    {'Helping students map pathways into top universities.'}
-                  </p>
-                  <div className={'c-profile-stats cpp-stats'}>
-                    <div className={'cpp-stat'}>
-                      <strong data-verified-only={''}>{'4'}</strong>
-                      <strong data-unverified-only={''}>{'0'}</strong>
-                      <span>{'Posts'}</span>
-                    </div>
-                    <div className={'cpp-stat'}>
-                      <strong data-verified-only={''}>{'890'}</strong>
-                      <strong data-unverified-only={''}>{'12'}</strong>
-                      <span>{'Followers'}</span>
-                    </div>
-                    <div className={'cpp-stat'}>
-                      <strong data-verified-only={''}>{'64'}</strong>
-                      <strong data-unverified-only={''}>{'8'}</strong>
-                      <span>{'Following'}</span>
-                    </div>
-                  </div>
-                  <Link
-                    className={'btn btn-secondary'}
-                    href={'/counselor-public'}
-                    data-verified-only={''}
-                    prefetch={false}
-                  >
-                    {'View marketplace listing'}
-                  </Link>
-                  <span
-                    className={'btn btn-secondary'}
-                    data-unverified-only={''}
-                    style={{ opacity: '0.65', pointerEvents: 'none' }}
-                  >
-                    {'Listing hidden until verified'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </section>
+            }
+          />
         </div>
       </div>
       <div className={'cal-modal testi-modal'} id={'testi-modal'} hidden>

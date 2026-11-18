@@ -1,3 +1,5 @@
+import { COUNTRIES, countryKey } from '@/lib/domain/countries';
+import { AUTHORS, posts, readPublishedPosts } from '@/lib/domain/community';
 import { saveTestimonialVideo, loadTestimonialVideo } from '@/lib/domain/testimonial-media';
 import { readPublicIdentity, savePublicIdentity } from '@/lib/domain/public-identity';
 // Route-scoped workflow: subscriptions, timers and generated overlays are
@@ -385,6 +387,20 @@ export function initialize(scope) {
       const items = names.length
         ? names
         : ['College shortlisting', 'SOP & essay review', 'Visa readiness'];
+      document.querySelectorAll('[data-preview-profile-services]').forEach((serviceList) => {
+        serviceList.replaceChildren(
+          ...services.map(({ title, description }) => {
+            const item = document.createElement('li');
+            const name = document.createElement('strong');
+            const detail = document.createElement('p');
+            name.textContent = title;
+            detail.textContent = description;
+            item.append(name, detail);
+            return item;
+          }),
+        );
+        serviceList.hidden = !services.length;
+      });
       document.querySelectorAll('[data-preview-services]').forEach(function (el) {
         el.textContent = '';
         items.forEach(function (title) {
@@ -670,7 +686,6 @@ export function initialize(scope) {
     const form = document.getElementById('new-testimonial');
     const toggle = document.getElementById('toggle-new-testimonial');
     const list = document.getElementById('testi-list');
-    const previewList = document.getElementById('preview-testi-list');
     const fullList = document.getElementById('preview-full-testi');
     const mobileList = document.getElementById('preview-mobile-testi');
     const titleEl = document.getElementById('testi-modal-title');
@@ -895,7 +910,6 @@ export function initialize(scope) {
         preview: true,
         empty: 'No testimonials yet. Add them on the Testimonials tab.',
       };
-      store.renderList(previewList, previewOpts);
       store.renderList(fullList, previewOpts);
       store.renderList(mobileList, Object.assign({ compact: true }, previewOpts));
       markTestimonialsDirty();
@@ -1340,8 +1354,91 @@ export function initialize(scope) {
       }
     }
 
+    function syncPreviewCountries() {
+      document.querySelectorAll('[data-preview-profile-countries]').forEach((list) => {
+        list.replaceChildren(
+          ...selectedCountries().map((country) => {
+            const pill = document.createElement('span');
+            pill.className = 'pill';
+            const key = countryKey(country);
+            const code = COUNTRIES.find(({ name }) => countryKey(name) === key)?.code;
+            if (code) {
+              const flag = document.createElement('span');
+              flag.setAttribute('aria-hidden', 'true');
+              flag.textContent = String.fromCodePoint(
+                ...Array.from(code, (letter) => 127397 + letter.charCodeAt(0)),
+              );
+              pill.append(flag);
+            }
+            pill.append(country);
+            return pill;
+          }),
+        );
+      });
+    }
+
+    scope.listen(window, 'gradright:public-draft', syncPreviewCountries);
+
+    function syncCommunityPreview(name) {
+      const lists = document.querySelectorAll('[data-preview-community-posts]');
+      if (!lists.length) return;
+      const account = window.GradRightSession?.get();
+      const identity = readPublicIdentity();
+      const author = AUTHORS[identity.name || name];
+      document.querySelectorAll('[data-preview-community-handle]').forEach((handle) => {
+        handle.textContent = identity.username ? `@${identity.username}` : '';
+        handle.hidden = !identity.username;
+      });
+      document.querySelectorAll('[data-preview-community-counts]').forEach((counts) => {
+        counts.textContent = author
+          ? `${author.followers || 0} followers · ${author.following || 0} following`
+          : '';
+      });
+      const published = account?.email
+        ? readPublishedPosts(window.localStorage, account.email)
+        : [];
+      const names = [identity.name, account?.name, account?.communityOriginalName, name].filter(
+        Boolean,
+      );
+      const ownPosts = new Map();
+      for (const post of [...published, ...posts.filter((post) => names.includes(post.author))]) {
+        if (!ownPosts.has(post.id)) ownPosts.set(post.id, post);
+      }
+      lists.forEach((list) => {
+        list.replaceChildren();
+        for (const post of ownPosts.values()) {
+          const card = document.createElement('article');
+          card.className = 'c-post';
+          const heading = document.createElement('strong');
+          heading.textContent = name;
+          const time = document.createElement('span');
+          time.className = 'hint-text';
+          time.textContent = post.time;
+          const meta = document.createElement('div');
+          meta.className = 'c-post-meta';
+          meta.append(heading, time);
+          const body = document.createElement('p');
+          body.className = 'c-post-body';
+          body.textContent = post.body;
+          const link = document.createElement('a');
+          link.className = 'btn btn-ghost btn-sm';
+          link.href = '/community?post=' + encodeURIComponent(post.id);
+          link.textContent = 'View post';
+          card.append(meta, body, link);
+          list.append(card);
+        }
+        if (!ownPosts.size) list.textContent = 'No posts yet.';
+      });
+    }
+
     function syncPreviewCopy(name, bio) {
+      syncPreviewCountries();
       const safeName = name || 'Priya Sharma';
+      syncCommunityPreview(safeName);
+      const headline = document.getElementById('field-headline').value.trim();
+      document.querySelectorAll('.preview-headline').forEach((element) => {
+        element.textContent = headline || 'Higher-education counselor';
+      });
       const safeBio = bio || '';
       const students = document.getElementById('field-students').value || '120';
       const admits = document.getElementById('field-admits').value || '85';
@@ -1366,6 +1463,10 @@ export function initialize(scope) {
 
     function syncAvatars(url) {
       const initials = 'PS';
+      document.querySelectorAll('.preview-community-hero').forEach((hero) => {
+        if (url) hero.style.setProperty('--preview-cover', `url(${JSON.stringify(url)})`);
+        else hero.style.removeProperty('--preview-cover');
+      });
       document.querySelectorAll('.preview-avatar').forEach((el) => {
         setAvatarPhoto(el, url, initials);
       });
