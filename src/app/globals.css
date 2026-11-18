@@ -4474,25 +4474,6 @@ body[data-page='community'] .community-rail-note {
   background: var(--surface);
   border: var(--stroke-1) solid var(--line);
 }
-#panel-testimonials .testi-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  border-radius: inherit;
-  opacity: 0.16;
-  background-image:
-    linear-gradient(to bottom, transparent, var(--surface) var(--space-13)),
-    url('/assets/dialog-header-gradient.png');
-  background-size:
-    100% 100%,
-    106%;
-  background-position:
-    top center,
-    center calc(-1 * var(--space-3));
-  background-repeat: no-repeat;
-}
 #panel-testimonials .testi-card:not(.is-video) {
   min-height: 14rem;
 }
