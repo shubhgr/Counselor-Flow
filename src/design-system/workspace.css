@@ -12533,6 +12533,7 @@ body[data-page='reviews'] .people-search {
   min-height: 11rem;
   margin-inline: calc(-1 * var(--space-4));
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  overflow: hidden;
   background-position: center, center 24%;
 }
 
