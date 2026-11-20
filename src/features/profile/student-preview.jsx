@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState } from 'react';
-import { Bookmark, Heart, PencilLine, UserRound } from 'lucide-react';
+import { Bookmark, ChevronDown, Heart, PencilLine, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const PreviewNavigation = createContext(null);
@@ -33,6 +33,27 @@ export function PreviewTabs({ listing = false }) {
         </button>
       ))}
     </nav>
+  );
+}
+
+export function PreviewFollowControl() {
+  const [following, setFollowing] = useState(true);
+  return (
+    <details className="preview-follow-menu">
+      <summary className="preview-follow-control">
+        {following ? 'Following' : 'Follow'}
+        <ChevronDown size={16} aria-hidden="true" />
+      </summary>
+      <button
+        type="button"
+        onClick={(event) => {
+          setFollowing(!following);
+          event.currentTarget.closest('details').open = false;
+        }}
+      >
+        {following ? 'Unfollow' : 'Follow'}
+      </button>
+    </details>
   );
 }
 
