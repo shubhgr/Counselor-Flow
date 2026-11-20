@@ -1391,7 +1391,7 @@ export function initialize(scope) {
       });
       document.querySelectorAll('[data-preview-community-counts]').forEach((counts) => {
         counts.textContent = author
-          ? `${author.followers || 0} followers · ${author.following || 0} following`
+          ? `${author.followers || 0} followers　 ${author.following || 0} following`
           : '';
       });
       const published = account?.email
@@ -1431,11 +1431,24 @@ export function initialize(scope) {
       });
     }
 
+    document.querySelectorAll('.preview-bio-toggle').forEach((toggle) => {
+      scope.listen(toggle, 'click', () => {
+        const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+        toggle.setAttribute('aria-expanded', String(expanded));
+        toggle.textContent = expanded ? 'Show less' : 'Show more';
+        toggle.closest('.preview-overview-bio').classList.toggle('is-expanded', expanded);
+      });
+    });
+
     function syncPreviewCopy(name, bio) {
       syncPreviewCountries();
       const safeName = name || 'Priya Sharma';
       syncCommunityPreview(safeName);
       const headline = document.getElementById('field-headline').value.trim();
+      const location = document.getElementById('field-address').value.trim();
+      document.querySelectorAll('.preview-cover-location').forEach((element) => {
+        element.textContent = [location, 'Higher-education counselor'].filter(Boolean).join(' · ');
+      });
       document.querySelectorAll('.preview-headline').forEach((element) => {
         element.textContent = headline || 'Higher-education counselor';
       });
@@ -1455,10 +1468,13 @@ export function initialize(scope) {
       document.querySelectorAll('.preview-admits').forEach((el) => {
         el.textContent = admits + '+';
       });
-      const heroBio = document.getElementById('preview-hero-bio');
-      if (heroBio) {
-        heroBio.textContent = safeBio;
-      }
+      document.querySelectorAll('.preview-overview-bio').forEach((container) => {
+        const toggle = container.querySelector('.preview-bio-toggle');
+        toggle.hidden = safeBio.length <= 180;
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.textContent = 'Show more';
+        container.classList.remove('is-expanded');
+      });
     }
 
     function syncAvatars(url) {

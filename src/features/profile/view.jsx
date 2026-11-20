@@ -2,7 +2,7 @@
 import { BADGES } from '@/features/badges/data';
 import { memo } from 'react';
 import { Glass } from 'glisse';
-import { Check, History, Info, Pencil, Plus } from 'lucide-react';
+import { BadgeCheck, CalendarDays, Check, History, Info, Pencil, Plus, Star } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Icon } from '@/components/icon';
 import Link from 'next/link';
@@ -15,7 +15,12 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { PageActions } from '@/components/page-actions';
 import { PublicProfileDetails } from '@/components/public-profile-details';
-import { PreviewCommunityFeed, PreviewTabs, StudentPreview } from './student-preview';
+import {
+  PreviewCommunityFeed,
+  PreviewFollowControl,
+  PreviewTabs,
+  StudentPreview,
+} from './student-preview';
 import { CountrySelector } from './country-selector';
 import { ProfileStrength } from './profile-strength';
 import { StudentProfilePreview } from './student-profile-preview';
@@ -27,16 +32,31 @@ function PreviewProfileHero() {
       <div className="avatar lg preview-avatar" aria-hidden="true">
         PS
       </div>
-      <div>
-        <h2 className="preview-name">Priya Sharma</h2>
-        <p className="preview-headline">Higher-education counselor</p>
-        <p className="preview-bio">Helping students map pathways into top universities.</p>
-        <p className="preview-cover-rating" data-verified-only="">
-          ★ 4.8 · 126 sessions
-        </p>
-        <p className="preview-cover-rating" data-unverified-only="">
-          Rating unavailable
-        </p>
+      <div className="preview-cover-copy">
+        <h2>
+          <span className="preview-name">Priya Sharma</span>
+          <BadgeCheck
+            className="preview-cover-verified"
+            size={20}
+            data-verified-only=""
+            aria-label="Verified counselor"
+          />
+        </h2>
+        <p className="preview-cover-location">Mumbai · Higher-education counselor</p>
+        <p className="preview-headline">Helping students map pathways into top universities.</p>
+      </div>
+      <div className="preview-mobile-rating-strip">
+        <span className="preview-mobile-rating-score">
+          <span data-verified-only="">4.8</span>
+          <span data-unverified-only="">—</span>
+          <Star size={16} className="preview-rating-star" aria-hidden="true" />
+          <small data-verified-only="">from 35 reviews</small>
+          <small data-unverified-only="">No reviews yet</small>
+        </span>
+        <span className="preview-mobile-duration">
+          <CalendarDays size={16} aria-hidden="true" />
+          20 mins
+        </span>
       </div>
     </header>
   );
@@ -51,7 +71,16 @@ function PreviewBadges() {
           .slice(0, 4)
           .map(({ icon, label }) => (
             <li key={label}>
-              <Icon name={icon} aria-hidden="true" />
+              <span className="preview-badge-symbol" aria-hidden="true">
+                {
+                  {
+                    workspace_premium: '🏆',
+                    public: '🎓',
+                    bolt: '⚡',
+                    military_tech: '🏅',
+                  }[icon]
+                }
+              </span>
               {label}
             </li>
           ))}
@@ -748,25 +777,25 @@ export const View = memo(function View() {
                           <span>{'Admits'}</span>
                         </div>
                       </div>
-                      <p
-                        style={{
-                          fontSize: '0.88rem',
-                          maxWidth: '34rem',
-                          lineHeight: '1.5',
-                          color: 'var(--muted)',
-                          marginTop: '0.75rem',
-                        }}
-                        className={'preview-hero-bio'}
-                        id={'preview-hero-bio'}
-                      >
-                        {'Helping students map pathways into top universities.'}
-                      </p>
+                      <div className="preview-overview-bio">
+                        <p className="preview-bio">
+                          Helping students map pathways into top universities.
+                        </p>
+                        <button
+                          type="button"
+                          className="preview-bio-toggle"
+                          aria-expanded="false"
+                          hidden
+                        >
+                          Show more
+                        </button>
+                      </div>
                       <div
                         className="preview-profile-countries"
                         data-preview-profile-countries=""
                       />
                       <div className="preview-profile-availability">
-                        <p className="hint-text">Available on</p>
+                        <p className="hint-text">Available on-</p>
                         <span className="pill">Chat</span>
                         <span className="pill">Phone call</span>
                         <span className="pill">Video call</span>
@@ -825,52 +854,34 @@ export const View = memo(function View() {
                     </Card>
                   </div>
                   <aside className="preview-community-rail">
-                    <div className="sticky-book">
-                      <div
-                        style={{ fontSize: '0.75rem', color: 'var(--muted)', fontWeight: '500' }}
-                      >
-                        {'Connect fee'}
-                      </div>
-                      <div className={'price'} data-connect-fee={''}>
-                        {'₹1,999'}
-                      </div>
-                      <p
-                        style={{ fontSize: '0.82rem', color: 'var(--muted)', marginBottom: '1rem' }}
-                      >
-                        {'Pay once to unlock chat & booking.'}
+                    <div className="sticky-book preview-connect-card">
+                      <h3>Connect fee</h3>
+                      <strong className="price" data-connect-fee="">
+                        ₹1,999
+                      </strong>
+                      <p>
+                        Pay once to unlock chat &amp; booking with{' '}
+                        <span className="preview-name">Priya Sharma</span> on GradRight.
                       </p>
                       <Link
-                        className={'btn btn-primary'}
-                        href={'/counselor-public'}
-                        data-verified-only={''}
+                        className="btn btn-secondary preview-connect-action"
+                        href="/counselor-public"
+                        data-verified-only=""
                         prefetch={false}
                       >
-                        {'Connect'}
+                        Connect
                       </Link>
                       <Button
-                        className={''}
-                        type={'button'}
-                        data-unverified-only={''}
+                        className="preview-connect-action"
+                        type="button"
                         disabled
-                        style={{ opacity: '0.65', cursor: 'not-allowed', width: '100%' }}
-                        variant={'default'}
-                        size={'default'}
+                        data-unverified-only=""
+                        variant="secondary"
                       >
-                        {'Connect'}
+                        Connect
                       </Button>
-                      <p
-                        className={'hint-text'}
-                        style={{ marginTop: '0.75rem', textAlign: 'center' }}
-                        data-verified-only={''}
-                      >
-                        {'Next open · Tue 10:00 AM IST'}
-                      </p>
-                      <p
-                        className={'hint-text'}
-                        style={{ marginTop: '0.75rem', textAlign: 'center' }}
-                        data-unverified-only={''}
-                      >
-                        {'Available after verification'}
+                      <p className="hint-text preview-connect-status">
+                        Stats and booking go live once admin verifies this counselor.
                       </p>
                     </div>
                     <PreviewBadges />
@@ -884,7 +895,16 @@ export const View = memo(function View() {
                   <PreviewProfileHero />
                   <PreviewTabs />
                   <section className="preview-mobile-block preview-mobile-identity">
-                    <h3 className="preview-name">Priya Sharma</h3>
+                    <h3>
+                      <span className="preview-name">Priya Sharma</span>
+                      <BadgeCheck
+                        size={16}
+                        className="preview-cover-verified"
+                        data-verified-only=""
+                        aria-label="Verified counselor"
+                      />
+                    </h3>
+                    <p className="preview-cover-location">Mumbai · Higher-education counselor</p>
                     <p className="preview-headline">Higher-education counselor</p>
                   </section>
                   <section className="preview-mobile-overview">
@@ -903,12 +923,22 @@ export const View = memo(function View() {
                         <span>Admits</span>
                       </div>
                     </div>
-                    <p className="preview-bio">
-                      Helping students map pathways into top universities.
-                    </p>
+                    <div className="preview-overview-bio">
+                      <p className="preview-bio">
+                        Helping students map pathways into top universities.
+                      </p>
+                      <button
+                        type="button"
+                        className="preview-bio-toggle"
+                        aria-expanded="false"
+                        hidden
+                      >
+                        Show more
+                      </button>
+                    </div>
                     <div className="preview-profile-countries" data-preview-profile-countries="" />
                     <div className="preview-profile-availability">
-                      <p className="hint-text">Available on</p>
+                      <p className="hint-text">Available on-</p>
                       <span className="pill">Chat</span>
                       <span className="pill">Phone call</span>
                       <span className="pill">Video call</span>
@@ -946,53 +976,71 @@ export const View = memo(function View() {
                       </div>
                     </div>
                   </div>
-                  <div className={'preview-mobile-fee'}>
-                    <div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>
-                        {'Connect fee'}
-                      </div>
-                      <strong style={{ fontSize: '1.05rem' }} data-connect-fee={''}>
-                        {'₹1,999'}
-                      </strong>
-                    </div>
+                  <section className="preview-mobile-fee preview-connect-card">
+                    <h3>Connect fee</h3>
+                    <strong className="price" data-connect-fee="">
+                      ₹1,999
+                    </strong>
+                    <p>
+                      Pay once to unlock chat &amp; booking with{' '}
+                      <span className="preview-name">Priya Sharma</span> on GradRight.
+                    </p>
                     <Link
-                      className={'btn btn-primary btn-sm'}
-                      href={'/counselor-public'}
-                      data-verified-only={''}
+                      className="btn preview-connect-action"
+                      href="/counselor-public"
+                      data-verified-only=""
                       prefetch={false}
                     >
-                      {'Connect'}
+                      Connect
                     </Link>
-                    <span
-                      className={'btn btn-secondary btn-sm'}
-                      data-unverified-only={''}
-                      style={{ opacity: '0.65' }}
-                    >
-                      {'Connect'}
-                    </span>
-                  </div>
+                    <Button className="preview-connect-action" disabled data-unverified-only="">
+                      Connect
+                    </Button>
+                    <p className="hint-text preview-connect-status">
+                      Stats and booking go live once admin verifies this counselor.
+                    </p>
+                  </section>
                   <PreviewBadges />
+                  <div className="preview-mobile-connect-bar">
+                    <Link
+                      className="btn btn-primary"
+                      href="/counselor-public"
+                      data-verified-only=""
+                      prefetch={false}
+                    >
+                      Connect
+                    </Link>
+                    <Button disabled data-unverified-only="">
+                      Connect
+                    </Button>
+                  </div>
                 </div>
               </div>
             }
             community={
-              <div className="preview-community-grid">
-                <div className="preview-community-main">
-                  <PreviewProfileHero />
-                  <PreviewTabs />
-                  <PreviewCommunityFeed />
+              <div className="preview-community-frame preview-fullpage-frame">
+                <div className="preview-fullpage-chrome">
+                  <span className="chrome-dot" />
+                  <span className="chrome-dot" />
+                  <span className="chrome-dot" />
+                  <span className="chrome-url">gradright.com/counselors/priya-sharma</span>
                 </div>
-                <aside className="preview-community-rail">
-                  <Card className="panel preview-community-account">
-                    <h3 className="preview-name">Priya Sharma</h3>
-                    <p data-preview-community-handle="" hidden />
-                    <p data-preview-community-counts="" />
-                    <Link className="btn btn-secondary btn-sm" href="/community" prefetch={false}>
-                      View community
-                    </Link>
-                  </Card>
-                  <PreviewBadges />
-                </aside>
+                <div className="preview-community-grid">
+                  <div className="preview-community-main">
+                    <PreviewProfileHero />
+                    <PreviewTabs />
+                    <PreviewCommunityFeed />
+                  </div>
+                  <aside className="preview-community-rail">
+                    <Card className="panel preview-community-account">
+                      <h3 className="preview-name preview-community-account-name">Priya Sharma</h3>
+                      <p data-preview-community-handle="" hidden />
+                      <p data-preview-community-counts="" />
+                      <PreviewFollowControl />
+                    </Card>
+                    <PreviewBadges />
+                  </aside>
+                </div>
               </div>
             }
           />
