@@ -1,5 +1,10 @@
 const nextConfig = {
   reactStrictMode: true,
+  async rewrites() {
+    return [
+      { source: '/refinance/refinance', destination: '/refinance/refinance.html' },
+    ];
+  },
   async redirects() {
     return [
       { source: '/admitright', destination: '/admitright/index.html', permanent: false },
